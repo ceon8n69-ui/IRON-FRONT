@@ -215,6 +215,9 @@ export function MapView(props: Props) {
     if (selection.current.parent) selection.current.removeFromParent();
     s.removeChildren().forEach((c) => c.destroy({ children: true }));
     animations.current = [];
+    const ground = new Container();
+    const labels = new Container();
+    s.addChild(ground);
     const tiles: Tile[] = props.world
       ? props.world.map((t) => ({ ...t, q: t.q - 64, r: t.r - 64 }))
       : [];
@@ -237,7 +240,7 @@ export function MapView(props: Props) {
       const g = new Graphics();
       hex(g, x, y + 7, 53, 0x263a36);
       hex(g, x, y, 52, colors[t.biome]);
-      s.addChild(g);
+      ground.addChild(g);
       const b = props.buildings.find((b) => b.q === t.q && b.r === t.r);
       if (b && !props.battle && !props.world) {
         const visual = createBuilding(b);
@@ -264,8 +267,8 @@ export function MapView(props: Props) {
         label.anchor.set(0.5);
         label.position.set(x, y + 29);
         const plate = new Graphics().roundRect(x-label.width/2-6,y+21,label.width+12,17,3).fill({color:0x101923,alpha:.9});
-        s.addChild(plate);
-        s.addChild(label);
+        labels.addChild(plate);
+        labels.addChild(label);
       } else if (t.biome === "forest" && !props.battle) {
         const tree = new Graphics();
         for (let i = 0; i < 3; i++) {
@@ -308,6 +311,7 @@ export function MapView(props: Props) {
         s.addChild(g);
       }
     }
+    s.addChild(labels);
     s.addChild(selection.current);
   }, [ready, geometryKey]);
   useEffect(() => {

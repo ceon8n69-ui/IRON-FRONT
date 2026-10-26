@@ -277,11 +277,11 @@ function App() {
             </div>
             <button className="guide-toggle" aria-expanded={guideOpen} aria-label="План первой операции" onClick={() => setGuideOpen(!guideOpen)}>{Math.min(step,7)}/7 · План</button>
           </section>
-          <section className="guide" aria-label="Текущее задание">
+          {(step < 7 || guideOpen) && <section className="guide" aria-label="Текущее задание">
             <p>{pendingBuilding ? `Строительство идёт. Осталось ${Math.max(0,pendingBuilding.ready_at-clock)} сек. Завершение подтвердит сервер.` : tutorialCopy[step]}</p>
             {step > 0 && !battle && <button className="guide-action" onClick={goToObjective}>{pendingBuilding ? "К стройке" : step < 4 ? "Выбрать участок" : step < 7 ? "К армии" : "Посмотреть отчёт"} →</button>}
             {guideOpen && <ol className="guide-list">{objectives.slice(0,7).map((text,i)=><li key={text} className={i<step ? "done" : i===step ? "current" : ""}><span>{i<step ? "✓" : i+1}</span>{text}</li>)}</ol>}
-          </section>
+          </section>}
           <div className="screen-title">
             <div>
               <small>СЕКТОР 64 : 64</small>
