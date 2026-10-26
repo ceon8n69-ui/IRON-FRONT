@@ -1,0 +1,137 @@
+// Run only against a disposable APP_ENV=test deployment with a test BOT_TOKEN.
+// No mocked API responses: real signed auth, construction timers, training and battle.
+import { createHmac } from "node:crypto";
+import assert from "node:assert/strict";
+const { chromium } = await import(
+  process.env.PLAYWRIGHT_MODULE || "playwright"
+);
+const base = process.env.TEST_APP_URL || "http://127.0.0.1:8000";
+const bot = process.env.BOT_TOKEN;
+if (!bot || !process.env.TEST_APP_URL)
+  throw new Error("Set TEST_APP_URL and test BOT_TOKEN");
+const data = {
+  auth_date: String(Math.floor(Date.now() / 1000)),
+  user: JSON.stringify({ id: 9000001, first_name: "Test Commander" }),
+};
+const secret = createHmac("sha256", "WebAppData").update(bot).digest();
+const hash = createHmac("sha256", secret)
+  .update(
+    Object.entries(data)
+      .sort()
+      .map(([k, v]) => `${k}=${v}`)
+      .join("\n"),
+  )
+  .digest("hex");
+const response = await fetch(base + "/api/v1/auth/telegram", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    init_data: new URLSearchParams({ ...data, hash }).toString(),
+  }),
+});
+assert.equal(response.status, 200);
+const { token } = await response.json();
+const browser = await chromium.launch({
+  headless: true,
+  args: ["--no-sandbox"],
+});
+const page = await browser.newPage({
+  viewport: { width: 390, height: 844 },
+  deviceScaleFactor: 1,
+  isMobile: true,
+  hasTouch: true,
+});
+process.on("uncaughtException", async (error) => {
+  console.error(error);
+  try {
+    await page.screenshot({path: "/tmp/iron-browser-failure.png", fullPage: true});
+    console.error((await page.locator("body").innerText()).slice(-5000));
+    await browser.close();
+  } finally { process.exit(1); }
+});
+const errors = [];
+page.on("pageerror", (e) => errors.push(e.message));
+await page.addInitScript(
+  (token) => sessionStorage.setItem("iron-session", token),
+  token,
+);
+await page.goto(base);
+await page.getByRole("button", { name: /Генерал Рейвен/ }).click();
+await page.getByRole("heading", { name: "Передовая база" }).waitFor();
+const state = async () => {
+  const r = await fetch(base + "/api/v1/player/me", {
+    headers: { Authorization: "Bearer " + token },
+  });
+  assert.equal(r.status, 200);
+  return r.json();
+};
+const waitFor = async (fn, timeout = 75000) => {
+  const end = Date.now() + timeout;
+  while (Date.now() < end) {
+    if (await fn()) return;
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+  throw new Error("Timed out waiting for game state");
+};
+async function build(name, kind, q, r) {
+  const box = await page.locator("canvas").boundingBox();
+  await page.mouse.click(
+    box.x + box.width / 2 + 54 * Math.sqrt(3) * (q + r / 2),
+    box.y + box.height * 0.5 + 54 * 0.975 * r,
+  );
+  await page.getByRole("button", { name: new RegExp(name) }).click();
+  await waitFor(async () =>
+    (await state()).buildings.some(
+      (b) => b.kind === kind && b.status === "ready",
+    ),
+  );
+  console.log("Built", kind);
+}
+await build("Электростанция", "power", 1, 0);
+await build("Металлургический карьер", "quarry", 0, 1);
+await build("Казармы", "barracks", -1, 1);
+await page.getByRole("button", { name: "Армия", exact: true }).click();
+await page.getByRole("button", { name: /Подготовить стрелков/ }).click();
+await waitFor(async () => (await state()).units.length === 1);
+await page.getByRole("button", { name: "В бой", exact: true }).click();
+await page.getByRole("heading", { name: "Патруль «Рубеж»" }).waitFor();
+const box = await page.locator("canvas").boundingBox();
+await page.mouse.click(
+  box.x + box.width / 2 - 54 * Math.sqrt(3),
+  box.y + box.height * 0.5,
+);
+await page.getByRole("button", { name: "Переместить", exact: true }).click();
+await waitFor(async () => (await state()).battles[0].state.turn === 2, 10000);
+for (let i = 0; i < 5; i++) {
+  if ((await state()).first_victory) break;
+  const prev = (await state()).battles[0].state.turn;
+  await page.getByRole("button", { name: "Атаковать", exact: true }).click();
+  await waitFor(
+    async () => (await state()).battles[0].state.turn > prev,
+    10000,
+  );
+}
+assert.equal((await state()).first_victory, true);
+await page.getByRole("button", { name: "Снарядить", exact: true }).click();
+await page.reload();
+await page.getByRole("heading", { name: "Передовая база" }).waitFor();
+await page.getByRole("button", { name: "Армия", exact: true }).click();
+await page.getByRole("button", { name: "Снять", exact: true }).waitFor();
+assert.equal((await state()).inventory.length, 1);
+await page.getByText("Первая операция завершена",{exact:true}).waitFor();
+assert.equal(
+  await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+  true,
+);
+await page.screenshot({
+  path: process.env.SCREENSHOT_PATH || "/tmp/iron-cycle.png",
+  fullPage: true,
+});
+await page.setViewportSize({ width: 1280, height: 900 });
+await page.getByRole("button", { name: "База", exact: true }).click();
+await page.screenshot({ path: "/tmp/iron-base-desktop.png", fullPage: true });
+assert.deepEqual(errors, []);
+console.log(
+  "PASS: mobile end-to-end cycle, real timers, reload persistence, equipment, no JS errors",
+);
+await browser.close();

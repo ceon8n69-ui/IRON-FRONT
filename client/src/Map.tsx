@@ -1,0 +1,340 @@
+import {Icon} from "./Icon";
+import { useEffect, useRef, useState } from "react";
+import { Application, Container, Graphics, Text } from "pixi.js";
+import type { Building, Battle } from "./store";
+type Tile = { q: number; r: number; biome: string };
+type Props = {
+  buildings: Building[];
+  battle?: Battle;
+  world?: Tile[];
+  selected: number[] | null;
+  onSelect: (q: number, r: number) => void;
+};
+const colors: Record<string, number> = {
+  plain: 0x465c4a,
+  forest: 0x304f43,
+  hills: 0x6b7165,
+  desert: 0x8a7c55,
+  unknown: 0x1e2c37,
+};
+function hex(g: Graphics, x: number, y: number, size: number, color: number) {
+  const p: number[] = [];
+  for (let i = 0; i < 6; i++) {
+    const a = ((i * 60 + 30) * Math.PI) / 180;
+    p.push(x + Math.cos(a) * size, y + Math.sin(a) * size * 0.65);
+  }
+  g.poly(p).fill(color).stroke({ color: 0xa6bbab, alpha: 0.14, width: 1 });
+}
+function tower(
+  g: Graphics,
+  x: number,
+  y: number,
+  h: number,
+  w: number,
+  color: number,
+) {
+  g.poly([x - w, y, x, y + w * 0.45, x + w, y, x, y - w * 0.45]).fill(0x18232b);
+  g.poly([x - w, y, x, y + w * 0.45, x, y + w * 0.45 - h, x - w, y - h]).fill(
+    color,
+  );
+  g.poly([x, y + w * 0.45, x + w, y, x + w, y - h, x, y + w * 0.45 - h]).fill(
+    0x35444a,
+  );
+  g.poly([
+    x - w,
+    y - h,
+    x,
+    y + w * 0.45 - h,
+    x + w,
+    y - h,
+    x,
+    y - w * 0.45 - h,
+  ]).fill(0x8f9d93);
+  g.rect(x - w + 4, y - h + 7, 6, 3).fill(0xe5b65a);
+}
+export function MapView(props: Props) {
+  const host = useRef<HTMLDivElement>(null);
+  const app = useRef<Application | null>(null);
+  const scene = useRef(new Container());
+  const latest = useRef(props);
+  latest.current = props;
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
+  const camera = useRef({ scale: 1, x: 0, y: 0 });
+  useEffect(() => {
+    let alive = true;
+    let cleanup = () => {};
+    const a = new Application();
+    (async () => {
+      await a.init({
+        resizeTo: host.current!,
+        background: 0x15232b,
+        antialias: true,
+        resolution: Math.min(devicePixelRatio, 2),
+        autoDensity: true,
+        preference: "webgl",
+      });
+      if (!alive) {
+        a.destroy(true, { children: true });
+        return;
+      }
+      app.current = a;
+      host.current!.appendChild(a.canvas);
+      scene.current = new Container();
+      a.stage.addChild(scene.current);
+      setReady(true);
+      const pointers = new globalThis.Map<number, { x: number; y: number }>();
+      let start = { x: 0, y: 0 };
+      let traveled = 0;
+      let pinch = 0;
+      const apply = () => {
+        scene.current.position.set(
+          a.screen.width / 2 + camera.current.x,
+          a.screen.height * 0.5 + camera.current.y,
+        );
+        scene.current.scale.set(camera.current.scale);
+      };
+      const down = (e: PointerEvent) => {
+        a.canvas.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        start = { x: e.clientX, y: e.clientY };
+        traveled = 0;
+        if (pointers.size === 2) {
+          const [p, q] = [...pointers.values()];
+          pinch = Math.hypot(p.x - q.x, p.y - q.y);
+        }
+      };
+      const move = (e: PointerEvent) => {
+        const prev = pointers.get(e.pointerId);
+        if (!prev) return;
+        const dx = e.clientX - prev.x,
+          dy = e.clientY - prev.y;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        traveled += Math.abs(dx) + Math.abs(dy);
+        if (pointers.size === 2) {
+          const [p, q] = [...pointers.values()];
+          const d = Math.hypot(p.x - q.x, p.y - q.y);
+          if (pinch)
+            camera.current.scale = Math.max(
+              0.45,
+              Math.min(2.5, (camera.current.scale * d) / pinch),
+            );
+          pinch = d;
+        } else {
+          camera.current.x += dx;
+          camera.current.y += dy;
+        }
+        apply();
+      };
+      const up = (e: PointerEvent) => {
+        if (traveled < 8 && pointers.size === 1) {
+          const rect = a.canvas.getBoundingClientRect();
+          const x =
+            (e.clientX - rect.left - a.screen.width / 2 - camera.current.x) /
+            camera.current.scale;
+          const y =
+            (e.clientY - rect.top - a.screen.height * 0.5 - camera.current.y) /
+            camera.current.scale;
+          const rawR = y / (54 * 0.975);
+          const rawQ = x / (54 * Math.sqrt(3)) - rawR / 2;
+          let best = [0, 0],
+            dist = Infinity;
+          for (let q = Math.floor(rawQ) - 1; q <= Math.ceil(rawQ) + 1; q++)
+            for (let r = Math.floor(rawR) - 1; r <= Math.ceil(rawR) + 1; r++) {
+              const d =
+                (q - rawQ) ** 2 + (r - rawR) ** 2 + (q + r - rawQ - rawR) ** 2;
+              if (d < dist) {
+                best = [q, r];
+                dist = d;
+              }
+            }
+          if (latest.current.battle) best = [best[0] + 4, best[1] + 4];
+          if (latest.current.world) best = [best[0] + 64, best[1] + 64];
+          latest.current.onSelect(best[0], best[1]);
+        }
+        pointers.delete(e.pointerId);
+        pinch = 0;
+      };
+      const wheel = (e: WheelEvent) => {
+        e.preventDefault();
+        camera.current.scale = Math.max(
+          0.45,
+          Math.min(2.5, camera.current.scale * Math.exp(-e.deltaY * 0.001)),
+        );
+        apply();
+      };
+      a.canvas.addEventListener("pointerdown", down);
+      a.canvas.addEventListener("pointermove", move);
+      a.canvas.addEventListener("pointerup", up);
+      a.canvas.addEventListener("pointercancel", (e) =>
+        pointers.delete(e.pointerId),
+      );
+      a.canvas.addEventListener("wheel", wheel, { passive: false });
+      const resize = new ResizeObserver(apply);
+      resize.observe(host.current!);
+      apply();
+      const visible = () => (document.hidden ? a.stop() : a.start());
+      document.addEventListener("visibilitychange", visible);
+      cleanup = () => {
+        resize.disconnect();
+        document.removeEventListener("visibilitychange", visible);
+        a.destroy(true, { children: true });
+      };
+    })().catch((e) => setError("Не удалось открыть WebGL: " + e.message));
+    return () => {
+      alive = false;
+      cleanup();
+      app.current = null;
+    };
+  }, []);
+  useEffect(() => {
+    if (!ready || !app.current) return;
+    const s = scene.current;
+    s.removeChildren().forEach((c) => c.destroy({ children: true }));
+    const tiles: Tile[] = props.world
+      ? props.world.map((t) => ({ ...t, q: t.q - 64, r: t.r - 64 }))
+      : [];
+    if (!props.world)
+      for (let q = -4; q <= 4; q++)
+        for (let r = -4; r <= 4; r++)
+          if (
+            props.battle ||
+            Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) <= 4
+          )
+            tiles.push({
+              q,
+              r,
+              biome: (q * 7 + r * 3) % 7 === 0 ? "forest" : "plain",
+            });
+    tiles.sort((a, b) => a.r - b.r || a.q - b.q);
+    for (const t of tiles) {
+      const x = 54 * Math.sqrt(3) * (t.q + t.r / 2),
+        y = 54 * 0.975 * t.r;
+      const g = new Graphics();
+      hex(g, x, y + 7, 53, 0x263a36);
+      hex(g, x, y, 52, colors[t.biome]);
+      s.addChild(g);
+      const offset = props.battle ? 4 : props.world ? 64 : 0;
+      const selected =
+        props.selected &&
+        props.selected[0] === t.q + offset &&
+        props.selected[1] === t.r + offset;
+      if (selected) {
+        const ring = new Graphics();
+        hex(ring, x, y, 48, 0x8d814a);
+        ring.alpha = 0.6;
+        s.addChild(ring);
+      }
+      const b = props.buildings.find((b) => b.q === t.q && b.r === t.r);
+      if (b && !props.battle && !props.world) {
+        const obj = new Graphics();
+        obj
+          .ellipse(x + 8, y + 4, 35, 14)
+          .fill({ color: 0x000000, alpha: 0.28 });
+        tower(
+          obj,
+          x,
+          y,
+          b.kind === "hq" ? 48 : 30,
+          b.kind === "hq" ? 32 : 25,
+          b.status === "building" ? 0x6c6a48 : 0x586c6b,
+        );
+        if (b.kind === "power") {
+          tower(obj, x - 14, y - 4, 55, 7, 0x758682);
+          tower(obj, x + 10, y + 6, 45, 7, 0x758682);
+        }
+        if (b.kind === "hq") {
+          obj
+            .moveTo(x, y - 50)
+            .lineTo(x, y - 76)
+            .stroke({ color: 0xb4c1b5, width: 2 });
+          obj.poly([x, y - 76, x + 19, y - 70, x, y - 65]).fill(0xe5b65a);
+        }
+        s.addChild(obj);
+        const label = new Text({
+          text: (
+            {
+              hq: "ШТАБ",
+              power: "ЭНЕРГИЯ",
+              quarry: "КАРЬЕР",
+              barracks: "КАЗАРМЫ",
+              refinery: "НПЗ",
+            } as Record<string, string>
+          )[b.kind],
+          style: {
+            fontSize: 10,
+            fill: 0xe7efea,
+            fontFamily: "sans-serif",
+            letterSpacing: 1,
+          },
+        });
+        label.anchor.set(0.5);
+        label.position.set(x, y + 22);
+        s.addChild(label);
+      } else if (t.biome === "forest" && !props.battle) {
+        const tree = new Graphics();
+        for (let i = 0; i < 3; i++) {
+          const tx = x - 18 + i * 17,
+            ty = y + (i % 2) * 8;
+          tree.rect(tx - 2, ty - 10, 4, 16).fill(0x524d37);
+          tree
+            .poly([tx, ty - 43, tx - 13, ty - 10, tx + 13, ty - 10])
+            .fill(i % 2 ? 0x46654c : 0x263d32);
+        }
+        s.addChild(tree);
+      }
+      if (
+        props.battle &&
+        props.battle.state.cover.some(
+          (c) => c[0] === t.q + 4 && c[1] === t.r + 4,
+        )
+      ) {
+        const cover = new Graphics();
+        tower(cover, x, y, 13, 22, 0x687665);
+        s.addChild(cover);
+      }
+    }
+    if (props.battle) {
+      for (const [key, color] of [
+        ["player", 0x4c9ce5],
+        ["npc", 0xd95a52],
+      ] as const) {
+        const unit = props.battle.state[key];
+        const q = unit.pos[0] - 4,
+          r = unit.pos[1] - 4,
+          x = 54 * Math.sqrt(3) * (q + r / 2),
+          y = 54 * 0.975 * r;
+        const g = new Graphics();
+        g.ellipse(x, y, 24, 13).fill({ color, alpha: 0.3 });
+        g.roundRect(x - 14, y - 23, 28, 18, 4).fill(color);
+        g.circle(x, y - 31, 8).fill(0xc9c6b4);
+        g.rect(x - 25, y - 53, 50, 4).fill(0x101923);
+        g.rect(x - 25, y - 53, (50 * unit.hp) / 100, 4).fill(color);
+        s.addChild(g);
+      }
+    }
+  }, [ready, props.buildings, props.battle, props.world, props.selected]);
+  return (
+    <div className="map" ref={host}>
+      {error && <p role="alert">{error}</p>}
+      <div className="map-controls">
+        <button
+          aria-label="Центрировать карту"
+          onClick={() => {
+            camera.current = { scale: 1, x: 0, y: 0 };
+            if (app.current) {
+              scene.current.position.set(
+                app.current.screen.width / 2,
+                app.current.screen.height * 0.5,
+              );
+              scene.current.scale.set(1);
+            }
+          }}
+        >
+          <Icon name="target"/>
+        </button>
+      </div>
+      <div className="map-hint">ПЕРЕТАЩИТЕ КАРТУ · ДВА ПАЛЬЦА ДЛЯ МАСШТАБА</div>
+    </div>
+  );
+}
