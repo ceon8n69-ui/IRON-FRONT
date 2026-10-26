@@ -33,6 +33,7 @@ assert.equal(response.status, 200);
 const { token } = await response.json();
 const browser = await chromium.launch({
   headless: true,
+  executablePath: process.env.CHROMIUM_EXECUTABLE,
   args: ["--no-sandbox"],
 });
 const page = await browser.newPage({
@@ -58,6 +59,10 @@ await page.addInitScript(
 await page.goto(base);
 await page.getByRole("button", { name: /Генерал Рейвен/ }).click();
 await page.getByRole("heading", { name: "Передовая база" }).waitFor();
+await page.getByRole("button", {name:"План первой операции"}).click();
+await page.locator(".guide-list").waitFor();
+assert.match(await page.locator(".guide-list .current").innerText(), /Постройте электростанцию/);
+await page.getByRole("button", {name:"План первой операции"}).click();
 const state = async () => {
   const r = await fetch(base + "/api/v1/player/me", {
     headers: { Authorization: "Bearer " + token },
@@ -74,11 +79,16 @@ const waitFor = async (fn, timeout = 75000) => {
   throw new Error("Timed out waiting for game state");
 };
 async function build(name, kind, q, r) {
-  const box = await page.locator("canvas").boundingBox();
-  await page.mouse.click(
-    box.x + box.width / 2 + 54 * Math.sqrt(3) * (q + r / 2),
-    box.y + box.height * 0.5 + 54 * 0.975 * r,
-  );
+  if (kind === "power") {
+    await page.getByRole("button", {name:"Выбрать участок →"}).click();
+    await page.locator(".building-option.recommended").waitFor();
+  } else {
+    const box = await page.locator("canvas").boundingBox();
+    await page.mouse.click(
+      box.x + box.width / 2 + 54 * Math.sqrt(3) * (q + r / 2),
+      box.y + box.height * 0.5 + 54 * 0.975 * r,
+    );
+  }
   await page.getByRole("button", { name: new RegExp(name) }).click();
   await waitFor(async () =>
     (await state()).buildings.some(
@@ -90,7 +100,7 @@ async function build(name, kind, q, r) {
 await build("Электростанция", "power", 1, 0);
 await build("Металлургический карьер", "quarry", 0, 1);
 await build("Казармы", "barracks", -1, 1);
-await page.getByRole("button", { name: "Армия", exact: true }).click();
+await page.getByRole("button", { name: "К армии →", exact: true }).click();
 await page.getByRole("button", { name: /Подготовить стрелков/ }).click();
 await waitFor(async () => (await state()).units.length === 1);
 await page.getByRole("button", { name: "В бой", exact: true }).click();
@@ -130,6 +140,9 @@ await page.screenshot({
 await page.setViewportSize({ width: 1280, height: 900 });
 await page.getByRole("button", { name: "База", exact: true }).click();
 await page.screenshot({ path: "/tmp/iron-base-desktop.png", fullPage: true });
+await page.setViewportSize({width:390,height:844});
+await page.emulateMedia({reducedMotion:"reduce"});
+await page.screenshot({path:"/tmp/iron-base-mobile.png",fullPage:true});
 assert.deepEqual(errors, []);
 console.log(
   "PASS: mobile end-to-end cycle, real timers, reload persistence, equipment, no JS errors",

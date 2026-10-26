@@ -605,3 +605,18 @@ nav button.active {
     transition: none !important;
   }
 }
+/* Mission guidance stays outside the canvas so it never hides a selectable hex. */
+.guide { margin: 0 24px; padding: 12px 15px; background: #16232e; border: 1px solid #34434d; border-top: 0; }
+.guide p { font-size: 12px; margin: 0; line-height: 1.6; }
+.guide-toggle { margin-left: auto; flex-shrink: 0; background: transparent; border-color: #4b5350; color: #e5b65a; font-size: 11px; padding: 8px; }
+.guide-action { background: transparent; color: #e5b65a; border: 0; padding: 8px 0 0; font-size: 12px; text-align: left; }
+.guide-list { padding: 8px 0 0; margin: 0; list-style: none; }
+.guide-list li { display: flex; align-items: center; gap: 10px; padding: 9px 0; color: #9dafba; font-size: 12px; }
+.guide-list li span { width: 25px; height: 25px; display: grid; place-items: center; border: 1px solid #40515b; border-radius: 50%; flex-shrink: 0; }
+.guide-list .done { color: #83b99a; }
+.guide-list .current { color: #e5b65a; }
+.building-option.recommended { border-color: #b18e4e; background: #303b3c; }
+.recommend-label { color: #e5b65a; }
+.action-reason { margin-top: 10px; font-size: 12px; color: #e8a64b; }
+.building-purpose { padding: 12px; background: #22343e; border-left: 2px solid #e5b65a; }
+@media(max-width:500px) { .guide { margin-inline: 16px; } .objective b { font-size: 12px; } }

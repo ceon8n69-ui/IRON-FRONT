@@ -51,6 +51,7 @@ function App() {
   const [defs, setDefs] = useState<Definitions | null>(null);
   const [tab, setTab] = useState("База");
   const [sheet, setSheet] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [selected, setSelected] = useState<number[] | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -167,6 +168,38 @@ function App() {
     "Снарядите тактический модуль",
     "Первая операция завершена",
   ];
+  const targetKind = ["", "power", "quarry", "barracks"][step];
+  const pendingBuilding = state?.buildings.find(b => b.kind === targetKind && b.status === "building");
+  const tutorialCopy = [
+    "Специализация командира даёт постоянный бонус. Выберите подходящий стиль игры.",
+    "Электростанция обеспечивает базу энергией. Выберите свободный участок, затем подтвердите строительство.",
+    "Карьер приносит металл для строительства и армии. Производство идёт автоматически при наличии энергии.",
+    "Казармы открывают подготовку первого отряда. Постройте их на свободном участке.",
+    "В разделе «Армия» подготовьте стрелков: 60 металла и 40 провизии. Обучение занимает 45 секунд.",
+    "Отправьте стрелков против патруля. Приблизьтесь на дальность 3 гекса и атакуйте; укрытия уменьшают урон.",
+    "В разделе «Армия» снарядите полученный полевой модуль. Его бонус применяется сервером в бою.",
+    "База снабжает армию, а победы развивают командира. Прогресс сохранён: можно вернуться позже.",
+  ];
+  const trainReason = !state?.buildings.some(b => b.kind === "barracks" && b.status === "ready")
+    ? "Сначала завершите строительство казарм"
+    : state.jobs.length ? "Дождитесь завершения текущей подготовки"
+    : state.resources.metal < 60 || state.resources.food < 40 ? "Нужно 60 металла и 40 провизии" : "";
+  const goToObjective = () => {
+    setGuideOpen(false);
+    if (step >= 4 && step <= 6) { changeTab("Армия"); return; }
+    if (step >= 7) { changeTab("Командование"); return; }
+    changeTab("База");
+    if (pendingBuilding) { setSelected([pendingBuilding.q,pendingBuilding.r]); setSheet(true); return; }
+    // Select an available nearby cell, but never spend resources without confirmation.
+    const occupied = new Set(state?.buildings.map(b => `${b.q},${b.r}`));
+    for (let radius=1;radius<=4;radius++) {
+      for(let r=-radius;r<=radius;r++) for(let q=-radius;q<=radius;q++) {
+        if(Math.max(Math.abs(q),Math.abs(r),Math.abs(q+r))<=radius && !occupied.has(`${q},${r}`)) {
+          setSelected([q,r]); setSheet(true); return;
+        }
+      }
+    }
+  };
   const changeTab = (t: string) => {
     setTab(t);
     setSheet(false);
@@ -242,7 +275,12 @@ function App() {
               <small>ПЕРВАЯ ОПЕРАЦИЯ</small>
               <b>{objectives[step]}</b>
             </div>
-            <span className="progress">{Math.min(step, 7)}/7</span>
+            <button className="guide-toggle" aria-expanded={guideOpen} aria-label="План первой операции" onClick={() => setGuideOpen(!guideOpen)}>{Math.min(step,7)}/7 · План</button>
+          </section>
+          <section className="guide" aria-label="Текущее задание">
+            <p>{pendingBuilding ? `Строительство идёт. Осталось ${Math.max(0,pendingBuilding.ready_at-clock)} сек. Завершение подтвердит сервер.` : tutorialCopy[step]}</p>
+            {step > 0 && !battle && <button className="guide-action" onClick={goToObjective}>{pendingBuilding ? "К стройке" : step < 4 ? "Выбрать участок" : step < 7 ? "К армии" : "Посмотреть отчёт"} →</button>}
+            {guideOpen && <ol className="guide-list">{objectives.slice(0,7).map((text,i)=><li key={text} className={i<step ? "done" : i===step ? "current" : ""}><span>{i<step ? "✓" : i+1}</span>{text}</li>)}</ol>}
           </section>
           <div className="screen-title">
             <div>
@@ -333,6 +371,7 @@ function App() {
             <>
               <MapView
                 buildings={state.buildings}
+                paused={sheet || guideOpen}
                 selected={selected}
                 onSelect={chooseTile}
               />
@@ -405,17 +444,13 @@ function App() {
                 </div>
               ))}
               <button
-                disabled={
-                  busy ||
-                  !!state.jobs.length ||
-                  !state.buildings.some(
-                    (b) => b.kind === "barracks" && b.status === "ready",
-                  )
-                }
+                disabled={busy || !!trainReason}
+                aria-describedby="train-reason"
                 onClick={() => run(() => command("/army/train", {}))}
               >
                 Подготовить стрелков · 60 металла + 40 провизии · 45 сек.
               </button>
+              {trainReason && <p id="train-reason" className="action-reason">{trainReason}</p>}
               <div className="section-label">КОМАНДИР</div>
               {state.hero && defs && (
                 <article className="hero-detail">
@@ -560,6 +595,7 @@ function App() {
                     .map((b) => (
                       <article key={b.id}>
                         <h3>{defs?.buildings[b.kind].name}</h3>
+                        <p className="building-purpose">{({hq:"Командный центр вашей базы.",power:"Даёт 20 MW для производственных зданий.",quarry:"Производит металл каждую минуту. Требует 4 MW.",barracks:"Открывает подготовку стрелков в разделе «Армия». Требует 6 MW.",refinery:"Перерабатывает 2 нефти в 3 топлива за минуту. Требует 5 MW."} as Record<string,string>)[b.kind]}</p>
                         <p>
                           Уровень {b.level} ·{" "}
                           {b.status === "ready"
@@ -604,7 +640,7 @@ function App() {
                                     : "";
                           return (
                             <button
-                              className="building-option"
+                              className={"building-option" + (k === targetKind ? " recommended" : "")}
                               key={k}
                               disabled={busy || !!reason}
                               onClick={() =>
@@ -620,6 +656,7 @@ function App() {
                             >
                               <span>
                                 <b>{b.name}</b>
+                                {k === targetKind && <small className="recommend-label">ТЕКУЩАЯ ЗАДАЧА</small>}
                                 <small>
                                   {cost(b.cost)} · {b.seconds} сек.
                                 </small>

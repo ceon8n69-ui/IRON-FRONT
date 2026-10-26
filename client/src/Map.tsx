@@ -1,10 +1,12 @@
 import {Icon} from "./Icon";
 import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Text } from "pixi.js";
+import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle } from "./store";
 type Tile = { q: number; r: number; biome: string };
 type Props = {
   buildings: Building[];
+  paused?: boolean;
   battle?: Battle;
   world?: Tile[];
   selected: number[] | null;
@@ -58,6 +60,8 @@ export function MapView(props: Props) {
   const scene = useRef(new Container());
   const latest = useRef(props);
   latest.current = props;
+  const selection = useRef(new Graphics());
+  const animations = useRef<BuildingVisual[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const camera = useRef({ scale: 1, x: 0, y: 0 });
@@ -82,6 +86,22 @@ export function MapView(props: Props) {
       host.current!.appendChild(a.canvas);
       scene.current = new Container();
       a.stage.addChild(scene.current);
+      selection.current = new Graphics();
+      const motion = matchMedia("(prefers-reduced-motion: reduce)");
+      let elapsed = 0;
+      a.ticker.maxFPS = 30;
+      a.ticker.add((ticker) => {
+        if (document.hidden) return;
+        elapsed += ticker.deltaMS / 1000;
+        const scale = camera.current.scale;
+        for (const visual of animations.current) {
+          const x = visual.node.x * scale + a.screen.width / 2 + camera.current.x;
+          const y = visual.node.y * scale + a.screen.height * .5 + camera.current.y;
+          const visible = x > -100 && x < a.screen.width + 100 && y > -30 && y < a.screen.height + 100;
+          visual.node.visible = visible;
+          if (visible && scale > .6 && !latest.current.paused && !motion.matches) visual.animate(elapsed);
+        }
+      });
       setReady(true);
       const pointers = new globalThis.Map<number, { x: number; y: number }>();
       let start = { x: 0, y: 0 };
@@ -187,10 +207,14 @@ export function MapView(props: Props) {
       app.current = null;
     };
   }, []);
+  // Snapshots arrive frequently; rebuild geometry only when renderable state changes.
+  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world]);
   useEffect(() => {
     if (!ready || !app.current) return;
     const s = scene.current;
+    if (selection.current.parent) selection.current.removeFromParent();
     s.removeChildren().forEach((c) => c.destroy({ children: true }));
+    animations.current = [];
     const tiles: Tile[] = props.world
       ? props.world.map((t) => ({ ...t, q: t.q - 64, r: t.r - 64 }))
       : [];
@@ -214,43 +238,12 @@ export function MapView(props: Props) {
       hex(g, x, y + 7, 53, 0x263a36);
       hex(g, x, y, 52, colors[t.biome]);
       s.addChild(g);
-      const offset = props.battle ? 4 : props.world ? 64 : 0;
-      const selected =
-        props.selected &&
-        props.selected[0] === t.q + offset &&
-        props.selected[1] === t.r + offset;
-      if (selected) {
-        const ring = new Graphics();
-        hex(ring, x, y, 48, 0x8d814a);
-        ring.alpha = 0.6;
-        s.addChild(ring);
-      }
       const b = props.buildings.find((b) => b.q === t.q && b.r === t.r);
       if (b && !props.battle && !props.world) {
-        const obj = new Graphics();
-        obj
-          .ellipse(x + 8, y + 4, 35, 14)
-          .fill({ color: 0x000000, alpha: 0.28 });
-        tower(
-          obj,
-          x,
-          y,
-          b.kind === "hq" ? 48 : 30,
-          b.kind === "hq" ? 32 : 25,
-          b.status === "building" ? 0x6c6a48 : 0x586c6b,
-        );
-        if (b.kind === "power") {
-          tower(obj, x - 14, y - 4, 55, 7, 0x758682);
-          tower(obj, x + 10, y + 6, 45, 7, 0x758682);
-        }
-        if (b.kind === "hq") {
-          obj
-            .moveTo(x, y - 50)
-            .lineTo(x, y - 76)
-            .stroke({ color: 0xb4c1b5, width: 2 });
-          obj.poly([x, y - 76, x + 19, y - 70, x, y - 65]).fill(0xe5b65a);
-        }
-        s.addChild(obj);
+        const visual = createBuilding(b);
+        visual.node.position.set(x,y);
+        s.addChild(visual.node);
+        animations.current.push(visual);
         const label = new Text({
           text: (
             {
@@ -262,14 +255,16 @@ export function MapView(props: Props) {
             } as Record<string, string>
           )[b.kind],
           style: {
-            fontSize: 10,
+            fontSize: 11,
             fill: 0xe7efea,
             fontFamily: "sans-serif",
-            letterSpacing: 1,
+            letterSpacing: .5,
           },
         });
         label.anchor.set(0.5);
-        label.position.set(x, y + 22);
+        label.position.set(x, y + 29);
+        const plate = new Graphics().roundRect(x-label.width/2-6,y+21,label.width+12,17,3).fill({color:0x101923,alpha:.9});
+        s.addChild(plate);
         s.addChild(label);
       } else if (t.biome === "forest" && !props.battle) {
         const tree = new Graphics();
@@ -313,7 +308,19 @@ export function MapView(props: Props) {
         s.addChild(g);
       }
     }
-  }, [ready, props.buildings, props.battle, props.world, props.selected]);
+    s.addChild(selection.current);
+  }, [ready, geometryKey]);
+  useEffect(() => {
+    const ring = selection.current;
+    ring.clear();
+    if (!ready || !props.selected) return;
+    const offset = props.battle ? 4 : props.world ? 64 : 0;
+    const q = props.selected[0] - offset, r = props.selected[1] - offset;
+    const x = 54 * Math.sqrt(3) * (q+r/2), y = 54*.975*r;
+    const points: number[]=[];
+    for(let i=0;i<6;i++){const a=(i*60+30)*Math.PI/180;points.push(x+Math.cos(a)*49,y+Math.sin(a)*49*.65);}
+    ring.poly(points).stroke({color:0xe5b65a,width:2});
+  }, [ready, props.selected, !!props.battle, !!props.world, geometryKey]);
   return (
     <div className="map" ref={host}>
       {error && <p role="alert">{error}</p>}

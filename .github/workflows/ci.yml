@@ -50,3 +50,11 @@ jobs:
           done
           cd ../client
           node tests/cycle.mjs
+      - name: Save browser verification images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-verification
+          path: /tmp/iron-*.png
+          if-no-files-found: ignore
+          retention-days: 7
