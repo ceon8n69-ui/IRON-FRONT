@@ -57,6 +57,13 @@ await page.addInitScript(
   token,
 );
 await page.goto(base);
+await page.locator(".hero-grid").waitFor();
+for (const id of ["raven","valkyrie","titan","phoenix","ghost","storm"]) {
+  const asset = await fetch(base + `/art/commanders/${id}-v1.webp`);
+  assert.equal(asset.status, 200);
+  assert.match(asset.headers.get("content-type"), /image\/webp/);
+}
+await page.screenshot({path:"/tmp/iron-hero-selection.png",fullPage:true});
 await page.getByRole("button", { name: /Генерал Рейвен/ }).click();
 await page.getByRole("heading", { name: "Передовая база" }).waitFor();
 await page.getByRole("button", {name:"План первой операции"}).click();
@@ -127,6 +134,15 @@ await page.reload();
 await page.getByRole("heading", { name: "Передовая база" }).waitFor();
 await page.getByRole("button", { name: "Армия", exact: true }).click();
 await page.getByRole("button", { name: "Снять", exact: true }).waitFor();
+assert.equal(await page.getByRole("button",{name:"Командир",exact:true}).getAttribute("aria-pressed"), "true");
+await page.getByRole("button",{name:"Снаряжено",exact:true}).click();
+assert.equal(await page.locator(".equipment-card").count(),1);
+await page.getByRole("button",{name:"Карточка полевого модуля"}).click();
+await page.getByText((await state()).inventory[0].id,{exact:true}).waitFor();
+await page.locator(".commander-art img").evaluate(img => img.decode());
+await page.screenshot({path:"/tmp/iron-commander-mobile.png",fullPage:true});
+await page.getByRole("button",{name:"Карточка полевого модуля"}).click();
+await page.getByRole("button",{name:"Все",exact:true}).click();
 assert.equal((await state()).inventory.length, 1);
 await page.getByText("Первая операция завершена",{exact:true}).waitFor();
 assert.equal(

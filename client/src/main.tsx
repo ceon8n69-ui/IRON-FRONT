@@ -4,6 +4,7 @@ import { useGame, request, command } from "./store";
 import { MapView } from "./Map";
 import "./style.css";
 import {Icon} from "./Icon";
+import { Commander, Portrait } from "./Commander";
 declare global {
   interface Window {
     Telegram?: {
@@ -50,6 +51,8 @@ function App() {
     useGame();
   const [defs, setDefs] = useState<Definitions | null>(null);
   const [tab, setTab] = useState("База");
+  const [armyView, setArmyView] = useState("units");
+  useEffect(() => { if (state?.first_victory) setArmyView("commander"); }, [state?.first_victory]);
   const [sheet, setSheet] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [selected, setSelected] = useState<number[] | null>(null);
@@ -186,7 +189,7 @@ function App() {
     : state.resources.metal < 60 || state.resources.food < 40 ? "Нужно 60 металла и 40 провизии" : "";
   const goToObjective = () => {
     setGuideOpen(false);
-    if (step >= 4 && step <= 6) { changeTab("Армия"); return; }
+    if (step >= 4 && step <= 6) { changeTab("Армия"); setArmyView(step === 6 ? "commander" : "units"); return; }
     if (step >= 7) { changeTab("Командование"); return; }
     changeTab("База");
     if (pendingBuilding) { setSelected([pendingBuilding.q,pendingBuilding.r]); setSheet(true); return; }
@@ -414,6 +417,11 @@ function App() {
             </>
           ) : tab === "Армия" ? (
             <section className="content">
+              <div className="army-tabs" role="group" aria-label="Раздел армии">
+                <button aria-pressed={armyView === "units"} onClick={()=>setArmyView("units")}>Подразделения</button>
+                <button aria-pressed={armyView === "commander"} onClick={()=>setArmyView("commander")}>Командир</button>
+              </div>
+              {armyView === "units" ? <>
               <div className="section-label">РЕЗЕРВ И ПОДГОТОВКА</div>
               {state.units.map((u) => (
                 <article className="card" key={u.id}>
@@ -451,54 +459,7 @@ function App() {
                 Подготовить стрелков · 60 металла + 40 провизии · 45 сек.
               </button>
               {trainReason && <p id="train-reason" className="action-reason">{trainReason}</p>}
-              <div className="section-label">КОМАНДИР</div>
-              {state.hero && defs && (
-                <article className="hero-detail">
-                  <div className={"portrait " + state.hero.kind}>
-                    <span>{state.hero.kind.slice(0, 1).toUpperCase()}</span>
-                    <small>ЭМБЛЕМА КОМАНДИРА</small>
-                  </div>
-                  <div>
-                    <small>{defs.heroes[state.hero.kind].role}</small>
-                    <h2>{defs.heroes[state.hero.kind].name}</h2>
-                    <p>{defs.heroes[state.hero.kind].bio}</p>
-                    <b>
-                      Уровень {1 + Math.floor(state.hero.xp / 100)} ·{" "}
-                      {state.hero.xp} XP
-                    </b>
-                    <p>{defs.heroes[state.hero.kind].effect}</p>
-                  </div>
-                </article>
-              )}
-              <div className="section-label">ЭКИПИРОВКА</div>
-              {!state.inventory.length && (
-                <p>
-                  Первый тактический модуль выдаётся за победу над патрулём.
-                </p>
-              )}
-              {state.inventory.map((i) => (
-                <article className="card" key={i.id}>
-                  <div className="item-icon">▣</div>
-                  <div>
-                    <h3>Полевой модуль</h3>
-                    <p>Необычный · +3% к урону · Тактический слот</p>
-                    <small>#{i.id.slice(0, 8)} · Награда NPC</small>
-                  </div>
-                  <button
-                    disabled={busy}
-                    onClick={() =>
-                      run(() =>
-                        command("/equipment/equip", {
-                          item_id: i.id,
-                          equipped: !i.equipped,
-                        }),
-                      )
-                    }
-                  >
-                    {i.equipped ? "Снять" : "Снарядить"}
-                  </button>
-                </article>
-              ))}
+              </> : state.hero && defs && <Commander state={state} definition={defs.heroes[state.hero.kind]} busy={busy} equip={(item_id,equipped)=>run(()=>command("/equipment/equip",{item_id,equipped}))}/>}
             </section>
           ) : tab === "Альянс" ? (
             <section className="content">
@@ -688,9 +649,7 @@ function App() {
                       run(() => command("/heroes/choose", { kind: id }))
                     }
                   >
-                    <div className={"portrait " + id}>
-                      <span>{id[0].toUpperCase()}</span>
-                    </div>
+                    <div className="selection-portrait"><Portrait id={id} name={h.name}/></div>
                     <small>{h.role}</small>
                     <b>{h.name}</b>
                     <p>{h.effect}</p>
@@ -698,7 +657,7 @@ function App() {
                 ))}
               </div>
               {error && <p role="alert">{error}</p>}
-              <small>ТЕХНИЧЕСКИЕ ЭМБЛЕМЫ · ПОРТРЕТЫ В РАЗРАБОТКЕ</small>
+              <small>ШЕСТЬ СПЕЦИАЛИЗАЦИЙ · ОДИН ПЕРВЫЙ КОМАНДИР</small>
             </div>
           )}
         </>

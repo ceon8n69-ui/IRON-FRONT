@@ -624,3 +624,65 @@ nav button.active {
 .screen-title { gap: 12px; }
 .screen-title h1 { font-size: 30px; line-height: 1.2; margin-top: 6px; }
 @media(max-width:500px) { .screen-title h1 { font-size: 26px; } .tag { flex-shrink: 0; } }
+/* Commander portraits and inventory use real persisted hero/item IDs. */
+.army-tabs { display:flex; gap:8px; margin:4px 0 20px; }
+.army-tabs button { flex:1; background:#192633; }
+.army-tabs button[aria-pressed="true"], .inventory-filters button[aria-pressed="true"] { border-color:#e5b65a; color:#e5b65a; background:#29363a; }
+.commander-card { display:grid; grid-template-columns:minmax(180px, .8fr) 1fr; border:1px solid #3b4d58; border-radius:12px; overflow:hidden; background:#192633; }
+.commander-art { position:relative; min-width:0; background:#101923; }
+.commander-image { display:block; width:100%; height:auto; object-fit:cover; }
+.commander-art .commander-image { height:100%; object-position:center top; }
+.commander-rank { position:absolute; bottom:14px; left:14px; padding:8px 12px; background:#101923ed; border:1px solid #b48f4c; color:#e5b65a; font-size:11px; letter-spacing:.08em; }
+.commander-profile { padding:24px; min-width:0; }
+.commander-profile h2 { margin:8px 0 15px; font-size:32px; }
+.commander-profile p { font-size:13px; }
+.gold-text { color:#e5b65a; }
+.xp-heading { display:flex; justify-content:space-between; gap:8px; align-items:center; margin:20px 0 8px; }
+.xp-heading span { font-size:11px; color:#9dafba; }
+progress { display:block; width:100%; height:7px; border:0; background:#30404b; border-radius:6px; overflow:hidden; accent-color:#e5b65a; }
+progress::-webkit-progress-bar { background:#30404b; }
+progress::-webkit-progress-value { background:#e5b65a; }
+progress::-moz-progress-bar { background:#e5b65a; }
+.bonus-block { padding:14px 0; border-bottom:1px solid #35454f; }
+.bonus-block b { display:block; font-size:13px; margin-top:7px; line-height:1.5; }
+.commander-note { color:#9dafba; font-size:12px!important; line-height:1.6; margin:18px 0 0; }
+.inventory-heading { display:flex; justify-content:space-between; gap:12px; align-items:center; margin:28px 0 16px; flex-wrap:wrap; }
+.inventory-heading h2 { font-size:26px; margin:6px 0 0; }
+.inventory-heading h2 span { color:#9dafba; font-size:18px; }
+.inventory-filters { display:flex; gap:6px; }
+.inventory-filters button { font-size:12px; padding:8px 12px; }
+.equipment-card { display:grid; grid-template-columns:96px 1fr auto; gap:14px; align-items:center; padding:14px; border:1px solid #496554; border-radius:10px; background:#192633; margin-bottom:12px; }
+.equipment-preview { padding:0; border:1px solid #496554; overflow:hidden; background:#101923; }
+.equipment-preview img { display:block; width:100%; height:auto; }
+.equipment-info { min-width:0; }
+.equipment-info h3 { margin:7px 0; font-size:15px; }
+.equipment-info p { margin-bottom:7px; font-size:12px; }
+.equipment-info small { font-size:10px; letter-spacing:.02em; overflow-wrap:anywhere; }
+.rarity-uncommon { color:#85c49a; }
+.equipment-card.equipped { border-color:#64b87b; }
+.equipment-details { grid-column:1/-1; border-top:1px solid #3c514b; padding-top:14px; }
+.equipment-details > img { max-width:100%; display:block; margin:0 auto; border-radius:8px; }
+.equipment-details dl { font-size:12px; }
+.equipment-details dt { color:#9dafba; margin-top:12px; }
+.equipment-details dd { margin:5px 0 0; overflow-wrap:anywhere; }
+.equipment-details p { font-size:12px; }
+.equipment-empty { display:flex; gap:16px; align-items:center; padding:14px; border:1px dashed #486158; border-radius:10px; }
+.equipment-empty img { border-radius:8px; }
+.equipment-empty p { font-size:12px; margin:6px 0 0; }
+.selection-portrait { aspect-ratio:2/3; overflow:hidden; border-radius:6px; background:#101923; margin-bottom:14px; }
+.hero-grid .selection-portrait img { height:100%; object-position:center top; }
+.hero-grid button { overflow:hidden; text-align:left; transition:border-color .15s; }
+.hero-grid button:hover { border-color:#e5b65a; }
+@media(max-width:600px) {
+ .commander-card { grid-template-columns:1fr; }
+ .commander-art { aspect-ratio:2/3; max-height:510px; }
+ .commander-profile { padding:18px; }
+ .commander-profile h2 { font-size:30px; }
+ .equipment-card { grid-template-columns:76px 1fr; gap:12px; }
+ .equipment-card > button:last-of-type { grid-column:1/-1; width:100%; }
+ .hero-grid { gap:10px; }
+ .hero-grid button { padding:8px; }
+ .hero-grid b { font-size:13px; }
+ .hero-grid p { font-size:12px; }
+ .hero-grid small { font-size:10px; letter-spacing:0; }
+}
