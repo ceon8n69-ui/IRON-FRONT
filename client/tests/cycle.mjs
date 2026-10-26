@@ -63,6 +63,9 @@ for (const id of ["raven","valkyrie","titan","phoenix","ghost","storm"]) {
   assert.equal(asset.status, 200);
   assert.match(asset.headers.get("content-type"), /image\/webp/);
 }
+const moduleAsset = await fetch(base + "/art/equipment/field-module-v1.webp");
+assert.equal(moduleAsset.status, 200);
+await page.locator(".selection-portrait img").first().evaluate(img => img.decode());
 await page.screenshot({path:"/tmp/iron-hero-selection.png",fullPage:true});
 await page.getByRole("button", { name: /Генерал Рейвен/ }).click();
 await page.getByRole("heading", { name: "Передовая база" }).waitFor();

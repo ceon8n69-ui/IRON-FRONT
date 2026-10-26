@@ -350,6 +350,8 @@ async def ws(socket: WebSocket):
 static = Path(__file__).resolve().parents[2] / "client" / "dist"
 if static.exists():
     app.mount("/assets", StaticFiles(directory=static / "assets"), name="assets")
+    if (static / "art").is_dir():
+        app.mount("/art", StaticFiles(directory=static / "art"), name="art")
 
     @app.get("/")
     def index():
