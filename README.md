@@ -61,7 +61,7 @@ TEST_APP_URL=http://localhost:8000 BOT_TOKEN=TEST_BOT_TOKEN node tests/cycle.mjs
 
 ## Railway
 
-Подробности: `docs/DEPLOYMENT.md`. Подготовлены Dockerfile, railway.json, worker, bot, healthcheck и CI. Удалённый деплой в этой поставке не выполнен.
+Подробности: `docs/DEPLOYMENT.md`. Подготовлены Dockerfile, worker, bot, healthcheck и CI. Репозиторий подключён к отдельному Railway-проекту; настройки сервисов задаются через Railway API/dashboard. Текущий статус запуска — в docs/STATUS.md.
 
 ## Что ещё не готово
 

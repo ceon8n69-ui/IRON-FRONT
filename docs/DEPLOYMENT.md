@@ -1,10 +1,12 @@
 # GitHub и Railway: настройка владельцем
 
-## Недостающие внешние настройки
+## Подключённая инфраструктура
 
-- Новый пустой репозиторий GitHub для IRON FRONT. Подключённый GitHub-инструмент умеет читать/изменять существующие репозитории, но не предоставляет создание репозитория. Репозиторий CityBoss не используется.
-- Отдельный бот в BotFather. Внести его токен только в секреты Railway под `BOT_TOKEN`.
-- Новый проект Railway с PostgreSQL и Redis. Старые проекты не изменяются.
+- GitHub: https://github.com/ceon8n69-ui/IRON-FRONT
+- Railway: https://railway.com/project/62ffbe85-a212-4c3d-906d-67734560fce7
+- API: https://api-production-3dbd1.up.railway.app
+- Telegram bot: @Ironfrontwaw_bot. Владелец должен внести его BOT_TOKEN в секреты API и bot. Токен не хранится в репозитории.
+- PostgreSQL и Redis созданы в отдельном проекте. API и worker используют ссылки на их private-network URLs.
 
 ## Публикация исходников
 
@@ -30,7 +32,7 @@ git push -u origin main
 | worker | python -m app.worker | отключить | отключить |
 | bot | python -m app.bot | отключить | отключить |
 
-Для worker и bot переопределить настройки из railway.json: они не запускают HTTP-сервер и не должны выполнять миграции параллельно API. Первый запуск worker — после успешной миграции API. Worker использует одну реплику в срезе; несколько реплик требуют дополнительной нагрузки и проверки fairness.
+Настройки сервиса задаются через Railway API/dashboard: старый выбор railway.json Railway отклоняет как deprecated. Файлы railway*.json удалены. Для worker и bot не назначать healthcheck/pre-deploy: они не запускают HTTP-сервер и не должны выполнять миграции параллельно API. Первый запуск worker — после успешной миграции API. Worker использует одну реплику в срезе; несколько реплик требуют дополнительной нагрузки и проверки fairness.
 
 Переменные API/worker: `APP_ENV=production`, `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `REDIS_URL=${{Redis.REDIS_URL}}`, `BOT_TOKEN=<secret>`. Конкретные имена сервисов сверить в проекте.
 
