@@ -1,3 +1,4 @@
+import {surface, environment, bunker, squad} from "./Terrain";
 import {Icon} from "./Icon";
 import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Text } from "pixi.js";
@@ -246,12 +247,14 @@ export function MapView(props: Props) {
       hex(g, x, y, 52, colors[t.biome]);
       if (t.visibility === "explored") g.alpha = .55;
       ground.addChild(g);
+      if(t.visibility!=="unknown")ground.addChild(surface(x,y,t.biome,t.q+(props.center?.[0]??0),t.r+(props.center?.[1]??0)));
       if (t.control === "self" || t.control === "other" || t.home) {
         const border = new Graphics();
         hex(border,x,y,48,t.home ? 0xb89b5c : t.control === "self" ? 0x4c9ce5 : 0xd95a52);
         border.alpha=.3;ground.addChild(border);
       }
       if (t.garrison) {
+        s.addChild(bunker(x,y-7));
         const badge = new Text({text:"⚑ NPC",style:{fontSize:14,fill:0xffb4a0,fontFamily:"sans-serif",fontWeight:"bold"}});
         badge.anchor.set(.5);badge.position.set(x,y+20);
         labels.addChild(new Graphics().roundRect(x-30,y+8,60,24,5).fill(0x382126));labels.addChild(badge);
@@ -284,17 +287,10 @@ export function MapView(props: Props) {
         const plate = new Graphics().roundRect(x-label.width/2-6,y+21,label.width+12,17,3).fill({color:0x101923,alpha:.9});
         labels.addChild(plate);
         labels.addChild(label);
-      } else if (t.biome === "forest" && !props.battle) {
-        const tree = new Graphics();
-        for (let i = 0; i < 3; i++) {
-          const tx = x - 18 + i * 17,
-            ty = y + (i % 2) * 8;
-          tree.rect(tx - 2, ty - 10, 4, 16).fill(0x524d37);
-          tree
-            .poly([tx, ty - 43, tx - 13, ty - 10, tx + 13, ty - 10])
-            .fill(i % 2 ? 0x46654c : 0x263d32);
-        }
-        s.addChild(tree);
+      } else if (!props.battle && !t.garrison && t.biome!=="unknown") {
+        const detail=environment(x,y,t.biome,t.q+(props.center?.[0]??0),t.r+(props.center?.[1]??0));
+        if(t.visibility==="explored")detail.alpha=.55;
+        s.addChild(detail);
       }
       if (
         props.battle &&
@@ -317,13 +313,7 @@ export function MapView(props: Props) {
           r = unit.pos[1] - 4,
           x = 54 * Math.sqrt(3) * (q + r / 2),
           y = 54 * 0.975 * r;
-        const g = new Graphics();
-        g.ellipse(x, y, 24, 13).fill({ color, alpha: 0.3 });
-        g.roundRect(x - 14, y - 23, 28, 18, 4).fill(color);
-        g.circle(x, y - 31, 8).fill(0xc9c6b4);
-        g.rect(x - 25, y - 53, 50, 4).fill(0x101923);
-        g.rect(x - 25, y - 53, (50 * unit.hp) / 100, 4).fill(color);
-        s.addChild(g);
+        s.addChild(squad(x,y,color,unit.hp));
       }
     }
     if (props.army && props.world) {
@@ -332,7 +322,7 @@ export function MapView(props: Props) {
       const project = (q:number,r:number) => [54*Math.sqrt(3)*(q-(props.center?.[0]??64)+(r-(props.center?.[1]??64))/2),54*.975*(r-(props.center?.[1]??64))];
       const [x,y]=project(army.q,army.r);
       const marker = new Container();marker.label="march";marker.position.set(x,y);
-      const flag = new Graphics().ellipse(0,0,25,14).fill({color:0x4c9ce5,alpha:.4}).roundRect(-15,-23,30,17,4).fill(0x4c9ce5).rect(-3,-30,18,4).fill(0xc8d7c4);
+      const flag = squad(0,0,0x4c9ce5);
       marker.addChild(flag);s.addChild(marker);
       if (order) {
         const [tx,ty]=project(order.q,order.r);
