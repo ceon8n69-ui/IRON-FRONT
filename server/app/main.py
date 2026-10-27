@@ -1,3 +1,4 @@
+import mimetypes
 import asyncio, json, os, secrets, time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -345,6 +346,9 @@ async def ws(socket: WebSocket):
     except HTTPException:
         await socket.close(code=4401)
 
+
+# Debian slim may lack the system MIME database used on CI runners.
+mimetypes.add_type("image/webp", ".webp")
 
 # Repository layout: server/app -> repo/client.
 static = Path(__file__).resolve().parents[2] / "client" / "dist"
