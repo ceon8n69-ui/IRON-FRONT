@@ -183,6 +183,7 @@ const captured=await state();
 assert.equal(captured.armies[0].q,65);
 assert.equal(captured.armies[0].status,"idle");
 assert.equal(captured.resources.fuel,198);
+await page.getByRole("button",{name:"К соединению",exact:true}).click();
 await page.screenshot({path:"/tmp/iron-world-capture.png",fullPage:true});
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 assert.deepEqual(errors, []);

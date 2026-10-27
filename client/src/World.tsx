@@ -6,6 +6,7 @@ const resources:Record<string,string>={food:"провизии",metal:"метал
 const distance=(a:number[],b:number[])=>Math.max(Math.abs(a[0]-b[0]),Math.abs(a[1]-b[1]),Math.abs(a[0]+a[1]-b[0]-b[1]));
 export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules:ExpeditionRules;goArmy:()=>void}) {
  const [center,setCenter]=useState(rules.home);
+ const [focusVersion,setFocusVersion]=useState(0);
  const [selected,setSelected]=useState<number[]|null>(null);
  const [tiles,setTiles]=useState<WorldTile[]>([]);
  const [error,setError]=useState("");const [busy,setBusy]=useState(false);
@@ -20,10 +21,10 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
  const connected=tile&&(distance(rules.home,[tile.q,tile.r])===1||state.territories.some(t=>distance([t.q,t.r],[tile.q,tile.r])===1));
  const captureReason=baseReason|| (tile?.home?"Стартовый пункт нельзя захватить":tile?.control==="self"?"Уже под вашим контролем":state.territories.length>=rules.control_limit?"Достигнут лимит контроля":!connected?"Нет связи с вашей землёй или стартовым пунктом":"");
  const send=async(action:string)=>{if(!army||!selected)return;setBusy(true);setError("");try{await command('/army/orders',{army_id:army.id,q:selected[0],r:selected[1],action});}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
- const focus=(q:number,r:number)=>{setCenter([q,r]);setSelected(null);};
+ const focus=(q:number,r:number)=>{setCenter([q,r]);setFocusVersion(n=>n+1);setSelected(null);};
  return <>
    <div className="world-tools"><button onClick={()=>focus(...rules.home as [number,number])}>Стартовый пункт</button><button disabled={!army} onClick={()=>army&&focus(army.q,army.r)}>К соединению</button></div>
-   <MapView key={center.join(':')} buildings={[]} world={tiles} center={center} army={army} now={clock} selected={selected} onSelect={(q,r)=>{if(q>=0&&q<128&&r>=0&&r<128)setSelected([q,r]);}}/>
+   <MapView key={center.join(':')+':'+focusVersion} buildings={[]} world={tiles} center={center} army={army} now={clock} selected={selected} onSelect={(q,r)=>{if(q>=0&&q<128&&r>=0&&r<128)setSelected([q,r]);}}/>
    <div className="notice">Синий — ваши земли · Красный — чужие · Золотой — общий безопасный стартовый пункт. Под контролем {state.territories.length}/{rules.control_limit}.</div>
    <section className="content world-orders">
      {!army&&<button className="primary" onClick={goArmy}>Сформировать соединение</button>}
