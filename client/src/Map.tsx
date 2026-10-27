@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle, Army } from "./store";
-type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean };
+type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; garrison?: boolean };
 type Props = {
   buildings: Building[];
   paused?: boolean;
@@ -250,6 +250,11 @@ export function MapView(props: Props) {
         const border = new Graphics();
         hex(border,x,y,48,t.home ? 0xb89b5c : t.control === "self" ? 0x4c9ce5 : 0xd95a52);
         border.alpha=.3;ground.addChild(border);
+      }
+      if (t.garrison) {
+        const badge = new Text({text:"⚑ NPC",style:{fontSize:14,fill:0xffb4a0,fontFamily:"sans-serif",fontWeight:"bold"}});
+        badge.anchor.set(.5);badge.position.set(x,y+20);
+        labels.addChild(new Graphics().roundRect(x-30,y+8,60,24,5).fill(0x382126));labels.addChild(badge);
       }
       const b = props.buildings.find((b) => b.q === t.q && b.r === t.r);
       if (b && !props.battle && !props.world) {

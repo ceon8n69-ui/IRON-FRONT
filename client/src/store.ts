@@ -13,6 +13,7 @@ export type Battle = {
   status: string;
   balance_version: string;
   state: {
+    expedition?: {army_id:string;order_id:string;q:number;r:number};
     turn: number;
     player: { pos: number[]; hp: number };
     npc: { pos: number[]; hp: number };
@@ -90,6 +91,6 @@ export async function command(path: string, body: unknown) {
 
 export type MarchOrder = { id:string; q:number; r:number; from_q:number; from_r:number; action:string; status:string; started_at:number; ready_at:number; finished_at:number|null; result:string|null };
 export type Army = { id:string; q:number; r:number; status:string; unit_ids:string[]; orders:MarchOrder[] };
-export type WorldTile = { q:number; r:number; biome:string; visibility:string; control:"self"|"other"|"neutral"|null; home:boolean };
+export type WorldTile = { q:number; r:number; biome:string; visibility:string; control:"self"|"other"|"neutral"|null; home:boolean; garrison?:boolean };
 export type Territory = { q:number; r:number; biome:string; yield:Record<string,number>; acquired_at:number };
 export type ExpeditionRules = {home:number[];seconds:number;fuel:number;control_limit:number;army_vision:number;territory_yield:Record<string,Record<string,number>>};

@@ -31,11 +31,11 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
      {army&&!tile&&<article className="card"><div><h3>Первое соединение · {army.q} : {army.r}</h3><p>{order?`Поход в ${order.q} : ${order.r} · ${Math.max(0,order.ready_at-clock)} сек.`:"Готово к приказу"}</p>{order&&<small>Прибытие и захват подтверждает сервер.</small>}{!order&&army.orders[0]&&<small role="status">{army.orders[0].result}</small>}</div></article>}
      {tile&&<article className="world-tile"><button className="world-close" aria-label="Закрыть карточку гекса" onClick={()=>setSelected(null)}>×</button><small>ГЕКС {tile.q} : {tile.r}</small><h2>{tile.home?"Стартовый пункт":biomeNames[tile.biome]}</h2><p>{tile.visibility==="unknown"?"Сведения об участке скрыты туманом войны.":tile.visibility==="explored"?"Ранее исследовано. Актуальные владения скрыты.":tile.control==="self"?"Под вашим контролем":tile.control==="other"?"Под контролем другого игрока":"Нейтральная территория"}</p>
        {tile.visibility==="visible"&&!tile.home&&<p>Добыча при контроле: {Object.entries(rules.territory_yield[tile.biome]||{}).map(([k,v])=>`${v} ${resources[k]} / мин`).join(', ')}.</p>}
-       <p>{order?`Поход · ${Math.max(0,order.ready_at-clock)} сек.`:`${rules.seconds} сек. · ${rules.fuel} топлива за поход`}</p>
-       <div className="actions"><button disabled={busy||!!baseReason} onClick={()=>send('move')}>Переместить армию</button><button className="primary" disabled={busy||!!captureReason} onClick={()=>send('capture')}>Захватить гекс</button></div>
+       <p>{tile.garrison?"Гарнизон NPC · 55 HP. Захват только после победы.":""}</p><p>{order?`Поход · ${Math.max(0,order.ready_at-clock)} сек.`:`${rules.seconds} сек. · ${rules.fuel} топлива за поход`}</p>
+       <div className="actions"><button disabled={busy||!!baseReason||!!tile?.garrison} onClick={()=>send('move')}>Переместить армию</button><button className="primary" disabled={busy||!!captureReason} onClick={()=>send('capture')}>{tile.garrison?"Атаковать гарнизон":"Захватить гекс"}</button></div>
        {(baseReason||captureReason)&&<p className="action-reason">{baseReason||captureReason}</p>}
      </article>}
-     {!tile&&army&&<p>Выберите соседний гекс для движения или захвата. Пока захватываются только нейтральные участки без гарнизона.</p>}
+     {!tile&&army&&<p>Выберите соседний гекс для движения или захвата. Гарнизоны NPC отмечены флагом: для захвата потребуется бой.</p>}
      {error&&<p className="action-reason" role="alert">{error}</p>}
 
    </section>

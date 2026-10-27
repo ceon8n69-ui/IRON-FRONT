@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from .models import Army, ArmyUnit, ArmyOrder, Tile, TileOwnership, Discovery, Unit, Hero, Reward
 from .config import EXPEDITIONS as RULES
 from .combat import distance
+from . import garrisons
 
 
 def fail(reason):
@@ -61,8 +62,14 @@ def settle_orders(db, p, at):
             reason = 'Достигнут лимит контроля.'
         elif not linked(db,p.id,order.q,order.r):
             reason = 'Нет связи с подконтрольной территорией.'
-        else:
+        elif not garrisons.guarded(order.q,order.r):
             db.add(TileOwnership(world_id=1,q=tile.q,r=tile.r,player_id=p.id,acquired_at=at))
+    if not reason and not owner and garrisons.guarded(order.q,order.r):
+        # Both movement and capture must engage a neutral garrison.
+        garrisons.begin(db,p,army,order)
+        order.finished_at=at
+        db.flush()
+        return True
     if reason:
         order.status, order.result = 'blocked', reason
     else:
@@ -92,6 +99,8 @@ def dispatch(db, p, op, data, at, uid, change):
         db.add(ArmyUnit(army_id=army.id,unit_id=unit.id));unit.status='army'
         discover(db,army,at)
         return {'id':army.id}
+    if garrisons.active(db,p.id):
+        fail('Сначала завершите текущий бой')
     army = db.get(Army,data['army_id'])
     if not army or army.player_id != p.id:
         raise HTTPException(404,'Соединение не найдено')
@@ -106,7 +115,7 @@ def dispatch(db, p, op, data, at, uid, change):
     owner = db.get(TileOwnership,(1,q,r))
     if owner and owner.player_id != p.id:
         fail('Вход на чужую территорию пока недоступен: PvP не включён')
-    if data['action'] == 'capture':
+    if data['action'] == 'capture' or (not owner and garrisons.guarded(q,r)):
         if [q,r] == RULES['home']:
             fail('Стартовый пункт нельзя захватить')
         if owner:

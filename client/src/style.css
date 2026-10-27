@@ -717,3 +717,9 @@ progress::-moz-progress-bar { background:#e5b65a; }
 .world-close {float:right;min-width:44px;min-height:44px;font-size:24px;padding:0;background:transparent}
 .world-stage .world-orders > .primary {margin:12px;min-height:44px}
 @media(max-height:620px){.world-stage .world-orders {max-height:55%}.world-stage .world-tile p:nth-of-type(2){display:none}}
+
+.battle-screen > .map {flex:1;min-height:0;height:auto;border:0}
+.battle-screen > .combat {position:absolute;bottom:calc(78px + env(safe-area-inset-bottom));left:10px;right:10px;padding:12px;border:1px solid #496070;border-radius:14px;background:#192633f5;z-index:4}
+.battle-screen .combat h2 {font-size:20px;margin:0 0 8px}
+.battle-screen .combat p {font-size:12px;margin:6px 0}
+.battle-screen .combat button {font-size:12px;padding:8px;min-height:44px}

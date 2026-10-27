@@ -204,7 +204,7 @@ function App() {
   };
   const chooseTile = (q: number, r: number) => {
     if (
-      tab === "База" &&
+      !battle && tab === "База" &&
       Math.max(Math.abs(q), Math.abs(r), Math.abs(q + r)) > 4
     )
       return;
@@ -217,7 +217,7 @@ function App() {
       .map(([k, v]) => `${v} ${resourceNames[k]}`)
       .join(" · ");
   return (
-    <main className={state && tab === "Карта" && !battle ? "map-screen" : ""}>
+    <main className={battle?.state.expedition ? "map-screen battle-screen" : state && tab === "Карта" && !battle ? "map-screen" : ""}>
       <header>
         <div className="brand">
           <span className="insignia">IF</span>
@@ -307,6 +307,7 @@ function App() {
                 onSelect={chooseTile}
               />
               <div className="combat">
+                {battle.state.expedition && <h2>Гарнизон NPC · {battle.state.expedition.q}:{battle.state.expedition.r}</h2>}
                 <div>
                   <b>Ваш отряд · {battle.state.player.hp} HP</b>
                   <span>NPC · {battle.state.npc.hp} HP</span>

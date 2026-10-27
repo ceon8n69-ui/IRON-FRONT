@@ -197,6 +197,32 @@ assert.equal(captured.resources.fuel,198);
 await page.getByRole("button",{name:"К соединению",exact:true}).click();
 await page.screenshot({path:"/tmp/iron-world-capture.png",fullPage:true});
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+// Attack the adjacent persistent world garrison and survive a reload mid-battle.
+const garrisonMap=await page.locator('canvas').boundingBox();
+await page.mouse.click(garrisonMap.x+garrisonMap.width/2-54*Math.sqrt(3)/2,garrisonMap.y+garrisonMap.height*.5+54*.975);
+await page.getByRole('button',{name:'Атаковать гарнизон',exact:true}).click();
+await waitFor(async()=>(await state()).battles.some(b=>b.status==='active'&&b.state.expedition),45000);
+await page.reload();
+await page.getByRole('heading',{name:/Гарнизон NPC/}).waitFor();
+const battleBox=await page.locator('canvas').boundingBox();
+await page.mouse.click(battleBox.x+battleBox.width/2-54*Math.sqrt(3),battleBox.y+battleBox.height*.5);
+await page.getByRole('button',{name:'Переместить',exact:true}).click();
+await waitFor(async()=>(await state()).battles.some(b=>b.status==='active'&&b.state.expedition&&b.state.turn===2),10000);
+await page.screenshot({path:'/tmp/iron-garrison-battle.png',fullPage:true});
+for(let i=0;i<5;i++){
+ const current=(await state()).battles.find(b=>b.status==='active'&&b.state.expedition);
+ if(!current)break;
+ await page.getByRole('button',{name:'Атаковать',exact:true}).click();
+ await waitFor(async()=>(await state()).battles.find(b=>b.id===current.id).state.turn>current.state.turn,10000);
+}
+const conquered=await state();
+assert.equal(conquered.territories.length,2);
+assert.equal(conquered.armies[0].r,65);
+assert.equal(conquered.hero.xp,150);
+assert.equal(conquered.inventory.length,1);
+await page.getByRole('button',{name:'Карта',exact:true}).click();
+await page.getByText(/Под контролем 2\/3/).waitFor();
+await page.screenshot({path:'/tmp/iron-garrison-victory.png',fullPage:true});
 assert.deepEqual(errors, []);
 console.log(
   "PASS: mobile end-to-end cycle, real timers, reload persistence, equipment, real march/capture, no JS errors",

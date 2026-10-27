@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS
-from . import expeditions
+from . import expeditions, garrisons
 from .combat import resolve
 
 
@@ -298,6 +298,11 @@ def dispatch(db, p, op, data):
         )
         battle.state = state
         battle.status = outcome
+        if outcome != "active" and 'expedition' in state:
+            captured=garrisons.finish(db,p,battle,outcome,now())
+            if captured:
+                hero.xp += 50
+            return {"events":events,"outcome":outcome,"captured":captured}
         if outcome != "active":
             unit = db.get(Unit, battle.unit_id)
             unit.status = "reserve"

@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
-from . import config, expeditions
+from . import config, expeditions, garrisons
 from .db import SessionLocal
 from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery
 from .auth import validate_init_data, token_hash
@@ -329,6 +329,7 @@ def tiles(
             owner = owners.get((t.q,t.r)) if in_view else None
             result.append({"id":f"1:{t.q}:{t.r}","q":t.q,"r":t.r,
                 "biome":t.biome if known else "unknown",
+                "garrison":bool(in_view and not owner and garrisons.guarded(t.q,t.r)),
                 "visibility":"visible" if in_view else "explored" if known else "unknown",
                 "control":("self" if owner == pid else "other" if owner else "neutral") if in_view else None,
                 "home":[t.q,t.r] == config.EXPEDITIONS["home"]})
