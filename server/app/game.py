@@ -17,7 +17,8 @@ from .models import (
     Command,
     Event,
 )
-from .config import BUILDINGS, HEROES, INITIAL, VERSION
+from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS
+from . import expeditions
 from .combat import resolve
 
 
@@ -68,6 +69,8 @@ def change(db, p, delta, operation):
 
 def settle(db, p, at=None):
     at = now() if at is None else at
+    marched = expeditions.settle_orders(db, p, at)
+    territories = expeditions.state(db, p.id)["territories"]
     buildings = rows(db, Building, p.id)
     # Each whole minute is simulated with the buildings actually ready at its start.
     # Bounded offline accrual: 24h. Fractional final minute remains in settled_at.
@@ -78,6 +81,12 @@ def settle(db, p, at=None):
     balances = {r.kind: r.amount for r in rows(db, Resource, p.id)}
     for i in range(ticks):
         start = cursor + i * 60
+        for territory in territories:
+            if territory["acquired_at"] <= start:
+                for kind, amount in territory["yield"].items():
+                    gained = min(amount, 5000 - balances[kind])
+                    balances[kind] += gained
+                    totals[kind] += gained
         active = [b for b in buildings if b.ready_at <= start]
         power = sum(BUILDINGS[b.kind]["power"] for b in active)
         if power < 0:
@@ -115,7 +124,7 @@ def settle(db, p, at=None):
             )
             job.status = "complete"
             completed = True
-    if completed or any(totals.values()):
+    if completed or marched or any(totals.values()):
         notify(db, p, "settled")
     db.flush()
 
@@ -148,6 +157,7 @@ def snapshot(db, p):
             for b in rows(db, Battle, p.id)
         ],
         "first_victory": db.get(Reward, (p.id, "first-patrol")) is not None,
+        **expeditions.state(db, p.id),
     }
 
 
@@ -181,6 +191,8 @@ def dispatch(db, p, op, data):
         return {"selected": data["kind"]}
     if not hero:
         fail("Сначала выберите командира")
+    if op in ("army_create", "army_order"):
+        return expeditions.dispatch(db, p, op, data, now(), uid, change)
     if op == "build":
         kind = data["kind"]
         q = data["q"]

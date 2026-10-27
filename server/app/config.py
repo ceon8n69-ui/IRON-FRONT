@@ -10,7 +10,7 @@ if DATABASE_URL.startswith("postgresql://"):
 ENV = os.environ.get("APP_ENV", "production")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-VERSION = "slice-1"
+VERSION = "slice-2"
 RESOURCES = ["metal", "oil", "fuel", "electronics", "food"]
 INITIAL = {"metal": 1000, "oil": 300, "fuel": 200, "electronics": 200, "food": 300}
 BUILDINGS = {
@@ -79,5 +79,17 @@ HEROES = {
         "role": "Бронетехника",
         "bio": "Предпочитает скорость и инициативу.",
         "effect": "Перемещение в учебном бою до 2 гексов",
+    },
+}
+
+EXPEDITIONS = {
+    "home": [64, 64],
+    "seconds": 30,
+    "fuel": 2,
+    "control_limit": 3,
+    "army_vision": 2,
+    "territory_yield": {
+        "plain": {"food": 2}, "forest": {"metal": 2},
+        "hills": {"metal": 3}, "desert": {"oil": 2},
     },
 }

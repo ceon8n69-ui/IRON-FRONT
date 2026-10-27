@@ -19,9 +19,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
-from . import config
+from . import config, expeditions
 from .db import SessionLocal
-from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger
+from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery
 from .auth import validate_init_data, token_hash
 from .game import uid, now, settle, snapshot, execute
 
@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.1.0")
+app = FastAPI(title="IRON FRONT", version="0.2.0")
 
 
 class Strict(BaseModel):
@@ -54,6 +54,13 @@ class Build(Choose):
 
 class StartBattle(Strict):
     unit_id: str = Field(max_length=40)
+
+
+class March(Strict):
+    army_id: str = Field(max_length=40)
+    action: Literal["move", "capture"]
+    q: int = Field(ge=0, le=127)
+    r: int = Field(ge=0, le=127)
 
 
 class Turn(Strict):
@@ -176,6 +183,7 @@ def definitions():
     return {
         "buildings": config.BUILDINGS,
         "heroes": config.HEROES,
+        "expeditions": config.EXPEDITIONS,
         "balance_version": config.VERSION,
         "offline_hours": 24,
         "storage_cap": 5000,
@@ -225,6 +233,18 @@ def train(
     idempotency_key: str | None = Header(default=None),
 ):
     return mutate("train", {}, authorization, idempotency_key)
+
+
+@app.post("/api/v1/army/create")
+def create_army(body: StartBattle, authorization: str | None = Header(default=None),
+                idempotency_key: str | None = Header(default=None)):
+    return mutate("army_create", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/army/orders")
+def army_order(body: March, authorization: str | None = Header(default=None),
+               idempotency_key: str | None = Header(default=None)):
+    return mutate("army_order", body.model_dump(), authorization, idempotency_key)
 
 
 @app.post("/api/v1/battles")
@@ -286,33 +306,33 @@ def tiles(
 ):
     if not 0 <= q < 128 or not 0 <= r < 128 or not 1 <= radius <= 8:
         raise HTTPException(422, "Недопустимый чанк")
-    from .combat import distance
-
-    with SessionLocal() as db:
+    with SessionLocal.begin() as db:
         pid = identify(db, authorization)
-        hero = db.get(Hero, pid)
-        vision = 4 if hero and hero.kind == "valkyrie" else 3
-        ts = db.scalars(
-            select(Tile).where(
-                Tile.q.between(q - radius, q + radius),
-                Tile.r.between(r - radius, r + radius),
-            )
-        )
-        return {
-            "tiles": [
-                {
-                    "id": f"1:{t.q}:{t.r}",
-                    "q": t.q,
-                    "r": t.r,
-                    "biome": (
-                        t.biome
-                        if distance([64, 64], [t.q, t.r]) <= vision
-                        else "unknown"
-                    ),
-                }
-                for t in ts
-            ]
-        }
+        rate_limit(pid)
+        p = locked(db,pid)
+        settle(db,p)
+        ts = list(db.scalars(select(Tile).where(Tile.world_id == 1,
+            Tile.q.between(q-radius,q+radius),Tile.r.between(r-radius,r+radius))))
+        discovered = {(t.q,t.r) for t in db.scalars(select(Discovery).where(
+            Discovery.player_id == pid, Discovery.world_id == 1,
+            Discovery.q.between(q-radius,q+radius), Discovery.r.between(r-radius,r+radius)))}
+        owners = {(t.q,t.r):t.player_id for t in db.scalars(select(TileOwnership).where(
+            TileOwnership.world_id==1,TileOwnership.q.between(q-radius,q+radius),TileOwnership.r.between(r-radius,r+radius)))}
+        hero = db.get(Hero,pid)
+        army_state = expeditions.state(db,pid)["armies"]
+        home_vision = 4 if hero and hero.kind == "valkyrie" else 3
+        from .combat import distance
+        result=[]
+        for t in ts:
+            in_view = distance(config.EXPEDITIONS["home"],[t.q,t.r]) <= home_vision or any(distance([a["q"],a["r"]],[t.q,t.r]) <= config.EXPEDITIONS["army_vision"] for a in army_state)
+            known = in_view or (t.q,t.r) in discovered
+            owner = owners.get((t.q,t.r)) if in_view else None
+            result.append({"id":f"1:{t.q}:{t.r}","q":t.q,"r":t.r,
+                "biome":t.biome if known else "unknown",
+                "visibility":"visible" if in_view else "explored" if known else "unknown",
+                "control":("self" if owner == pid else "other" if owner else "neutral") if in_view else None,
+                "home":[t.q,t.r] == config.EXPEDITIONS["home"]})
+        return {"tiles":result}
 
 
 @app.websocket("/api/v1/ws")

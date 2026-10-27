@@ -2,13 +2,16 @@ import {Icon} from "./Icon";
 import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { createBuilding, type BuildingVisual } from "./Buildings";
-import type { Building, Battle } from "./store";
-type Tile = { q: number; r: number; biome: string };
+import type { Building, Battle, Army } from "./store";
+type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean };
 type Props = {
   buildings: Building[];
   paused?: boolean;
   battle?: Battle;
   world?: Tile[];
+  center?: number[];
+  army?: Army;
+  now?: number;
   selected: number[] | null;
   onSelect: (q: number, r: number) => void;
 };
@@ -95,6 +98,7 @@ export function MapView(props: Props) {
         elapsed += ticker.deltaMS / 1000;
         const scale = camera.current.scale;
         for (const visual of animations.current) {
+          if (visual.node.label === "march" && !motion.matches && !latest.current.paused) visual.animate(elapsed);
           const x = visual.node.x * scale + a.screen.width / 2 + camera.current.x;
           const y = visual.node.y * scale + a.screen.height * .5 + camera.current.y;
           const visible = x > -100 && x < a.screen.width + 100 && y > -30 && y < a.screen.height + 100;
@@ -169,7 +173,7 @@ export function MapView(props: Props) {
               }
             }
           if (latest.current.battle) best = [best[0] + 4, best[1] + 4];
-          if (latest.current.world) best = [best[0] + 64, best[1] + 64];
+          if (latest.current.world) best = [best[0] + (latest.current.center?.[0] ?? 64), best[1] + (latest.current.center?.[1] ?? 64)];
           latest.current.onSelect(best[0], best[1]);
         }
         pointers.delete(e.pointerId);
@@ -208,7 +212,7 @@ export function MapView(props: Props) {
     };
   }, []);
   // Snapshots arrive frequently; rebuild geometry only when renderable state changes.
-  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world]);
+  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.army, props.center]);
   useEffect(() => {
     if (!ready || !app.current) return;
     const s = scene.current;
@@ -219,7 +223,7 @@ export function MapView(props: Props) {
     const labels = new Container();
     s.addChild(ground);
     const tiles: Tile[] = props.world
-      ? props.world.map((t) => ({ ...t, q: t.q - 64, r: t.r - 64 }))
+      ? props.world.map((t) => ({ ...t, q: t.q - (props.center?.[0] ?? 64), r: t.r - (props.center?.[1] ?? 64) }))
       : [];
     if (!props.world)
       for (let q = -4; q <= 4; q++)
@@ -240,7 +244,13 @@ export function MapView(props: Props) {
       const g = new Graphics();
       hex(g, x, y + 7, 53, 0x263a36);
       hex(g, x, y, 52, colors[t.biome]);
+      if (t.visibility === "explored") g.alpha = .55;
       ground.addChild(g);
+      if (t.control === "self" || t.control === "other" || t.home) {
+        const border = new Graphics();
+        hex(border,x,y,48,t.home ? 0xb89b5c : t.control === "self" ? 0x4c9ce5 : 0xd95a52);
+        border.alpha=.3;ground.addChild(border);
+      }
       const b = props.buildings.find((b) => b.q === t.q && b.r === t.r);
       if (b && !props.battle && !props.world) {
         const visual = createBuilding(b);
@@ -311,6 +321,23 @@ export function MapView(props: Props) {
         s.addChild(g);
       }
     }
+    if (props.army && props.world) {
+      const army = props.army;
+      const order = army.orders.find(o=>o.status === "moving");
+      const project = (q:number,r:number) => [54*Math.sqrt(3)*(q-(props.center?.[0]??64)+(r-(props.center?.[1]??64))/2),54*.975*(r-(props.center?.[1]??64))];
+      const [x,y]=project(army.q,army.r);
+      const marker = new Container();marker.label="march";marker.position.set(x,y);
+      const flag = new Graphics().ellipse(0,0,25,14).fill({color:0x4c9ce5,alpha:.4}).roundRect(-15,-23,30,17,4).fill(0x4c9ce5).rect(-3,-30,18,4).fill(0xc8d7c4);
+      marker.addChild(flag);s.addChild(marker);
+      if (order) {
+        const [tx,ty]=project(order.q,order.r);
+        const route = new Graphics().moveTo(x,y).lineTo(tx,ty).stroke({color:0xe5b65a,width:2,alpha:.7});ground.addChild(route);
+        animations.current.push({node:marker,animate:()=>{
+          const progress=Math.max(0,Math.min(1,((latest.current.now??order.started_at)-order.started_at)/(order.ready_at-order.started_at)));
+          marker.position.set(x+(tx-x)*progress,y+(ty-y)*progress);
+        }});
+      }
+    }
     s.addChild(labels);
     s.addChild(selection.current);
   }, [ready, geometryKey]);
@@ -319,7 +346,7 @@ export function MapView(props: Props) {
     ring.clear();
     if (!ready || !props.selected) return;
     const offset = props.battle ? 4 : props.world ? 64 : 0;
-    const q = props.selected[0] - offset, r = props.selected[1] - offset;
+    const q = props.selected[0] - (props.world ? (props.center?.[0] ?? 64) : offset), r = props.selected[1] - (props.world ? (props.center?.[1] ?? 64) : offset);
     const x = 54 * Math.sqrt(3) * (q+r/2), y = 54*.975*r;
     const points: number[]=[];
     for(let i=0;i<6;i++){const a=(i*60+30)*Math.PI/180;points.push(x+Math.cos(a)*49,y+Math.sin(a)*49*.65);}

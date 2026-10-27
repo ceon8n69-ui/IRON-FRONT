@@ -686,3 +686,10 @@ progress::-moz-progress-bar { background:#e5b65a; }
  .hero-grid p { font-size:12px; }
  .hero-grid small { font-size:10px; letter-spacing:0; }
 }
+.world-tools { display:flex; gap:8px; padding:0 16px 12px; }
+.world-tools button { flex:1; font-size:12px; }
+.world-tile { padding:16px; background:#192633; border:1px solid #40515d; border-radius:10px; }
+.world-tile h2 { margin:8px 0; }
+.world-tile p { font-size:12px; }
+.territory-list { display:flex; flex-wrap:wrap; gap:8px; }
+.territory-list button { font-size:12px; }

@@ -162,8 +162,31 @@ await page.screenshot({ path: "/tmp/iron-base-desktop.png", fullPage: true });
 await page.setViewportSize({width:390,height:844});
 await page.emulateMedia({reducedMotion:"reduce"});
 await page.screenshot({path:"/tmp/iron-base-mobile.png",fullPage:true});
+// Real server-side march and capture after the original vertical slice.
+await page.getByRole("button",{name:"Армия",exact:true}).click();
+await page.getByRole("button",{name:"Подразделения",exact:true}).click();
+await page.getByRole("button",{name:"Сформировать",exact:true}).click();
+await page.getByRole("heading",{name:"Театр операций",exact:true}).waitFor();
+await page.locator("canvas").scrollIntoViewIfNeeded();
+const worldBox=await page.locator("canvas").boundingBox();
+await page.mouse.click(worldBox.x+worldBox.width/2+54*Math.sqrt(3),worldBox.y+worldBox.height*.5);
+await page.getByRole("button",{name:"Захватить гекс",exact:true}).click();
+const marching=await state();
+assert.equal(marching.armies[0].status,"moving");
+assert.equal(marching.territories.length,0);
+await waitFor(async()=>(await state()).territories.length===1,45000);
+await page.reload();
+await page.getByRole("heading",{name:"Передовая база"}).waitFor();
+await page.getByRole("button",{name:"Карта",exact:true}).click();
+await page.getByText(/Под контролем 1\/3/).waitFor();
+const captured=await state();
+assert.equal(captured.armies[0].q,65);
+assert.equal(captured.armies[0].status,"idle");
+assert.equal(captured.resources.fuel,198);
+await page.screenshot({path:"/tmp/iron-world-capture.png",fullPage:true});
+assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
 assert.deepEqual(errors, []);
 console.log(
-  "PASS: mobile end-to-end cycle, real timers, reload persistence, equipment, no JS errors",
+  "PASS: mobile end-to-end cycle, real timers, reload persistence, equipment, real march/capture, no JS errors",
 );
 await browser.close();

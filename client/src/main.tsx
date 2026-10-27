@@ -5,6 +5,8 @@ import { MapView } from "./Map";
 import "./style.css";
 import {Icon} from "./Icon";
 import { Commander, Portrait } from "./Commander";
+import { World } from "./World";
+import type { ExpeditionRules } from "./store";
 declare global {
   interface Window {
     Telegram?: {
@@ -18,6 +20,7 @@ declare global {
   }
 }
 type Definitions = {
+  expeditions: ExpeditionRules;
   buildings: Record<
     string,
     {
@@ -59,9 +62,6 @@ function App() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [clock, setClock] = useState(0);
-  const [world, setWorld] = useState<{ q: number; r: number; biome: string }[]>(
-    [],
-  );
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
     setError("");
@@ -136,12 +136,6 @@ function App() {
     const t = setInterval(() => setClock((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, [state?.server_time]);
-  useEffect(() => {
-    if (tab === "Карта" && token)
-      request("/world/tiles?q=64&r=64&radius=6")
-        .then((d) => setWorld(d.tiles))
-        .catch((e) => setError(e.message));
-  }, [tab, token, state?.hero?.kind]);
   const battle = state?.battles.find((b) => b.status === "active");
   const lastBattle = state?.battles.at(-1);
   const step = !state?.hero
@@ -403,18 +397,7 @@ function App() {
               </div>
             </>
           ) : tab === "Карта" ? (
-            <>
-              <MapView
-                buildings={[]}
-                world={world}
-                selected={selected}
-                onSelect={chooseTile}
-              />
-              <div className="notice">
-                Общая карта · 128 × 128. В этом срезе доступен обзор стартового
-                сектора. Походы и захват будут следующим этапом.
-              </div>
-            </>
+            defs && <World state={state} clock={clock} rules={defs.expeditions} goArmy={()=>{changeTab("Армия");setArmyView("units");}}/>
           ) : tab === "Армия" ? (
             <section className="content">
               <div className="army-tabs" role="group" aria-label="Раздел армии">
@@ -423,13 +406,15 @@ function App() {
               </div>
               {armyView === "units" ? <>
               <div className="section-label">РЕЗЕРВ И ПОДГОТОВКА</div>
+              {(state.armies || []).map(a=><article className="card" key={a.id}><div><h3>Первое соединение</h3><p>{a.status === "moving" ? "В походе" : "Готово к приказу"} · {a.q} : {a.r}</p></div><button className="primary" onClick={()=>changeTab("Карта")}>На карту</button></article>)}
               {state.units.map((u) => (
                 <article className="card" key={u.id}>
                   <div className="unit-icon"><Icon name="army"/></div>
                   <div>
                     <h3>Стрелковое отделение</h3>
-                    <p>Здоровье {u.hp}/100 · В резерве</p>
+                    <p>Здоровье {u.hp}/100 · {u.status === "army" ? "В составе соединения" : u.status === "battle" ? "В бою" : "В резерве"}</p>
                   </div>
+                  {state.first_victory && u.status === "reserve" && !(state.armies || []).length && <button disabled={busy} className="primary" onClick={()=>run(async()=>{await command("/army/create",{unit_id:u.id});changeTab("Карта");})}>Сформировать</button>}
                   {!state.first_victory && (
                     <button
                       className="primary"
@@ -505,7 +490,7 @@ function App() {
               </p>
               <div className="section-label">СТАТУС СРЕЗА</div>
               <p>
-                Строительство, подготовка войск, PvE и первый предмет. PvP,
+                Строительство, подготовка войск, PvE, экипировка, походы и нейтральные территории. PvP,
                 рынок, Stars и расширенная RPG-система ещё не включены.
               </p>
             </section>

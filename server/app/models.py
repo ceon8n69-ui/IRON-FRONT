@@ -4,10 +4,13 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     ForeignKey,
+    ForeignKeyConstraint,
     Integer,
     JSON,
     String,
     UniqueConstraint,
+    Index,
+    text,
 )
 from sqlalchemy.orm import declarative_base
 
@@ -161,3 +164,72 @@ class Tile(Base):
     r = Column(Integer, primary_key=True)
     biome = Column(String, nullable=False)
     __table_args__ = (CheckConstraint("q >= 0 AND q < 128 AND r >= 0 AND r < 128"),)
+
+
+class Army(Base):
+    __tablename__ = "armies"
+    id = Column(String, primary_key=True)
+    player_id = Column(ForeignKey("users.id"), nullable=False, unique=True)
+    world_id = Column(Integer, nullable=False, default=1)
+    q = Column(Integer, nullable=False)
+    r = Column(Integer, nullable=False)
+    status = Column(String, nullable=False, default="idle")
+    __table_args__ = (
+        ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
+        CheckConstraint("status IN ('idle', 'moving')"),
+    )
+
+
+class ArmyUnit(Base):
+    __tablename__ = "army_units"
+    army_id = Column(ForeignKey("armies.id"), primary_key=True)
+    unit_id = Column(ForeignKey("player_units.id"), primary_key=True, unique=True)
+
+
+class ArmyOrder(Base):
+    __tablename__ = "army_orders"
+    id = Column(String, primary_key=True)
+    army_id = Column(ForeignKey("armies.id"), nullable=False, index=True)
+    world_id = Column(Integer, nullable=False, default=1)
+    from_q = Column(Integer, nullable=False)
+    from_r = Column(Integer, nullable=False)
+    q = Column(Integer, nullable=False)
+    r = Column(Integer, nullable=False)
+    action = Column(String, nullable=False)
+    status = Column(String, nullable=False)
+    started_at = Column(BigInteger, nullable=False)
+    ready_at = Column(BigInteger, nullable=False, index=True)
+    finished_at = Column(BigInteger)
+    result = Column(String)
+    __table_args__ = (
+        ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
+        CheckConstraint("action IN ('move', 'capture')"),
+        CheckConstraint("status IN ('moving', 'complete', 'blocked')"),
+        CheckConstraint("ready_at > started_at"),
+        Index("uq_army_active_order", "army_id", unique=True, postgresql_where=text("status = 'moving'")),
+    )
+
+
+class TileOwnership(Base):
+    __tablename__ = "tile_ownership"
+    world_id = Column(Integer, primary_key=True)
+    q = Column(Integer, primary_key=True)
+    r = Column(Integer, primary_key=True)
+    player_id = Column(ForeignKey("users.id"), nullable=False, index=True)
+    acquired_at = Column(BigInteger, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
+        CheckConstraint("NOT (q = 64 AND r = 64)"),
+    )
+
+
+class Discovery(Base):
+    __tablename__ = "fog_of_war"
+    player_id = Column(ForeignKey("users.id"), primary_key=True)
+    world_id = Column(Integer, primary_key=True)
+    q = Column(Integer, primary_key=True)
+    r = Column(Integer, primary_key=True)
+    discovered_at = Column(BigInteger, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
+    )
