@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS
-from . import expeditions, garrisons
+from . import expeditions, garrisons, equipment
 from .combat import resolve
 
 
@@ -149,7 +149,7 @@ def snapshot(db, p):
         "units": [serialize(u, "id kind hp status") for u in rows(db, Unit, p.id)],
         "hero": serialize(hero, "kind xp") if hero else None,
         "inventory": [
-            serialize(i, "id definition_id source_id equipped created_at")
+            {**serialize(i, "id definition_id source_id equipped created_at"), "definition":equipment.DEFINITIONS.get(i.definition_id), "source": "first-patrol" if i.definition_id=="field-module" else "garrison"}
             for i in db.scalars(select(Item).where(Item.owner_id == p.id))
         ],
         "battles": [
@@ -278,13 +278,7 @@ def dispatch(db, p, op, data):
             fail("Бой уже завершён")
         if data["turn"] != battle.state["turn"]:
             fail("Раунд устарел: обновите состояние")
-        bonus = (
-            0.03
-            if db.scalar(
-                select(Item).where(Item.owner_id == p.id, Item.equipped == True)
-            )
-            else 0
-        )
+        bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id)))
         try:
             state, events, outcome = resolve(
                 battle.state, data, battle.seed, hero.kind, bonus
@@ -302,6 +296,11 @@ def dispatch(db, p, op, data):
             captured=garrisons.finish(db,p,battle,outcome,now())
             if captured:
                 hero.xp += 50
+                definition_id, roll = equipment.loot(battle.seed)
+                item=Item(id=uid(),owner_id=p.id,definition_id=definition_id,source_id=battle.id,equipped=False,created_at=now())
+                db.add(item);db.flush()
+                db.add(Ownership(id=uid(),item_id=item.id,owner_id=p.id,reason='garrison-loot-v1',created_at=now()))
+                battle.state={**battle.state,'loot':{'item_id':item.id,'definition_id':definition_id,'table_version':'gar-loot-v1','roll':roll},'captured':True}
             return {"events":events,"outcome":outcome,"captured":captured}
         if outcome != "active":
             unit = db.get(Unit, battle.unit_id)

@@ -13,6 +13,8 @@ export type Battle = {
   status: string;
   balance_version: string;
   state: {
+    loot?: {item_id:string;definition_id:string;table_version:string};
+    captured?: boolean;
     expedition?: {army_id:string;order_id:string;q:number;r:number};
     turn: number;
     player: { pos: number[]; hp: number };
@@ -29,7 +31,7 @@ export type State = {
   jobs: { id: string; ready_at: number }[];
   units: { id: string; hp: number; status: string }[];
   hero: { kind: string; xp: number } | null;
-  inventory: { id: string; definition_id: string; equipped: boolean }[];
+  inventory: { id: string; definition_id: string; equipped: boolean; source:string; definition:{name:string;rarity:string;damage_bonus:number;image:string} }[];
   battles: Battle[];
   first_victory: boolean;
   armies: Army[];

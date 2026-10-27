@@ -36,6 +36,7 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
        {(baseReason||captureReason)&&<p className="action-reason">{baseReason||captureReason}</p>}
      </article>}
      {!tile&&army&&<p>Выберите соседний гекс для движения или захвата. Гарнизоны NPC отмечены флагом: для захвата потребуется бой.</p>}
+     {!tile&&state.battles.some(b=>b.state.loot)&&<button className="loot-shortcut" onClick={goArmy}>Трофеи → Армия → Командир</button>}
      {error&&<p className="action-reason" role="alert">{error}</p>}
 
    </section>

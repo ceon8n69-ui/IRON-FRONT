@@ -723,3 +723,6 @@ progress::-moz-progress-bar { background:#e5b65a; }
 .battle-screen .combat h2 {font-size:20px;margin:0 0 8px}
 .battle-screen .combat p {font-size:12px;margin:6px 0}
 .battle-screen .combat button {font-size:12px;padding:8px;min-height:44px}
+
+.equipment-card.rarity-rare {border-color:#4c9ce5}.equipment-card.rarity-epic {border-color:#ae7adb}
+.inventory-filters {flex-wrap:wrap}.loot-shortcut {margin:0 12px 12px;font-size:12px}

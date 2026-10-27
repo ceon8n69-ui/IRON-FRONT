@@ -219,10 +219,24 @@ const conquered=await state();
 assert.equal(conquered.territories.length,2);
 assert.equal(conquered.armies[0].r,65);
 assert.equal(conquered.hero.xp,150);
-assert.equal(conquered.inventory.length,1);
+assert.equal(conquered.inventory.length,2);
+assert.ok(conquered.inventory.some(i=>i.source==="garrison"));
 await page.getByRole('button',{name:'Карта',exact:true}).click();
 await page.getByText(/Под контролем 2\/3/).waitFor();
 await page.screenshot({path:'/tmp/iron-garrison-victory.png',fullPage:true});
+await page.getByRole('button',{name:'Армия',exact:true}).click();
+await page.getByRole('button',{name:'Командир',exact:true}).click();
+const trophy=conquered.inventory.find(i=>i.source==='garrison');
+const trophyCard=page.locator('.equipment-card').filter({has:page.getByRole('heading',{name:trophy.definition.name,exact:true})});
+await trophyCard.getByRole('button',{name:'Снарядить',exact:true}).click();
+assert.equal((await state()).inventory.find(i=>i.id===trophy.id).equipped,true);
+await page.reload();
+await page.getByRole('button',{name:'Армия',exact:true}).click();
+await page.getByRole('button',{name:'Командир',exact:true}).click();
+await page.getByRole('heading',{name:trophy.definition.name,exact:true}).waitFor();
+await page.locator('.commander-art img').evaluate(img=>img.decode());
+await page.screenshot({path:'/tmp/iron-loot-inventory.png',fullPage:true});
+assert.equal((await state()).inventory.filter(i=>i.equipped).length,1);
 assert.deepEqual(errors, []);
 console.log(
   "PASS: mobile end-to-end cycle, real timers, reload persistence, equipment, real march/capture, no JS errors",
