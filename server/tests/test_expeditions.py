@@ -72,6 +72,7 @@ def test_march_capture_restart_income_and_idempotency(client,monkeypatch):
 
 
 def test_access_coordinates_limit_and_no_early_reward(client,monkeypatch):
+    monkeypatch.setitem(game.EXPEDITIONS,"control_limit",3)
     c=client;h,u=commander(c,monkeypatch);a=create(c,h,u)
     other=login(c,456);post(c,'/heroes/choose',{'kind':'ghost'},other)
     assert post(c,'/army/create',{'unit_id':u},other).status_code==409
@@ -135,3 +136,26 @@ def test_no_fuel_and_sanctuary_capture(client,monkeypatch):
     with c.factory.begin() as db:db.scalar(select(Resource).where(Resource.kind=='fuel')).amount=0
     assert order(c,h,a,66,64,'move').status_code==409
     assert c.get('/api/v1/player/me',headers=h).json()['armies'][0]['status']=='idle'
+
+
+def test_expanded_limit_allows_fourth_npc_attack_but_blocks_thirteenth(client,monkeypatch):
+    c=client;h,u=commander(c,monkeypatch);a=create(c,h,u)
+    assert game.EXPEDITIONS['control_limit']==12
+    with c.factory.begin() as db:
+        pid=db.scalar(select(Player.id))
+        for q,r in [(63,64),(64,63),(65,63)]:
+            db.add(TileOwnership(world_id=1,q=q,r=r,player_id=pid,acquired_at=game.now()))
+    assert order(c,h,a,64,65).status_code==200
+    advance(c,monkeypatch,31)
+    s=c.get('/api/v1/player/me',headers=h).json()
+    assert len(s['territories'])==3
+    assert any(b['status']=='active' and b['state'].get('expedition') for b in s['battles'])
+    # Check the configured cap independently of a battle-in-progress rejection.
+    from app.models import Battle, Unit
+    with c.factory.begin() as db:
+        db.scalar(select(Battle).where(Battle.status=='active')).status='defeat'
+        db.get(Unit,u).status='army'
+        for q,r in [(60,r) for r in range(60,69)]:
+            db.add(TileOwnership(world_id=1,q=q,r=r,player_id=pid,acquired_at=game.now()))
+    response=order(c,h,a,65,64)
+    assert response.status_code==409 and 'лимит' in response.json()['detail'].lower()

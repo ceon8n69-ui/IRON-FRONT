@@ -86,7 +86,7 @@ EXPEDITIONS = {
     "home": [64, 64],
     "seconds": 30,
     "fuel": 2,
-    "control_limit": 3,
+    "control_limit": 12,
     "army_vision": 2,
     "territory_yield": {
         "plain": {"food": 2}, "forest": {"metal": 2},
