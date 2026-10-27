@@ -217,7 +217,7 @@ function App() {
       .map(([k, v]) => `${v} ${resourceNames[k]}`)
       .join(" · ");
   return (
-    <main>
+    <main className={state && tab === "Карта" && !battle ? "map-screen" : ""}>
       <header>
         <div className="brand">
           <span className="insignia">IF</span>

@@ -22,22 +22,22 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
  const captureReason=baseReason|| (tile?.home?"Стартовый пункт нельзя захватить":tile?.control==="self"?"Уже под вашим контролем":state.territories.length>=rules.control_limit?"Достигнут лимит контроля":!connected?"Нет связи с вашей землёй или стартовым пунктом":"");
  const send=async(action:string)=>{if(!army||!selected)return;setBusy(true);setError("");try{await command('/army/orders',{army_id:army.id,q:selected[0],r:selected[1],action});}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  const focus=(q:number,r:number)=>{setCenter([q,r]);setFocusVersion(n=>n+1);setSelected(null);};
- return <>
+ return <div className="world-stage">
    <div className="world-tools"><button onClick={()=>focus(...rules.home as [number,number])}>Стартовый пункт</button><button disabled={!army} onClick={()=>army&&focus(army.q,army.r)}>К соединению</button></div>
    <MapView key={center.join(':')+':'+focusVersion} buildings={[]} world={tiles} center={center} army={army} now={clock} selected={selected} onSelect={(q,r)=>{if(q>=0&&q<128&&r>=0&&r<128)setSelected([q,r]);}}/>
-   <div className="notice">Синий — ваши земли · Красный — чужие · Золотой — общий безопасный стартовый пункт. Под контролем {state.territories.length}/{rules.control_limit}.</div>
-   <section className="content world-orders">
+   <div className="world-control-count">Под контролем {state.territories.length}/{rules.control_limit}</div>
+   <section className="world-orders" aria-label="Приказы на карте">
      {!army&&<button className="primary" onClick={goArmy}>Сформировать соединение</button>}
-     {army&&<article className="card"><div><h3>Первое соединение · {army.q} : {army.r}</h3><p>{order?`Поход в ${order.q} : ${order.r} · ${Math.max(0,order.ready_at-clock)} сек.`:"Готово к приказу"}</p>{order&&<small>Прибытие и захват подтверждает сервер.</small>}{!order&&army.orders[0]&&<small role="status">{army.orders[0].result}</small>}</div></article>}
-     {tile&&<article className="world-tile"><small>ГЕКС {tile.q} : {tile.r}</small><h2>{tile.home?"Стартовый пункт":biomeNames[tile.biome]}</h2><p>{tile.visibility==="unknown"?"Сведения об участке скрыты туманом войны.":tile.visibility==="explored"?"Ранее исследовано. Актуальные владения скрыты.":tile.control==="self"?"Под вашим контролем":tile.control==="other"?"Под контролем другого игрока":"Нейтральная территория"}</p>
+     {army&&!tile&&<article className="card"><div><h3>Первое соединение · {army.q} : {army.r}</h3><p>{order?`Поход в ${order.q} : ${order.r} · ${Math.max(0,order.ready_at-clock)} сек.`:"Готово к приказу"}</p>{order&&<small>Прибытие и захват подтверждает сервер.</small>}{!order&&army.orders[0]&&<small role="status">{army.orders[0].result}</small>}</div></article>}
+     {tile&&<article className="world-tile"><button className="world-close" aria-label="Закрыть карточку гекса" onClick={()=>setSelected(null)}>×</button><small>ГЕКС {tile.q} : {tile.r}</small><h2>{tile.home?"Стартовый пункт":biomeNames[tile.biome]}</h2><p>{tile.visibility==="unknown"?"Сведения об участке скрыты туманом войны.":tile.visibility==="explored"?"Ранее исследовано. Актуальные владения скрыты.":tile.control==="self"?"Под вашим контролем":tile.control==="other"?"Под контролем другого игрока":"Нейтральная территория"}</p>
        {tile.visibility==="visible"&&!tile.home&&<p>Добыча при контроле: {Object.entries(rules.territory_yield[tile.biome]||{}).map(([k,v])=>`${v} ${resources[k]} / мин`).join(', ')}.</p>}
-       <p>{rules.seconds} сек. · {rules.fuel} топлива за поход</p>
+       <p>{order?`Поход · ${Math.max(0,order.ready_at-clock)} сек.`:`${rules.seconds} сек. · ${rules.fuel} топлива за поход`}</p>
        <div className="actions"><button disabled={busy||!!baseReason} onClick={()=>send('move')}>Переместить армию</button><button className="primary" disabled={busy||!!captureReason} onClick={()=>send('capture')}>Захватить гекс</button></div>
        {(baseReason||captureReason)&&<p className="action-reason">{baseReason||captureReason}</p>}
      </article>}
      {!tile&&army&&<p>Выберите соседний гекс для движения или захвата. Пока захватываются только нейтральные участки без гарнизона.</p>}
      {error&&<p className="action-reason" role="alert">{error}</p>}
-     {!!state.territories.length&&<><div className="section-label">ВАШИ ТЕРРИТОРИИ</div><div className="territory-list">{state.territories.map(t=><button key={`${t.q}:${t.r}`} onClick={()=>{focus(t.q,t.r);setSelected([t.q,t.r]);}}>{t.q} : {t.r} · {biomeNames[t.biome]}</button>)}</div></>}
+
    </section>
- </>;
+ </div>;
 }
