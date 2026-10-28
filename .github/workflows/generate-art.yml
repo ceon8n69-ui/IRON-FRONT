@@ -43,6 +43,7 @@ jobs:
           MODEL: ${{ inputs.model }}
         run: |
           if [ -z "$OPENAI_API_KEY" ]; then echo "::error::Add repository secret OPENAI_API_KEY"; exit 1; fi
+          set -o pipefail
           python tools/generate_art.py --keys "$KEYS" --kind "$KIND" --quality "$QUALITY" --model "$MODEL" | tee generate.log
       - name: Push results to a review branch
         if: always()
