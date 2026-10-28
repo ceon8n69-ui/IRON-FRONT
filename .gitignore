@@ -7,3 +7,4 @@ client/dist/
 *.pyc
 *.log
 dump.rdb
+art-source/

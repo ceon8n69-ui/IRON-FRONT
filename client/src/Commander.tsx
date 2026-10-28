@@ -4,7 +4,7 @@ export type HeroDefinition = { name: string; role: string; bio: string; effect: 
 const rarityNames:Record<string,string>={uncommon:"НЕОБЫЧНЫЙ",rare:"РЕДКИЙ",epic:"ЭПИЧЕСКИЙ"};
 const heroIds = new Set(["raven", "valkyrie", "titan", "phoenix", "ghost", "storm"]);
 export function Portrait({id, name, eager = false}: {id: string; name: string; eager?: boolean}) {
-  return heroIds.has(id) ? <img className="commander-image" src={`/art/commanders/${id}-v1.webp`} alt={name} width="640" height="960" loading={eager ? "eager" : "lazy"} decoding="async"/> : <span>Портрет недоступен</span>;
+  return heroIds.has(id) ? <img className="commander-image" src={`/art/commanders/${id}-v2.webp`} onError={(e) => { const img = e.currentTarget; if (!img.src.endsWith("-v1.webp")) img.src = `/art/commanders/${id}-v1.webp`; }} alt={name} width="640" height="960" loading={eager ? "eager" : "lazy"} decoding="async"/> : <span>Портрет недоступен</span>;
 }
 export function Commander({state, definition, busy, equip}: {
   state: State; definition: HeroDefinition; busy: boolean; equip: (id: string, equipped: boolean) => void;
