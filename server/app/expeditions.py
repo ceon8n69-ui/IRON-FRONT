@@ -21,10 +21,18 @@ def linked(db, pid, q, r):
         distance([t.q, t.r], [q, r]) == 1 for t in owned(db, pid))
 
 
-def visible(db, pid, q, r):
+def home_vision(db, pid):
+    from .models import Building
+    from . import economy
     hero = db.get(Hero, pid)
-    vision = 4 if hero and hero.kind == 'valkyrie' else 3
-    if distance(bases.home(db, pid), [q, r]) <= vision:
+    towers = [b for b in db.scalars(select(Building).where(Building.player_id == pid, Building.kind == 'watchtower'))
+              if b.status == 'ready']
+    bonus = economy.vision_bonus({'watchtower': towers[0].level}) if towers else 0
+    return (4 if hero and hero.kind == 'valkyrie' else 3) + bonus
+
+
+def visible(db, pid, q, r):
+    if distance(bases.home(db, pid), [q, r]) <= home_vision(db, pid):
         return True
     army = db.scalar(select(Army).where(Army.player_id == pid))
     return bool(army and distance([army.q, army.r], [q, r]) <= RULES['army_vision'])

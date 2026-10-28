@@ -195,6 +195,11 @@ export function MapView(props: Props) {
         pointers.delete(e.pointerId),
       );
       a.canvas.addEventListener("wheel", wheel, { passive: false });
+      // Older Telegram/iOS ignore touch-action: stop the page and the app sheet
+      // from moving while a finger drags the map.
+      const hold = (e: TouchEvent) => e.preventDefault();
+      a.canvas.addEventListener("touchmove", hold, { passive: false });
+      a.canvas.addEventListener("touchstart", hold, { passive: false });
       const resize = new ResizeObserver(apply);
       resize.observe(host.current!);
       apply();
@@ -273,6 +278,12 @@ export function MapView(props: Props) {
               quarry: "КАРЬЕР",
               barracks: "КАЗАРМЫ",
               refinery: "НПЗ",
+              oil_well: "НЕФТЬ",
+              farm: "АГРО",
+              warehouse: "СКЛАД",
+              watchtower: "БАШНЯ",
+              electronics: "ЭЛЕКТРОНИКА",
+              repair: "РЕМОНТ",
             } as Record<string, string>
           )[b.kind],
           style: {

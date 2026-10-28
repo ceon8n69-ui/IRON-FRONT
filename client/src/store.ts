@@ -7,7 +7,12 @@ export type Building = {
   level: number;
   status: string;
   ready_at: number;
+  upgrade_ready_at?: number | null;
+  max_level?: number;
+  upgrade?: { cost: Record<string, number>; seconds: number } | null;
+  effects?: { current: Effects; next: Effects | null };
 };
+export type Effects = { output: Record<string, number>; input: Record<string, number>; power: number; storage: number; vision: number; repair: number };
 export type Battle = {
   id: string;
   status: string;
@@ -35,6 +40,7 @@ export type State = {
   battles: Battle[];
   first_victory: boolean;
   base: {q:number;r:number} | null;
+  storage_cap?: number;
   armies: Army[];
   territories: Territory[];
 };

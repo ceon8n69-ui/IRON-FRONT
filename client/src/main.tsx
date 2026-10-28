@@ -15,12 +15,17 @@ declare global {
         ready: () => void;
         expand: () => void;
         setHeaderColor: (s: string) => void;
+        platform?: string;
+        isVersionAtLeast?: (v: string) => boolean;
+        disableVerticalSwipes?: () => void;
+        requestFullscreen?: () => void;
       };
     };
   }
 }
 type Definitions = {
   expeditions: ExpeditionRules;
+  max_level?: number;
   buildings: Record<
     string,
     {
@@ -28,6 +33,8 @@ type Definitions = {
       cost: Record<string, number>;
       seconds: number;
       power: number;
+      hq?: number;
+      about?: string;
     }
   >;
   heroes: Record<
@@ -81,6 +88,12 @@ function App() {
     tg?.ready();
     tg?.expand();
     tg?.setHeaderColor("#101923");
+    // A map drag must never collapse or scroll the Mini App (Bot API 7.7+).
+    if (tg?.isVersionAtLeast?.("7.7")) tg.disableVerticalSwipes?.();
+    // Phones get the whole screen, like a native game (Bot API 8.0+).
+    if (tg?.isVersionAtLeast?.("8.0") && ["ios", "android"].includes(tg.platform ?? "")) {
+      try { tg.requestFullscreen?.(); } catch { /* older clients keep the expanded view */ }
+    }
     if (tg?.initData) {
       request("/auth/telegram", { init_data: tg.initData })
         .then((d) => setToken(d.token))
@@ -197,6 +210,11 @@ function App() {
       }
     }
   };
+  const mapOpen = !!state && (tab === "Карта" || !!battle?.state.expedition);
+  useEffect(() => {
+    document.documentElement.classList.toggle("locked", mapOpen);
+    return () => document.documentElement.classList.remove("locked");
+  }, [mapOpen]);
   const changeTab = (t: string) => {
     setTab(t);
     setSheet(false);
@@ -212,6 +230,15 @@ function App() {
     setSelected([q, r]);
     if (tab === "База" && !battle) setSheet(true);
   };
+  const formatTime = (n: number) => n >= 3600 ? `${Math.floor(n/3600)} ч ${Math.round(n%3600/60)} мин` : n >= 60 ? `${Math.floor(n/60)} мин ${n%60 ? `${n%60} сек` : ""}`.trim() : `${n} сек.`;
+  const effectText = (e: { output: Record<string, number>; input: Record<string, number>; power: number; storage: number; vision: number; repair: number }) => [
+    ...Object.entries(e.output).map(([k, v]) => `+${v} ${resourceNames[k].toLowerCase()}/мин`),
+    ...Object.entries(e.input).map(([k, v]) => `−${v} ${resourceNames[k].toLowerCase()}/мин`),
+    e.power ? `${e.power > 0 ? "+" : ""}${e.power} MW` : "",
+    e.storage ? `+${e.storage} к складу` : "",
+    e.vision ? `+${e.vision} обзор` : "",
+    e.repair ? `+${e.repair} HP/мин` : "",
+  ].filter(Boolean).join(" · ") || "Открывает механики базы";
   const cost = (c: Record<string, number>) =>
     Object.entries(c)
       .map(([k, v]) => `${v} ${resourceNames[k]}`)
@@ -295,7 +322,7 @@ function App() {
               </h1>
             </div>
             <span className="tag">
-              {battle ? `РАУНД ${battle.state.turn}` : "ALPHA 0.1"}
+              {battle ? `РАУНД ${battle.state.turn}` : "ALPHA 0.4"}
             </span>
           </div>
           {battle ? (
@@ -380,7 +407,7 @@ function App() {
                     {state.buildings
                       .filter((b) => b.status === "ready")
                       .reduce(
-                        (sum, b) => sum + (defs?.buildings[b.kind].power || 0),
+                        (sum, b) => sum + (b.effects?.current.power ?? defs?.buildings[b.kind].power ?? 0),
                         0,
                       )}{" "}
                     MW
@@ -539,18 +566,41 @@ function App() {
                 ) ? (
                   state.buildings
                     .filter((b) => b.q === selected[0] && b.r === selected[1])
-                    .map((b) => (
+                    .map((b) => {
+                      const upgrading = !!b.upgrade_ready_at;
+                      const total = b.upgrade?.seconds || 1;
+                      const left = upgrading ? Math.max(0, b.upgrade_ready_at! - clock) : 0;
+                      const queueBusy = state.buildings.some((x) => x.status === "building" || x.upgrade_ready_at);
+                      const hqLevel = state.buildings.find((x) => x.kind === "hq")?.level ?? 1;
+                      const upgradeReason = b.status !== "ready" ? "Дождитесь завершения строительства"
+                        : upgrading ? "Улучшение уже идёт"
+                        : !b.upgrade ? ((b.level >= (defs?.max_level ?? 10)) ? "Максимальный уровень" : `Сначала улучшите штаб до ${hqLevel + 1} уровня`)
+                        : queueBusy ? "Строительная очередь занята"
+                        : Object.entries(b.upgrade.cost).some(([r, v]) => state.resources[r] < v) ? "Недостаточно ресурсов" : "";
+                      return (
                       <article key={b.id}>
                         <h3>{defs?.buildings[b.kind].name}</h3>
-                        <p className="building-purpose">{({hq:"Командный центр вашей базы.",power:"Даёт 20 MW для производственных зданий.",quarry:"Производит металл каждую минуту. Требует 4 MW.",barracks:"Открывает подготовку стрелков в разделе «Армия». Требует 6 MW.",refinery:"Перерабатывает 2 нефти в 3 топлива за минуту. Требует 5 MW."} as Record<string,string>)[b.kind]}</p>
+                        <p className="building-purpose">{defs?.buildings[b.kind].about}</p>
+                        <div className="level-pips" aria-label={`Уровень ${b.level} из 10`}>{Array.from({length:10},(_,i)=><i key={i} className={i < b.level ? "on" : ""}/>)}</div>
                         <p>
                           Уровень {b.level} ·{" "}
-                          {b.status === "ready"
-                            ? "В работе"
-                            : `Готовность через ${Math.max(0, b.ready_at - clock)} сек.`}
+                          {b.status !== "ready"
+                            ? `Готовность через ${Math.max(0, b.ready_at - clock)} сек.`
+                            : upgrading ? `Улучшение до ${b.level + 1}: ${left} сек.` : "В работе"}
                         </p>
+                        {upgrading && <div className="upgrade-progress"><i style={{width:`${Math.min(100, 100 - left / total * 100)}%`}}/></div>}
+                        {b.effects && <div className="building-effects">
+                          <div><small>Сейчас</small><b>{effectText(b.effects.current)}</b></div>
+                          <div><small>Уровень {b.level + 1}</small><b>{b.effects.next ? effectText(b.effects.next) : "—"}</b></div>
+                        </div>}
+                        {b.upgrade && !upgrading && <button className="primary" disabled={busy || !!upgradeReason}
+                          onClick={() => run(() => command("/construction/upgrade", { building_id: b.id }))}>
+                          Улучшить · {cost(b.upgrade.cost)} · {formatTime(b.upgrade.seconds)}
+                        </button>}
+                        {upgradeReason && !upgrading && b.status === "ready" && <p className="action-reason">{upgradeReason}</p>}
                       </article>
-                    ))
+                      );
+                    })
                 ) : (
                   <>
                     <p>
@@ -565,10 +615,13 @@ function App() {
                           const existing = state.buildings.find(
                             (x) => x.kind === k,
                           );
+                          const hqLevel = state.buildings.find((x) => x.kind === "hq")?.level ?? 1;
                           const reason = existing
-                            ? "Уже построено или в очереди"
+                            ? "Уже построено: выберите здание, чтобы улучшить"
+                            : (b.hq ?? 1) > hqLevel
+                              ? `Нужен штаб ${b.hq} уровня`
                             : state.buildings.some(
-                                  (x) => x.status === "building",
+                                  (x) => x.status === "building" || x.upgrade_ready_at,
                                 )
                               ? "Очередь занята"
                               : k !== "power" &&

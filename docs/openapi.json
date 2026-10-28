@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IRON FRONT",
-    "version": "0.3.0"
+    "version": "0.4.0"
   },
   "paths": {
     "/health": {
@@ -231,6 +231,76 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/Build"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/construction/upgrade": {
+      "post": {
+        "summary": "Upgrade",
+        "operationId": "upgrade_api_v1_construction_upgrade_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Upgrade"
               }
             }
           }
@@ -1003,6 +1073,21 @@
           "action"
         ],
         "title": "Turn"
+      },
+      "Upgrade": {
+        "properties": {
+          "building_id": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Building Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "building_id"
+        ],
+        "title": "Upgrade"
       },
       "ValidationError": {
         "properties": {

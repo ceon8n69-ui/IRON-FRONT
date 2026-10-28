@@ -10,39 +10,38 @@ if DATABASE_URL.startswith("postgresql://"):
 ENV = os.environ.get("APP_ENV", "production")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-VERSION = "slice-3"
+VERSION = "slice-4"
 RESOURCES = ["metal", "oil", "fuel", "electronics", "food"]
 INITIAL = {"metal": 1000, "oil": 300, "fuel": 200, "electronics": 200, "food": 300}
+# Fictional balance. Level effects come from app.economy; every value here is
+# the level-1 baseline. "hq" is the headquarters level required to build.
 BUILDINGS = {
-    "hq": {"name": "Главный штаб", "cost": {}, "seconds": 0, "power": 0},
-    "power": {
-        "name": "Электростанция",
-        "cost": {"metal": 100},
-        "seconds": 30,
-        "power": 20,
-    },
-    "quarry": {
-        "name": "Металлургический карьер",
-        "cost": {"metal": 140},
-        "seconds": 45,
-        "power": -4,
-        "output": {"metal": 12},
-    },
-    "barracks": {
-        "name": "Казармы",
-        "cost": {"metal": 200, "electronics": 30},
-        "seconds": 60,
-        "power": -6,
-    },
-    "refinery": {
-        "name": "НПЗ",
-        "cost": {"metal": 180, "electronics": 20},
-        "seconds": 60,
-        "power": -5,
-        "input": {"oil": 2},
-        "output": {"fuel": 3},
-    },
+    "hq": {"name": "Главный штаб", "cost": {"metal": 300, "electronics": 60}, "seconds": 90, "power": 0, "hq": 1,
+           "about": "Командный центр. Уровень штаба ограничивает уровни остальных зданий и открывает новые постройки."},
+    "power": {"name": "Электростанция", "cost": {"metal": 100}, "seconds": 30, "power": 20, "hq": 1,
+              "about": "Даёт энергию производственным зданиям."},
+    "quarry": {"name": "Металлургический карьер", "cost": {"metal": 140}, "seconds": 45, "power": -4, "hq": 1,
+               "output": {"metal": 12}, "about": "Добывает металл каждую минуту."},
+    "barracks": {"name": "Казармы", "cost": {"metal": 200, "electronics": 30}, "seconds": 60, "power": -6, "hq": 1,
+                 "about": "Открывает подготовку стрелков в разделе «Армия»."},
+    "refinery": {"name": "НПЗ", "cost": {"metal": 180, "electronics": 20}, "seconds": 60, "power": -5, "hq": 1,
+                 "input": {"oil": 2}, "output": {"fuel": 3}, "about": "Перерабатывает нефть в топливо."},
+    "oil_well": {"name": "Нефтедобывающий комплекс", "cost": {"metal": 160}, "seconds": 50, "power": -3, "hq": 1,
+                 "output": {"oil": 4}, "about": "Добывает сырую нефть для НПЗ."},
+    "farm": {"name": "Агрокомплекс", "cost": {"metal": 120}, "seconds": 40, "power": -2, "hq": 1,
+             "output": {"food": 6}, "about": "Производит провизию для подготовки войск."},
+    "warehouse": {"name": "Склад", "cost": {"metal": 220}, "seconds": 60, "power": -1, "hq": 2,
+                  "storage": 2500, "about": "Увеличивает вместимость каждого ресурса."},
+    "watchtower": {"name": "Сторожевая башня", "cost": {"metal": 180, "electronics": 20}, "seconds": 60, "power": -2, "hq": 2,
+                   "vision": 1, "about": "Расширяет обзор мировой карты вокруг базы."},
+    "electronics": {"name": "Электронный завод", "cost": {"metal": 260, "electronics": 40}, "seconds": 90, "power": -8, "hq": 3,
+                    "input": {"metal": 4}, "output": {"electronics": 2}, "about": "Превращает металл в электронику."},
+    "repair": {"name": "Ремонтный центр", "cost": {"metal": 240, "electronics": 50}, "seconds": 90, "power": -4, "hq": 3,
+               "repair": 2, "about": "Восстанавливает здоровье отрядов вне боя."},
 }
+MAX_LEVEL = 10
+BASE_STORAGE = 5000
+GROWTH = {"cost": 1.6, "time": 1.45, "output": 0.25, "power_use": 0.15, "power_gen": 0.3}
 HEROES = {
     "raven": {
         "name": "Генерал Рейвен",

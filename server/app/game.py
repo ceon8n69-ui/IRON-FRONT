@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS
-from . import expeditions, garrisons, equipment, bases
+from . import expeditions, garrisons, equipment, bases, economy
 from .combat import resolve
 
 
@@ -43,14 +43,30 @@ def notify(db, p, kind):
     db.add(Event(player_id=p.id, revision=p.revision, kind=kind, created_at=now()))
 
 
+def levels(buildings, at):
+    """Effective level per kind for buildings operating at time `at`."""
+    result = {}
+    for b in buildings:
+        if b.ready_at > at:
+            continue
+        level = b.level + (1 if b.upgrade_ready_at and b.upgrade_ready_at <= at else 0)
+        result[b.kind] = max(result.get(b.kind, 0), level)
+    return result
+
+
+def storage_cap(db, p, at=None):
+    return economy.storage(levels(rows(db, Building, p.id), now() if at is None else at))
+
+
 def change(db, p, delta, operation):
+    cap = storage_cap(db, p)
     balances = {r.kind: r for r in rows(db, Resource, p.id)}
     for kind, n in delta.items():
         if balances[kind].amount + n < 0:
             fail("Недостаточно ресурсов")
     for kind, n in delta.items():
         resource = balances[kind]
-        actual = min(n, 5000 - resource.amount) if n > 0 else n
+        actual = max(0, min(n, cap - resource.amount)) if n > 0 else n
         if not actual:
             continue
         resource.amount += actual
@@ -80,28 +96,29 @@ def settle(db, p, at=None):
     hero = db.get(Hero, p.id)
     totals = {k: 0 for k in INITIAL}
     balances = {r.kind: r.amount for r in rows(db, Resource, p.id)}
+    repair_minutes = 0
     for i in range(ticks):
         start = cursor + i * 60
+        active = levels(buildings, start)
+        cap = economy.storage(active)
         for territory in territories:
             if territory["acquired_at"] <= start:
                 for kind, amount in territory["yield"].items():
-                    gained = min(amount, 5000 - balances[kind])
+                    gained = max(0, min(amount, cap - balances[kind]))
                     balances[kind] += gained
                     totals[kind] += gained
-        active = [b for b in buildings if b.ready_at <= start]
-        power = sum(BUILDINGS[b.kind]["power"] for b in active)
-        if power < 0:
+        if sum(economy.power(k, n) for k, n in active.items()) < 0:
             continue
-        for b in sorted(active, key=lambda b: b.id):
-            spec = BUILDINGS[b.kind]
-            inputs = spec.get("input", {})
-            outputs = dict(spec.get("output", {}))
-            if b.kind == "quarry" and hero and hero.kind == "ghost":
+        repair_minutes += economy.repair_rate(active)
+        for kind in sorted(active):
+            inputs = economy.inputs(kind, active[kind])
+            outputs = economy.output(kind, active[kind])
+            if kind == "quarry" and hero and hero.kind == "ghost":
                 outputs["metal"] += 1
             if (
                 not outputs
                 or any(balances[k] < v for k, v in inputs.items())
-                or any(balances[k] + v > 5000 for k, v in outputs.items())
+                or any(balances[k] + v > cap for k, v in outputs.items())
             ):
                 continue
             for k, v in inputs.items():
@@ -114,9 +131,18 @@ def settle(db, p, at=None):
         change(db, p, totals, "production")
         p.settled_at = cursor + ticks * 60
     completed = False
+    if repair_minutes:
+        for unit in rows(db, Unit, p.id):
+            if unit.status in ("reserve", "army") and unit.hp < 100:
+                unit.hp = min(100, unit.hp + repair_minutes)
+                completed = True
     for b in buildings:
         if b.status == "building" and b.ready_at <= at:
             b.status = "ready"
+            completed = True
+        if b.upgrade_ready_at and b.upgrade_ready_at <= at:
+            b.level += 1
+            b.upgrade_ready_at = None
             completed = True
     for job in rows(db, Job, p.id):
         if job.status == "queued" and job.ready_at <= at:
@@ -139,10 +165,8 @@ def snapshot(db, p):
         "revision": p.revision,
         "server_time": now(),
         "resources": {r.kind: r.amount for r in rows(db, Resource, p.id)},
-        "buildings": [
-            serialize(b, "id kind q r level status ready_at")
-            for b in rows(db, Building, p.id)
-        ],
+        "buildings": [building_view(b, hq_level(db, p.id)) for b in rows(db, Building, p.id)],
+        "storage_cap": storage_cap(db, p),
         "jobs": [
             serialize(j, "id kind status ready_at")
             for j in rows(db, Job, p.id)
@@ -161,6 +185,28 @@ def snapshot(db, p):
         "first_victory": db.get(Reward, (p.id, "first-patrol")) is not None,
         **expeditions.state(db, p.id),
     }
+
+
+def hq_level(db, pid):
+    hq = db.scalar(select(Building).where(Building.player_id == pid, Building.kind == "hq"))
+    return hq.level if hq else 1
+
+
+def building_view(b, hq):
+    limit = economy.max_level(b.kind, hq)
+    can = b.level < limit
+    return {
+        "id": b.id, "kind": b.kind, "q": b.q, "r": b.r, "level": b.level,
+        "status": b.status, "ready_at": b.ready_at, "upgrade_ready_at": b.upgrade_ready_at,
+        "max_level": limit,
+        "upgrade": {"cost": economy.upgrade_cost(b.kind, b.level),
+                    "seconds": economy.upgrade_seconds(b.kind, b.level)} if can else None,
+        "effects": economy.describe(b.kind, b.level),
+    }
+
+
+def busy_queue(buildings):
+    return any(b.status == "building" or b.upgrade_ready_at for b in buildings)
 
 
 def execute(db, p, op, data, key):
@@ -205,11 +251,13 @@ def dispatch(db, p, op, data):
             fail("Клетка вне базы")
         if any(b.q == q and b.r == r for b in buildings):
             fail("Клетка занята")
-        if any(b.status == "building" for b in buildings):
+        if busy_queue(buildings):
             fail("Строительная очередь занята")
         if any(b.kind == kind for b in buildings):
-            fail("В первом срезе доступно одно здание каждого типа")
+            fail("Доступно одно здание каждого типа: улучшайте существующее")
         spec = BUILDINGS[kind]
+        if hq_level(db, p.id) < spec["hq"]:
+            fail(f"Требуется штаб {spec['hq']} уровня")
         if kind != "power" and not any(
             b.kind == "power" and b.status == "ready" for b in buildings
         ):
@@ -227,13 +275,24 @@ def dispatch(db, p, op, data):
         )
         db.add(obj)
         return {"id": obj.id}
+    if op == "upgrade":
+        b = db.get(Building, data["building_id"])
+        if not b or b.player_id != p.id:
+            raise HTTPException(404, "Здание не найдено")
+        if b.status != "ready":
+            fail("Дождитесь завершения строительства")
+        if busy_queue(buildings):
+            fail("Строительная очередь занята")
+        limit = economy.max_level(b.kind, hq_level(db, p.id))
+        if b.level >= limit:
+            fail("Достигнут максимальный уровень" if b.level >= economy.MAX_LEVEL else "Сначала улучшите штаб")
+        change(db, p, {k: -v for k, v in economy.upgrade_cost(b.kind, b.level).items()}, "upgrade")
+        b.upgrade_ready_at = now() + economy.upgrade_seconds(b.kind, b.level)
+        return {"id": b.id, "level": b.level + 1, "ready_at": b.upgrade_ready_at}
     if op == "train":
         if not any(b.kind == "barracks" and b.status == "ready" for b in buildings):
             fail("Необходимы готовые казармы")
-        if (
-            sum(BUILDINGS[b.kind]["power"] for b in buildings if b.status == "ready")
-            < 0
-        ):
+        if sum(economy.power(k, n) for k, n in levels(buildings, now()).items()) < 0:
             fail("Недостаточно энергии")
         if any(j.status == "queued" for j in rows(db, Job, p.id)):
             fail("Очередь подготовки занята")

@@ -23,6 +23,7 @@ export function createBuilding(b: Building): BuildingVisual {
   const radar = new Graphics();
   const smoke = new Container();
   const crane = new Container();
+  const pump = new Graphics();
   if (b.status === "building") {
     box(0,10,29,15,10,0x5e6861);
     for (const x of [-25,0,25]) {
@@ -85,6 +86,48 @@ export function createBuilding(b: Building): BuildingVisual {
     g.moveTo(-19,-31).lineTo(-19,-49).lineTo(13,-49).lineTo(13,-34).stroke({color:0xb9a67c,width:3});
     smoke.position.set(-19,-52); node.addChild(smoke);
   }
+  else if (b.kind === "oil_well") {
+    g.poly([-30,4,0,-12,30,4,0,20]).fill(0x3b4642);
+    // Pump jack: frame, beam, horse head.
+    g.moveTo(-12,6).lineTo(-2,-28).lineTo(8,6).stroke({color:0x8a9688,width:3});
+    pump.position.set(-2,-30); node.addChild(pump);
+    box(18,16,9,0,10,0x7a6f55);
+    g.rect(-27,-6,8,12).fill(0x2b3a3f);g.ellipse(-23,-6,4,2).fill(0x8f9a8c);
+  } else if (b.kind === "farm") {
+    for(let i=0;i<4;i++){const y=-2+i*6;g.poly([-36+i*4,y,-6+i*4,y-14,6+i*4,y-8,-24+i*4,y+6]).fill(i%2?0x7f9b4f:0x6c8a43);}
+    box(16,22,14,0,14,0x9b7f55);
+    g.poly([2,-30,16,-38,30,-30,16,-22]).fill(0xb3563f);
+    g.rect(-30,-32,6,24).fill(0xa9ad9a);g.ellipse(-27,-32,4,2).fill(0xd2d4c3);
+  } else if (b.kind === "warehouse") {
+    box(0,18,36,4,18,0x7d8a7c);
+    g.poly([-36,-20,0,-38,36,-20,0,-2]).fill(0x93a08f);
+    for(let i=0;i<3;i++) g.poly([6+i*9,-6+i*-4,13+i*9,-9+i*-4,13+i*9,4+i*-4,6+i*9,7+i*-4]).fill(0x2f4247);
+    for(let i=0;i<3;i++) box(-26+i*9,-14+i*4,4,0,5,0xc29b52);
+  } else if (b.kind === "watchtower") {
+    for(const x of [-12,12]) g.moveTo(x,6).lineTo(x*.4,-58).stroke({color:0x8b9783,width:3});
+    g.moveTo(-12,-10).lineTo(12,-30).moveTo(12,-10).lineTo(-12,-30).stroke({color:0x6d7b70,width:2});
+    box(0,62,14,0,8,0x93a08f);
+    g.poly([-14,-70,0,-82,14,-70]).fill(0x4c5c58);
+    radar.position.set(0,-86); node.addChild(radar);
+  } else if (b.kind === "electronics") {
+    box(-4,20,30,2,20,0x6e8486);
+    g.poly([-30,-22,-4,-36,22,-22,-4,-8]).fill(0x5d7577);
+    for(let i=0;i<5;i++) g.rect(-26+i*6,-14+i*2.8,3,4).fill(0x6fd0e5);
+    g.rect(14,-46,8,30).fill(0x617a7c);g.ellipse(18,-46,4,2).fill(0xb4c0b0);
+    for(let i=0;i<3;i++) g.circle(-14+i*9,-30+i*-1,2).fill(0x4c9ce5);
+    smoke.position.set(18,-50); node.addChild(smoke);
+  } else if (b.kind === "repair") {
+    box(0,18,32,2,18,0x7c8a80);
+    g.poly([-30,-18,0,-34,30,-18,0,-2]).fill(0x8d9a8c);
+    g.poly([4,-6,22,-15,22,6,4,15]).fill(0x24363c);
+    g.rect(-20,-30,10,3).fill(0xe5b65a);g.rect(-16.5,-34,3,11).fill(0xe5b65a);
+    box(-24,-4,9,0,6,0x5e6f5f);
+  }
+  if (b.upgrade_ready_at && b.status === "ready") {
+    g.rect(30,-62,3,58).fill(0xc5a35f);
+    const arm = new Graphics().moveTo(32,-61).lineTo(-14,-61).lineTo(26,-70).lineTo(32,-61).stroke({color:0xe5b65a,width:2});
+    crane.addChild(arm); node.addChild(crane);
+  }
   if(stage>1 && b.status === "ready") {
     for(let i=1;i<stage;i++) box(-34+i*11,-7,5,0,8,0x91a49b);
     g.moveTo(-41,8).lineTo(0,28).lineTo(41,8).stroke({color:stage===4?0xe5b65a:0x8caaac,width:stage});
@@ -96,6 +139,9 @@ export function createBuilding(b: Building): BuildingVisual {
     radar.clear().ellipse(0,0,10,4).stroke({color:0xb9c9b7,width:1.5})
       .moveTo(0,0).lineTo(Math.cos(t)*10,Math.sin(t)*4).stroke({color:0xe5b65a,width:2});
     puffs.forEach((p,i)=>{ const phase=(t*.2+i/4)%1; p.position.set(phase*14,-phase*27); p.scale.set(.4+phase);p.alpha=(1-phase)*.22; });
+    pump.clear().moveTo(-18,0).lineTo(16,0).stroke({color:0xb9a67c,width:3}).circle(-18,0,0).fill(0);
+    pump.rotation = Math.sin(t*1.4)*.25;
+    pump.poly([-22,-4,-14,-4,-14,10,-22,10]).fill(0xd8ac58);
     cable.clear().moveTo(14+Math.sin(t*.6)*12,-59).lineTo(14+Math.sin(t*.6)*12,-20).stroke({color:0xc3ba8c,width:1});
   };
   animate(0);
