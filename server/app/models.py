@@ -73,9 +73,11 @@ class Unit(Base):
     id = Column(String, primary_key=True)
     player_id = Column(ForeignKey("users.id"), nullable=False, index=True)
     kind = Column(String, nullable=False)
-    hp = Column(Integer, nullable=False, default=100)
+    hp = Column(Integer, nullable=False, default=100)      # health % of the top member
+    count = Column(Integer, nullable=False, default=10, server_default="10")
     status = Column(String, nullable=False, default="reserve")
-    __table_args__ = (CheckConstraint("hp >= 0 AND hp <= 100"),)
+    __table_args__ = (CheckConstraint("hp >= 0 AND hp <= 100"),
+                      CheckConstraint("count >= 1", name="ck_player_units_count"))
 
 
 class Hero(Base):

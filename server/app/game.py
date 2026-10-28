@@ -1,4 +1,4 @@
-import hashlib, json, time, uuid
+import hashlib, json, math, time, uuid
 from fastapi import HTTPException
 from sqlalchemy import select
 from .models import (
@@ -17,9 +17,9 @@ from .models import (
     Command,
     Event,
 )
-from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS
+from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS, UNITS, TUTORIAL_NPC
 from . import expeditions, garrisons, equipment, bases, economy, objects
-from .combat import resolve
+from . import combat
 
 
 def uid():
@@ -132,6 +132,10 @@ def settle(db, p, at=None):
         change(db, p, totals, "production")
         p.settled_at = cursor + ticks * 60
     completed = False
+    for battle in rows(db, Battle, p.id):
+        if battle.status == "active" and "stacks" not in battle.state:
+            battle.state = combat.from_legacy(battle.state, battle.unit_id)
+            completed = True
     if repair_minutes:
         for unit in rows(db, Unit, p.id):
             if unit.status in ("reserve", "army") and unit.hp < 100:
@@ -147,9 +151,8 @@ def settle(db, p, at=None):
             completed = True
     for job in rows(db, Job, p.id):
         if job.status == "queued" and job.ready_at <= at:
-            db.add(
-                Unit(id=job.id, player_id=p.id, kind=job.kind, hp=100, status="reserve")
-            )
+            db.add(Unit(id=job.id, player_id=p.id, kind=job.kind, hp=100,
+                        count=UNITS.get(job.kind, UNITS["rifles"])["count"], status="reserve"))
             job.status = "complete"
             completed = True
     if completed or marched or any(totals.values()):
@@ -173,7 +176,7 @@ def snapshot(db, p):
             for j in rows(db, Job, p.id)
             if j.status == "queued"
         ],
-        "units": [serialize(u, "id kind hp status") for u in rows(db, Unit, p.id)],
+        "units": [serialize(u, "id kind hp count status") for u in rows(db, Unit, p.id)],
         "hero": serialize(hero, "kind xp") if hero else None,
         "inventory": [
             {**serialize(i, "id definition_id source_id equipped created_at"), "definition":equipment.DEFINITIONS.get(i.definition_id), "source": "first-patrol" if i.definition_id=="field-module" else "garrison"}
@@ -188,6 +191,32 @@ def snapshot(db, p):
         "mines": [{"q": m.q, "r": m.r, "resource": m.resource, "rate": m.rate} for m in objects.mines(db, p.id)],
         "pending_chests": objects.pending_chests(db, p.id),
     }
+
+
+PLAYER_SPOTS = [[2, 4], [1, 3], [1, 5], [2, 2], [2, 6]]
+NPC_SPOTS = [[6, 4], [7, 3], [7, 5], [6, 2], [6, 6]]
+
+
+def npc_stacks(composition):
+    return [combat.make_stack(f"n{i+1}", "npc", kind, count, NPC_SPOTS[i])
+            for i, (kind, count) in enumerate(composition)]
+
+
+def battle_units(db, battle):
+    ids = [x["unit_id"] for x in battle.state["stacks"] if x["side"] == "player"]
+    return [db.get(Unit, i) for i in ids]
+
+
+def apply_losses(db, battle, outcome, hero):
+    """Casualties persist. Defeat keeps at least half of each stack; Phoenix recovers 10% of the fallen."""
+    for unit_id, r in combat.summary(battle.state).items():
+        unit = db.get(Unit, unit_id)
+        survivors, hp = r["alive"], r["hp_pct"]
+        if outcome != "victory" and survivors < math.ceil(r["start"] / 2):
+            survivors, hp = math.ceil(r["start"] / 2), 50
+        if hero.kind == "phoenix" and survivors < r["start"]:
+            survivors = min(r["start"], survivors + max(1, math.ceil(0.1 * (r["start"] - survivors))))
+        unit.count, unit.hp = max(1, survivors), max(1, min(100, hp or 50))
 
 
 def hq_level(db, pid):
@@ -242,7 +271,7 @@ def dispatch(db, p, op, data):
         return {"selected": data["kind"]}
     if not hero:
         fail("Сначала выберите командира")
-    if op in ("army_create", "army_order"):
+    if op in ("army_create", "army_order", "army_assign", "army_release"):
         return expeditions.dispatch(db, p, op, data, now(), uid, change)
     if op == "build":
         kind = data["kind"]
@@ -295,20 +324,22 @@ def dispatch(db, p, op, data):
         b.upgrade_ready_at = now() + economy.upgrade_seconds(b.kind, b.level)
         return {"id": b.id, "level": b.level + 1, "ready_at": b.upgrade_ready_at}
     if op == "train":
-        if not any(b.kind == "barracks" and b.status == "ready" for b in buildings):
+        kind = data.get("kind") or "rifles"
+        if kind not in UNITS:
+            fail("Неизвестный тип войск")
+        spec = UNITS[kind]
+        lv = levels(buildings, now())
+        if not lv.get("barracks"):
             fail("Необходимы готовые казармы")
-        if sum(economy.power(k, n) for k, n in levels(buildings, now()).items()) < 0:
+        for need, level in spec["requires"].items():
+            if lv.get(need, 0) < level:
+                fail(f"Требуется: {BUILDINGS[need]['name']} {level} уровня")
+        if sum(economy.power(k, n) for k, n in lv.items()) < 0:
             fail("Недостаточно энергии")
         if any(j.status == "queued" for j in rows(db, Job, p.id)):
             fail("Очередь подготовки занята")
-        change(db, p, {"metal": -60, "food": -40}, "training")
-        job = Job(
-            id=uid(),
-            player_id=p.id,
-            kind="rifles",
-            ready_at=now() + 45,
-            status="queued",
-        )
+        change(db, p, {k: -v for k, v in spec["cost"].items()}, "training")
+        job = Job(id=uid(), player_id=p.id, kind=kind, ready_at=now() + spec["seconds"], status="queued")
         db.add(job)
         return {"id": job.id}
     if op == "battle":
@@ -320,20 +351,13 @@ def dispatch(db, p, op, data):
         if not unit or unit.player_id != p.id or unit.status != "reserve":
             fail("Отряд недоступен")
         unit.status = "battle"
-        battle = Battle(
-            id=uid(),
-            player_id=p.id,
-            unit_id=unit.id,
-            status="active",
-            seed=uid(),
-            balance_version=VERSION,
-            state={
-                "turn": 1,
-                "player": {"pos": [2, 4], "hp": unit.hp},
-                "npc": {"pos": [6, 4], "hp": 70},
-                "cover": [[3, 4], [4, 2], [5, 5]],
-            },
-        )
+        seed = uid()
+        bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id == p.id)))
+        state, _, _ = combat.new_battle(
+            [combat.make_stack("p1", "player", unit.kind, unit.count, PLAYER_SPOTS[0], unit.id, unit.hp)],
+            npc_stacks(TUTORIAL_NPC), [[3, 4], [4, 2], [5, 5]], seed, hero.kind, bonus)
+        battle = Battle(id=uid(), player_id=p.id, unit_id=unit.id, status="active", seed=seed,
+                        balance_version=VERSION, state=state)
         db.add(battle)
         return {"id": battle.id}
     if op == "turn":
@@ -346,19 +370,16 @@ def dispatch(db, p, op, data):
             fail("Раунд устарел: обновите состояние")
         bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id)))
         try:
-            state, events, outcome = resolve(
-                battle.state, data, battle.seed, hero.kind, bonus
-            )
+            state, events, outcome = combat.resolve(battle.state, data, battle.seed, hero.kind, bonus)
         except ValueError as exc:
             fail(str(exc))
-        db.add(
-            BattleTurn(
-                battle_id=battle.id, turn=data["turn"], command=data, events=events
-            )
-        )
+        db.add(BattleTurn(battle_id=battle.id, turn=data["turn"], command=data, events=events))
         battle.state = state
         battle.status = outcome
-        if outcome != "active" and 'expedition' in state:
+        if outcome == "active":
+            return {"events": events, "outcome": outcome}
+        apply_losses(db, battle, outcome, hero)
+        if 'expedition' in state:
             captured=garrisons.finish(db,p,battle,outcome,now())
             if captured:
                 hero.xp += battle.state.get('npc_tier', {}).get('xp', 50)
@@ -368,37 +389,17 @@ def dispatch(db, p, op, data):
                 db.add(Ownership(id=uid(),item_id=item.id,owner_id=p.id,reason='garrison-loot-v1',created_at=now()))
                 battle.state={**battle.state,'loot':{'item_id':item.id,'definition_id':definition_id,'table_version':'gar-loot-v1','roll':roll},'captured':True}
             return {"events":events,"outcome":outcome,"captured":captured}
-        if outcome != "active":
-            unit = db.get(Unit, battle.unit_id)
+        for unit in battle_units(db, battle):
             unit.status = "reserve"
-            unit.hp = max(50, state["player"]["hp"])
-            if hero.kind == "phoenix":
-                unit.hp = min(100, unit.hp + 10)
-            if outcome == "victory":
-                db.add(
-                    Reward(player_id=p.id, mission="first-patrol", battle_id=battle.id)
-                )
-                change(db, p, {"metal": 150, "food": 60}, "first-patrol")
-                hero.xp += 100
-                item = Item(
-                    id=uid(),
-                    owner_id=p.id,
-                    definition_id="field-module",
-                    source_id=battle.id,
-                    equipped=False,
-                    created_at=now(),
-                )
-                db.add(item)
-                db.flush()
-                db.add(
-                    Ownership(
-                        id=uid(),
-                        item_id=item.id,
-                        owner_id=p.id,
-                        reason="first-patrol",
-                        created_at=now(),
-                    )
-                )
+        if outcome == "victory":
+            db.add(Reward(player_id=p.id, mission="first-patrol", battle_id=battle.id))
+            change(db, p, {"metal": 150, "food": 60}, "first-patrol")
+            hero.xp += 100
+            item = Item(id=uid(), owner_id=p.id, definition_id="field-module", source_id=battle.id,
+                        equipped=False, created_at=now())
+            db.add(item)
+            db.flush()
+            db.add(Ownership(id=uid(), item_id=item.id, owner_id=p.id, reason="first-patrol", created_at=now()))
         return {"events": events, "outcome": outcome}
     if op == "equip":
         item = db.get(Item, data["item_id"])

@@ -13,6 +13,7 @@ export type Building = {
   effects?: { current: Effects; next: Effects | null };
 };
 export type Effects = { output: Record<string, number>; input: Record<string, number>; power: number; storage: number; vision: number; repair: number };
+export type Stack = { id:string; side:"player"|"npc"; kind:string; count:number; start:number; hp:number; pos:number[]; acted:boolean; defending:boolean; unit_id?:string };
 export type Battle = {
   id: string;
   status: string;
@@ -22,8 +23,12 @@ export type Battle = {
     captured?: boolean;
     expedition?: {army_id:string;order_id:string;q:number;r:number};
     turn: number;
-    player: { pos: number[]; hp: number };
-    npc: { pos: number[]; hp: number };
+    round?: number;
+    stacks?: Stack[];
+    order?: string[];
+    active?: string | null;
+    ability_used?: boolean;
+    npc_tier?: {name:string;hp:number;xp:number};
     cover: number[][];
   };
 };
@@ -34,7 +39,7 @@ export type State = {
   resources: Record<string, number>;
   buildings: Building[];
   jobs: { id: string; ready_at: number }[];
-  units: { id: string; hp: number; status: string }[];
+  units: { id: string; kind: string; count: number; hp: number; status: string }[];
   hero: { kind: string; xp: number } | null;
   inventory: { id: string; definition_id: string; equipped: boolean; source:string; definition:{name:string;rarity:string;damage_bonus:number;image:string} }[];
   battles: Battle[];

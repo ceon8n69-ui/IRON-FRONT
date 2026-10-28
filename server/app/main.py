@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.6.0")
+app = FastAPI(title="IRON FRONT", version="0.7.0")
 
 
 class Strict(BaseModel):
@@ -76,9 +76,18 @@ class March(Strict):
 class Turn(Strict):
     battle_id: str = Field(max_length=40)
     turn: int = Field(ge=1, le=50)
-    action: Literal["move", "attack", "defend"]
+    action: Literal["move", "attack", "defend", "wait", "ability"]
     q: int = Field(default=0, ge=0, le=8)
     r: int = Field(default=0, ge=0, le=8)
+    target: str | None = Field(default=None, max_length=20)
+
+
+class Train(Strict):
+    kind: str = Field(default="rifles", max_length=20)
+
+
+class Compose(Strict):
+    unit_id: str = Field(max_length=40)
 
 
 class Equip(Strict):
@@ -194,6 +203,9 @@ def definitions():
     return {
         "buildings": config.BUILDINGS,
         "heroes": config.HEROES,
+        "units": config.UNITS,
+        "abilities": config.ABILITIES,
+        "army_stacks": config.ARMY_STACKS,
         "expeditions": config.EXPEDITIONS,
         "balance_version": config.VERSION,
         "offline_hours": 24,
@@ -259,10 +271,23 @@ def upgrade(
 
 @app.post("/api/v1/army/train")
 def train(
+    body: Train | None = None,
     authorization: str | None = Header(default=None),
     idempotency_key: str | None = Header(default=None),
 ):
-    return mutate("train", {}, authorization, idempotency_key)
+    return mutate("train", (body or Train()).model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/army/assign")
+def army_assign(body: Compose, authorization: str | None = Header(default=None),
+                idempotency_key: str | None = Header(default=None)):
+    return mutate("army_assign", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/army/release")
+def army_release(body: Compose, authorization: str | None = Header(default=None),
+                 idempotency_key: str | None = Header(default=None)):
+    return mutate("army_release", body.model_dump(), authorization, idempotency_key)
 
 
 @app.post("/api/v1/army/create")

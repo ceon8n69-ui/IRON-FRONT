@@ -759,3 +759,12 @@ html.locked,html.locked body{overflow:hidden;height:100%;position:fixed;inset:0;
 .world-stage .object-line{background:#101923;border:1px solid #3b4d5c;border-radius:8px;padding:8px}
 .world-stage .object-line b{color:#e5b65a}
 .world-stage .chest-choice h2{color:#e5b65a}
+.initiative{display:flex;gap:6px;overflow-x:auto;padding:4px 0 8px;scrollbar-width:none}
+.initiative .init{flex:none;font-size:11px;padding:5px 8px;border-radius:7px;border:1px solid #31424e;background:#101923;white-space:nowrap}
+.initiative .init.player{border-color:#4c9ce5;color:#bcdcf7}
+.initiative .init.npc{border-color:#d95a52;color:#f3c1bb}
+.initiative .init.now{background:#e5b65a;color:#101923;border-color:#e5b65a;font-weight:700}
+.initiative .init.done{opacity:.45}
+.train-option{margin:8px 0}
+.train-option button{width:100%;text-align:left}
+.train-option small{display:block;color:#9dafba;font-size:11px;margin-top:4px}

@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 from app.equipment import loot, DEFINITIONS, damage_bonus
-from app.combat import resolve
+from app.combat import resolve, new_battle, make_stack
 
 
 def test_loot_reproducible_and_all_tiers_reachable():
@@ -18,7 +18,8 @@ def test_equipment_bonus_is_capped_and_changes_combat_damage():
     assert damage_bonus([SimpleNamespace(definition_id='unknown',equipped=True)])==0
     for item in items:item.equipped=False
     assert damage_bonus(items)==0
-    state={'turn':1,'player':{'pos':[3,4],'hp':100},'npc':{'pos':[5,4],'hp':100},'cover':[]}
+    state=new_battle([make_stack('p1','player','rifles',10,[3,4],'u')],[make_stack('n1','npc','rifles',10,[5,4])],[],'same-seed','ghost',0)[0]
+    npc=lambda s:next(x for x in s['stacks'] if x['side']=='npc')['hp']
     baseline=resolve(state,{'action':'attack'},'same-seed','ghost',0)[0]
     boosted=resolve(state,{'action':'attack'},'same-seed','ghost',.05)[0]
-    assert boosted['npc']['hp']<baseline['npc']['hp']
+    assert npc(boosted)<npc(baseline)

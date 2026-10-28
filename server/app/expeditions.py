@@ -219,6 +219,8 @@ def dispatch(db, p, op, data, at, uid, change):
         return {'id':army.id}
     if garrisons.active(db,p.id):
         fail('Сначала завершите текущий бой')
+    if op in ('army_assign', 'army_release'):
+        return compose(db, p, op, data)
     army = db.get(Army,data['army_id'])
     if not army or army.player_id != p.id:
         raise HTTPException(404,'Соединение не найдено')
@@ -259,6 +261,35 @@ def dispatch(db, p, op, data, at, uid, change):
         q=q,r=r,action=data['action'],status='moving',started_at=at,ready_at=t,path=path)
     db.add(order);army.status='moving'
     return {'id':order.id}
+
+
+def compose(db, p, op, data):
+    """Pick up or leave stacks, Heroes-style: only while the army stands on its base."""
+    from .config import ARMY_STACKS
+    army = db.scalar(select(Army).where(Army.player_id == p.id))
+    if not army:
+        fail('Сначала сформируйте соединение')
+    if army.status != 'idle' or [army.q, army.r] != bases.home(db, p.id):
+        fail('Состав меняется только на базе: верните соединение домой')
+    unit = db.get(Unit, data['unit_id'])
+    if not unit or unit.player_id != p.id:
+        raise HTTPException(404, 'Отряд не найден')
+    members = list(db.scalars(select(ArmyUnit).where(ArmyUnit.army_id == army.id)))
+    if op == 'army_assign':
+        if unit.status != 'reserve':
+            fail('Отряд не в резерве')
+        if len(members) >= ARMY_STACKS:
+            fail(f'В соединении максимум {ARMY_STACKS} стеков')
+        db.add(ArmyUnit(army_id=army.id, unit_id=unit.id)); unit.status = 'army'
+    else:
+        link = next((m for m in members if m.unit_id == unit.id), None)
+        if not link:
+            fail('Отряд не в этом соединении')
+        if len(members) == 1:
+            fail('В соединении должен остаться хотя бы один стек')
+        db.delete(link); unit.status = 'reserve'
+    db.flush()
+    return {'army_id': army.id, 'unit_id': unit.id}
 
 
 def state(db,pid):

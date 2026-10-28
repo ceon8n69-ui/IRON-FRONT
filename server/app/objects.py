@@ -16,7 +16,8 @@ from . import bases, garrisons
 PILES = {"metal": 180, "oil": 120, "fuel": 60, "food": 150}
 CHEST = {"resources": {"metal": 250, "electronics": 60}, "xp": 120}
 MINES = {"metal": 6, "oil": 4}          # per minute, like territory yield
-TIERS = [("Патруль", 55, 50), ("Рота", 80, 75), ("Батальон", 110, 110)]
+from .config import NPC_TIERS, UNITS
+TIERS = [(t["name"], sum(UNITS[k]["hp"] * n for k, n in t["stacks"]), t["xp"]) for t in NPC_TIERS]
 
 
 def _roll(q, r, salt):

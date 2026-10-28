@@ -116,9 +116,10 @@ await waitFor(async () => (await state()).units.length === 1);
 await page.getByRole("button", { name: "В бой", exact: true }).click();
 await page.getByRole("heading", { name: "Патруль «Рубеж»" }).waitFor();
 const box = await page.locator("canvas").boundingBox();
+// Battle camera: scale 0.72, shifted 70px up (Map.tsx BATTLE_SCALE / BATTLE_SHIFT).
 await page.mouse.click(
-  box.x + box.width / 2 - 54 * Math.sqrt(3),
-  box.y + box.height * 0.5,
+  box.x + box.width / 2 - 54 * Math.sqrt(3) * 0.72,
+  box.y + box.height * 0.5 - 70,
 );
 await page.getByRole("button", { name: "Переместить", exact: true }).click();
 await waitFor(async () => (await state()).battles[0].state.turn === 2, 10000);
@@ -205,9 +206,9 @@ await page.mouse.click(garrisonMap.x+garrisonMap.width/2-54*Math.sqrt(3)/2,garri
 await page.getByRole('button',{name:'Атаковать гарнизон',exact:true}).click();
 await waitFor(async()=>(await state()).battles.some(b=>b.status==='active'&&b.state.expedition),45000);
 await page.reload();
-await page.getByRole('heading',{name:/Гарнизон NPC/}).waitFor();
+await page.getByRole('heading',{name:/NPC ·/}).waitFor();
 const battleBox=await page.locator('canvas').boundingBox();
-await page.mouse.click(battleBox.x+battleBox.width/2-54*Math.sqrt(3),battleBox.y+battleBox.height*.5);
+await page.mouse.click(battleBox.x+battleBox.width/2-54*Math.sqrt(3)*.72,battleBox.y+battleBox.height*.5-70);
 await page.getByRole('button',{name:'Переместить',exact:true}).click();
 await waitFor(async()=>(await state()).battles.some(b=>b.status==='active'&&b.state.expedition&&b.state.turn===2),10000);
 await page.screenshot({path:'/tmp/iron-garrison-battle.png',fullPage:true});
@@ -235,7 +236,7 @@ await page.getByRole('button',{name:'Командир',exact:true}).click();
 const trophy=conquered.inventory.find(i=>i.source==='garrison');
 const trophyCard=page.locator('.equipment-card').filter({has:page.getByRole('heading',{name:trophy.definition.name,exact:true})});
 await trophyCard.getByRole('button',{name:'Снарядить',exact:true}).click();
-assert.equal((await state()).inventory.find(i=>i.id===trophy.id).equipped,true);
+await waitFor(async()=>(await state()).inventory.find(i=>i.id===trophy.id).equipped===true,10000);
 await page.reload();
 await page.getByRole('button',{name:'Армия',exact:true}).click();
 await page.getByRole('button',{name:'Командир',exact:true}).click();
