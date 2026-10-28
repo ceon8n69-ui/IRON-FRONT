@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from .models import Army, ArmyUnit, ArmyOrder, Tile, TileOwnership, Discovery, Unit, Hero, Reward
 from .config import EXPEDITIONS as RULES
 from .combat import distance
-from . import garrisons
+from . import garrisons, bases
 
 
 def fail(reason):
@@ -17,14 +17,14 @@ def owned(db, pid):
 
 
 def linked(db, pid, q, r):
-    return distance(RULES['home'], [q, r]) == 1 or any(
+    return distance(bases.home(db, pid), [q, r]) == 1 or any(
         distance([t.q, t.r], [q, r]) == 1 for t in owned(db, pid))
 
 
 def visible(db, pid, q, r):
     hero = db.get(Hero, pid)
     vision = 4 if hero and hero.kind == 'valkyrie' else 3
-    if distance(RULES['home'], [q, r]) <= vision:
+    if distance(bases.home(db, pid), [q, r]) <= vision:
         return True
     army = db.scalar(select(Army).where(Army.player_id == pid))
     return bool(army and distance([army.q, army.r], [q, r]) <= RULES['army_vision'])
@@ -53,7 +53,12 @@ def settle_orders(db, p, at):
     tile = db.scalar(select(Tile).where(Tile.world_id == 1, Tile.q == order.q, Tile.r == order.r).with_for_update())
     owner = db.get(TileOwnership, (1,order.q,order.r))
     reason = None
-    if owner and owner.player_id != p.id:
+    is_base, base_owner = bases.at(db, order.q, order.r)
+    if is_base and base_owner not in (None, p.id):
+        reason = 'Это база другого командира. PvP пока не включён.'
+    elif is_base and order.action == 'capture':
+        reason = 'Базу нельзя захватить как территорию.'
+    elif owner and owner.player_id != p.id:
         reason = 'Территорию занял другой игрок. Армия осталась на исходной позиции.'
     elif order.action == 'capture':
         if owner:
@@ -62,9 +67,9 @@ def settle_orders(db, p, at):
             reason = 'Достигнут лимит контроля.'
         elif not linked(db,p.id,order.q,order.r):
             reason = 'Нет связи с подконтрольной территорией.'
-        elif not garrisons.guarded(order.q,order.r):
+        elif not garrisons.guarded_at(db,order.q,order.r):
             db.add(TileOwnership(world_id=1,q=tile.q,r=tile.r,player_id=p.id,acquired_at=at))
-    if not reason and not owner and garrisons.guarded(order.q,order.r):
+    if not reason and not owner and not is_base and garrisons.guarded_at(db,order.q,order.r):
         # Both movement and capture must engage a neutral garrison.
         garrisons.begin(db,p,army,order)
         order.finished_at=at
@@ -92,9 +97,8 @@ def dispatch(db, p, op, data, at, uid, change):
         unit = db.get(Unit,data['unit_id'])
         if not unit or unit.player_id != p.id or unit.status != 'reserve' or unit.hp <= 0:
             fail('Отряд недоступен')
-        if not db.get(Tile,(1,*RULES['home'])):
-            fail('Мировая карта ещё не готова')
-        army = Army(id=uid(),player_id=p.id,world_id=1,q=64,r=64,status='idle')
+        base = bases.ensure(db, p, at)
+        army = Army(id=uid(),player_id=p.id,world_id=1,q=base.q,r=base.r,status='idle')
         db.add(army);db.flush()
         db.add(ArmyUnit(army_id=army.id,unit_id=unit.id));unit.status='army'
         discover(db,army,at)
@@ -113,11 +117,14 @@ def dispatch(db, p, op, data, at, uid, change):
     if not tile or not visible(db,p.id,q,r):
         fail('Гекс недоступен для приказа')
     owner = db.get(TileOwnership,(1,q,r))
+    is_base, base_owner = bases.at(db, q, r)
+    if is_base and base_owner not in (None, p.id):
+        fail('Это база другого командира. PvP пока не включён')
     if owner and owner.player_id != p.id:
         fail('Вход на чужую территорию пока недоступен: PvP не включён')
-    if data['action'] == 'capture' or (not owner and garrisons.guarded(q,r)):
-        if [q,r] == RULES['home']:
-            fail('Стартовый пункт нельзя захватить')
+    if data['action'] == 'capture' or (not owner and not is_base and garrisons.guarded_at(db,q,r)):
+        if is_base:
+            fail('Базу нельзя захватить как территорию')
         if owner:
             fail('Территория уже принадлежит вам')
         if len(owned(db,p.id)) >= RULES['control_limit']:

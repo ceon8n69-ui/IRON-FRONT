@@ -281,7 +281,7 @@ function App() {
           </section>}
           <div className="screen-title">
             <div>
-              <small>СЕКТОР 64 : 64</small>
+              <small>СЕКТОР {state.base ? `${state.base.q} : ${state.base.r}` : "—"}</small>
               <h1>
                 {battle
                   ? "Патруль «Рубеж»"

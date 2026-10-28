@@ -3,11 +3,26 @@ import uuid
 from sqlalchemy import select
 from .models import Battle, ArmyUnit, Unit, Army, ArmyOrder, Tile, TileOwnership
 from .config import VERSION
+from . import bases
 
 
-def guarded(q, r):
-    # Keep the first eastward expansion open; explicit nearby tutorial target.
-    return (q, r) == (64, 65) or (abs(q-64)+abs(r-64)>4 and (q*7+r*11)%13 == 0)
+def guarded(q, r, sites):
+    """Neutral NPC garrison rule relative to nearby base sites.
+
+    Each base has a tutorial garrison directly south (q, r+1); the rest of its
+    safe zone (|dq|+|dr| <= 4) stays open, so the first eastward expansion is
+    always free. Outside every safe zone a fixed coordinate pattern applies.
+    """
+    sites = list(sites)
+    if (q, r - 1) in sites:
+        return True
+    if any(abs(q - b[0]) + abs(r - b[1]) <= bases.SAFE_RADIUS for b in sites):
+        return False
+    return (q*7 + r*11) % 13 == 0
+
+
+def guarded_at(db, q, r):
+    return guarded(q, r, bases.near(db, q, r, bases.SAFE_RADIUS))
 
 
 def active(db, pid):

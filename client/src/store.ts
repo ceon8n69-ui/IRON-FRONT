@@ -34,6 +34,7 @@ export type State = {
   inventory: { id: string; definition_id: string; equipped: boolean; source:string; definition:{name:string;rarity:string;damage_bonus:number;image:string} }[];
   battles: Battle[];
   first_victory: boolean;
+  base: {q:number;r:number} | null;
   armies: Army[];
   territories: Territory[];
 };
@@ -93,6 +94,6 @@ export async function command(path: string, body: unknown) {
 
 export type MarchOrder = { id:string; q:number; r:number; from_q:number; from_r:number; action:string; status:string; started_at:number; ready_at:number; finished_at:number|null; result:string|null };
 export type Army = { id:string; q:number; r:number; status:string; unit_ids:string[]; orders:MarchOrder[] };
-export type WorldTile = { q:number; r:number; biome:string; visibility:string; control:"self"|"other"|"neutral"|null; home:boolean; garrison?:boolean };
+export type WorldTile = { q:number; r:number; biome:string; visibility:string; control:"self"|"other"|"neutral"|null; home:boolean; base?:"self"|"other"|"staging"|null; garrison?:boolean };
 export type Territory = { q:number; r:number; biome:string; yield:Record<string,number>; acquired_at:number };
-export type ExpeditionRules = {home:number[];seconds:number;fuel:number;control_limit:number;army_vision:number;territory_yield:Record<string,Record<string,number>>};
+export type ExpeditionRules = {staging:number[];seconds:number;fuel:number;control_limit:number;army_vision:number;territory_yield:Record<string,Record<string,number>>};

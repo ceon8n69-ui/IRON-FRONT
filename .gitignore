@@ -6,3 +6,4 @@ client/dist/
 .env
 *.pyc
 *.log
+dump.rdb

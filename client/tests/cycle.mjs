@@ -191,7 +191,9 @@ await page.getByRole("heading",{name:"Передовая база"}).waitFor();
 await page.getByRole("button",{name:"Карта",exact:true}).click();
 await page.getByText(/Под контролем 1\/12/).waitFor();
 const captured=await state();
-assert.equal(captured.armies[0].q,65);
+assert.ok(captured.base);
+assert.equal(captured.armies[0].q,captured.base.q+1);
+assert.equal(captured.armies[0].r,captured.base.r);
 assert.equal(captured.armies[0].status,"idle");
 assert.equal(captured.resources.fuel,198);
 await page.getByRole("button",{name:"К соединению",exact:true}).click();
@@ -217,7 +219,8 @@ for(let i=0;i<5;i++){
 }
 const conquered=await state();
 assert.equal(conquered.territories.length,2);
-assert.equal(conquered.armies[0].r,65);
+assert.equal(conquered.armies[0].q,conquered.base.q);
+assert.equal(conquered.armies[0].r,conquered.base.r+1);
 assert.equal(conquered.hero.xp,150);
 assert.equal(conquered.inventory.length,2);
 assert.ok(conquered.inventory.some(i=>i.source==="garrison"));

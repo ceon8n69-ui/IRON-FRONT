@@ -2,11 +2,11 @@
 
 ## Playable sequence
 
-Complete the first patrol, open Army → Units, form one army from a reserve squad, then choose an adjacent world hex. Move or capture costs 2 fuel and takes 30 server seconds. Neutral sites have no NPC garrison in this release. Return by adjacent movement to the shared safe staging tile 64:64.
+Complete the first patrol, open Army → Units, form one army from a reserve squad, then choose an adjacent world hex. Move or capture costs 2 fuel and takes 30 server seconds. Neutral sites have no NPC garrison in this release. Return by adjacent movement to your own world base (see BASES.md; the shared staging tile 64:64 is legacy only).
 
 The first slice deliberately has one army per player, one initial member and twelve controlled tiles. The normalized army_units relation allows capacity expansion later. The common staging tile is not an exclusive player base or claimable land. Individual world base placement, additional staging regions, PvP, guarded-site battles and army composition editing remain future work. A common staging tile limits expansion opportunities and is suitable for a small test cohort, not public-scale launch.
 
-Captures must connect to the staging tile or the player's existing territory. No other-player territory can be entered. Crossing neutral territory is allowed; it does not automatically establish control. A successful capture reveals surrounding terrain and grants minute production according to biome: plains 2 food, forest 2 metal, hills 3 metal, desert 2 oil. Current storage and offline limits apply. Production starts only after confirmed ownership; no retroactive gain while capture was pending.
+Captures must connect to the player's own base or existing territory. No other-player territory can be entered. Crossing neutral territory is allowed; it does not automatically establish control. A successful capture reveals surrounding terrain and grants minute production according to biome: plains 2 food, forest 2 metal, hills 3 metal, desert 2 oil. Current storage and offline limits apply. Production starts only after confirmed ownership; no retroactive gain while capture was pending.
 
 If another player claims the target before this order is resolved, the order becomes blocked, the army remains at its source, and the travel fuel is spent. The first server transaction to resolve the claim wins. Territory ownership is protected by the tile row lock and a unique world/q/r primary key, not by client timestamps.
 
