@@ -4,12 +4,13 @@ from app.combat import resolve, new_battle, make_stack
 
 
 def test_loot_reproducible_and_all_tiers_reachable():
-    rolls=[loot(str(i)) for i in range(1000)]
-    assert rolls==[loot(str(i)) for i in range(1000)]
+    rolls=[loot(str(i),t) for t in (0,1,2) for i in range(1000)]
+    assert rolls==[loot(str(i),t) for t in (0,1,2) for i in range(1000)]
     assert {kind for kind,_ in rolls}==set(DEFINITIONS)-{'field-module'}
     for kind,roll in rolls:
         assert 0<=roll<100
-        assert kind==('garrison-module-v1' if roll<70 else 'precision-module-v1' if roll<95 else 'vanguard-module-v1')
+    epic=lambda t:sum(DEFINITIONS[loot(str(i),t)[0]]['rarity']=='epic' for i in range(1000))
+    assert epic(0)<epic(1)<epic(2)
 
 
 def test_equipment_bonus_is_capped_and_changes_combat_damage():

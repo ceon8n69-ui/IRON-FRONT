@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "tools/art-manifest.json"
 SOURCE = ROOT / "art-source"
 API = "https://api.openai.com/v1/images/generations"
-SIZE = {"unit": "1536x1024", "portrait": "1024x1536", "tile": "1024x1024", "building": "1024x1024"}
+SIZE = {"unit": "1536x1024", "portrait": "1024x1536", "tile": "1024x1024", "building": "1024x1024", "item": "1024x1024"}
 UNIT_W, UNIT_H, FEET = 256, 224, 0.82
 
 
@@ -69,6 +69,18 @@ def fit_portrait(img):
     return img.resize((640, 960), Image.LANCZOS)
 
 
+def fit_item(img):
+    """Trim to the object and centre it in a 256x256 transparent square."""
+    img = img.convert("RGBA")
+    box = img.getchannel("A").point(lambda a: 255 if a > 24 else 0).getbbox() or (0, 0, *img.size)
+    obj = img.crop(box)
+    scale = 232 / max(obj.width, obj.height)
+    obj = obj.resize((max(1, round(obj.width * scale)), max(1, round(obj.height * scale))), Image.LANCZOS)
+    out = Image.new("RGBA", (256, 256), (0, 0, 0, 0))
+    out.alpha_composite(obj, ((256 - obj.width) // 2, (256 - obj.height) // 2))
+    return out
+
+
 def fit_tile(img):
     img = img.convert("RGBA")
     box = img.getchannel("A").getbbox() or (0, 0, *img.size)
@@ -79,7 +91,8 @@ def fit_tile(img):
 def save(entry, raw):
     img = Image.open(io.BytesIO(raw))
     kind = entry["kind"]
-    out = fit_unit(img) if kind == "unit" else fit_portrait(img) if kind == "portrait" else fit_tile(img)
+    out = (fit_unit(img) if kind == "unit" else fit_portrait(img) if kind == "portrait"
+           else fit_item(img) if kind == "item" else fit_tile(img))
     path = ROOT / entry["path"]
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.suffix == ".webp":

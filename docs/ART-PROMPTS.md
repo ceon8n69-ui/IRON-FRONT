@@ -7,6 +7,7 @@
 
 - Юниты: PNG 256×224 с прозрачностью, фигура смотрит вправо, ноги на 82% высоты. Скрипт сам обрезает и центрирует.
 - Портреты: WebP 640×960 (2:3).
+- Артефакты: WebP 256×256 с прозрачностью.
 - Тайлы и здания: PNG с прозрачностью; в игре пока рисуются кодом.
 
 Файл генерируется из конфига: `PYTHONPATH=server python tools/build_art_prompts.py`.
@@ -204,6 +205,72 @@
 **`portrait-storm`** → `client/public/art/commanders/storm-v2.webp` — Генерал Шторм
 
 > Original chibi dieselpunk commander portrait for IRON FRONT, oversized head, thick dark ink outline, flat cel shading, head to mid-thigh, 2:3 vertical, dark navy hangar background #101923 with soft rim light. energetic tank general with dark skin, tanker headset around neck, olive crew suit, lime accent patch. No text, no logos, no real insignia, no real person likeness.
+
+## Артефакты командира
+
+**`item-field-module`** → `client/public/art/equipment/field-module.webp` — Полевой модуль
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft green rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a compact olive field electronics module with brass dials and a small antenna.
+
+**`item-garrison-module-v1`** → `client/public/art/equipment/garrison-module-v1.webp` — Трофейный модуль
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft green rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a battered captured tactical module with riveted steel casing and a red status lamp.
+
+**`item-precision-module-v1`** → `client/public/art/equipment/precision-module-v1.webp` — Модуль точности
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft blue rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a precision targeting module with a round lens, crosshair glass and brass rings.
+
+**`item-vanguard-module-v1`** → `client/public/art/equipment/vanguard-module-v1.webp` — Модуль «Авангард»
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft purple rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: an ornate vanguard command module with gold trims and a glowing amber core.
+
+**`item-service-pistol`** → `client/public/art/equipment/service-pistol.webp` — Наградной пистолет
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft green rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: an ornate award pistol with engraved steel and a polished wooden grip.
+
+**`item-marshal-sabre`** → `client/public/art/equipment/marshal-sabre.webp` — Сабля маршала
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft blue rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a curved officer sabre with a brass guard and a leather-wrapped hilt.
+
+**`item-field-baton`** → `client/public/art/equipment/field-baton.webp` — Жезл фельдмаршала
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft purple rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a field marshal baton, dark lacquer with gold caps and small stars.
+
+**`item-plated-greatcoat`** → `client/public/art/equipment/plated-greatcoat.webp` — Шинель с бронепластинами
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft green rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a folded charcoal greatcoat with riveted armour plates on the shoulders.
+
+**`item-veteran-cuirass`** → `client/public/art/equipment/veteran-cuirass.webp` — Кираса ветерана
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft blue rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a dented steel chest cuirass with leather straps and brass buckles.
+
+**`item-bastion-armor`** → `client/public/art/equipment/bastion-armor.webp` — Доспех «Бастион»
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft purple rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a heavy ornate chest armour with layered plates and gold rims.
+
+**`item-valor-medal`** → `client/public/art/equipment/valor-medal.webp` — Медаль за отвагу
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft green rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a round bronze valour medal on a striped ribbon (fictional design, no real order).
+
+**`item-staff-badge`** → `client/public/art/equipment/staff-badge.webp` — Знак штабиста
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft blue rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a silver staff officer badge with a compass and crossed pencils.
+
+**`item-fortune-order`** → `client/public/art/equipment/fortune-order.webp` — Орден Фортуны
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft purple rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a star-shaped golden order with a four-leaf clover in the centre.
+
+**`item-field-binoculars`** → `client/public/art/equipment/field-binoculars.webp` — Полевой бинокль
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft green rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a pair of olive field binoculars with leather strap.
+
+**`item-quartermaster-bag`** → `client/public/art/equipment/quartermaster-bag.webp` — Сумка интенданта
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft blue rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a bulging leather quartermaster satchel with coins and papers sticking out.
+
+**`item-route-atlas`** → `client/public/art/equipment/route-atlas.webp` — Атлас маршрутов
+
+> Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft purple rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a thick map atlas with brass corners and a compass on the cover.
 
 ## Ландшафт (подключение позже)
 

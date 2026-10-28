@@ -161,10 +161,21 @@ function App() {
   const battle = state?.battles.find((b) => b.status === "active");
   const activeStack = battle?.state.stacks?.find((x) => x.id === battle.state.active);
   const targetStack = battle && selected ? battle.state.stacks?.find((x) => x.side === "npc" && x.hp > 0 && x.pos[0] === selected[0] && x.pos[1] === selected[1]) : undefined;
+  const [battleNote, setBattleNote] = useState("");
+  const noteFrom = (events: { type: string }[] = []) => {
+    const lines = [events.some((e) => e.type === "luck") && "🍀 Удачный удар ×1.5", events.some((e) => e.type === "morale") && "🎺 Боевой дух: стек действует ещё раз"].filter(Boolean);
+    setBattleNote(lines.join(" · "));
+  };
   const battleCommand = (extra: Record<string, unknown>) => battle && run(async () => {
-    await command("/battles/commands", { battle_id: battle.id, turn: battle.state.turn, ...extra });
+    const data = await command("/battles/commands", { battle_id: battle.id, turn: battle.state.turn, ...extra });
+    noteFrom(data?.result?.events);
     setSelected(null);
   });
+  const quickBattle = () => battle && run(async () => {
+    await command("/battles/auto", { battle_id: battle.id });
+    setBattleNote(""); setSelected(null);
+  });
+  const hexDistance = (a: number[], b: number[]) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[0] + a[1] - b[0] - b[1]));
   const lastBattle = state?.battles.at(-1);
   const step = !state?.hero
     ? 0
@@ -365,6 +376,17 @@ function App() {
                     </span>;
                   })}
                 </div>
+                {activeStack && (() => {
+                  const foes = (battle.state.stacks ?? []).filter((x) => x.side === "npc" && x.hp > 0);
+                  const aim = targetStack ?? [...foes].sort((a, b) => hexDistance(activeStack.pos, a.pos) - hexDistance(activeStack.pos, b.pos) || a.hp - b.hp)[0];
+                  const pv = aim && battle.preview?.[aim.id];
+                  if (!pv) return null;
+                  const range = (v: number[]) => v[0] === v[1] ? `${v[0]}` : `${v[0]}–${v[1]}`;
+                  return <p className="strike-preview">{pv.reach
+                    ? <>🎯 {defs?.units[aim.kind]?.name}: урон {range(pv.damage)}, убьёт <b>{range(pv.kills)}</b>{pv.retaliation ? <> · ответ: потеряете <b>{range(pv.retaliation.kills)}</b></> : " · без ответа"}</>
+                    : <>🎯 {defs?.units[aim.kind]?.name}: {defs?.units[activeStack.kind]?.melee ? "не дойти за ход" : "вне дальности"} — подойдите ближе</>}</p>;
+                })()}
+                {battleNote && <p className="battle-note" role="status">{battleNote}</p>}
                 {activeStack && <p>
                   Ходит: <b>{defs?.units[activeStack.kind]?.name}</b> ({Math.ceil(activeStack.hp / (defs?.units[activeStack.kind]?.hp ?? 10))} из {activeStack.start}) ·
                   скорость {defs?.units[activeStack.kind]?.speed}{state.hero?.kind === "storm" ? "+1" : ""} · {defs?.units[activeStack.kind]?.melee ? "ближний бой" : `дальность ${defs?.units[activeStack.kind]?.range}`}.
@@ -397,6 +419,7 @@ function App() {
                 })()}
                 <div className="actions">
                   <button disabled={busy} onClick={() => battleCommand({ action: "wait" })}>Ждать</button>
+                  <button disabled={busy} title="Сервер доиграет бой за вас: быстро, но без способностей" onClick={quickBattle}>⚡ Быстрый бой</button>
                   {state.hero && defs?.abilities[state.hero.kind] && battle.state.led !== false && <button disabled={busy || !!battle.state.ability_used} title={defs.abilities[state.hero.kind].about}
                     onClick={() => battleCommand({ action: "ability", ...(targetStack ? { target: targetStack.id } : {}) })}>
                     ★ {defs.abilities[state.hero.kind].name}{battle.state.ability_used ? " · использовано" : ""}
@@ -485,7 +508,7 @@ function App() {
                   </div>;
                 })}
               </>}
-              </> : state.hero && defs && <Commander state={state} definition={defs.heroes[state.hero.kind]} busy={busy} equip={(item_id,equipped)=>run(()=>command("/equipment/equip",{item_id,equipped}))}/>}
+              </> : state.hero && defs && <Commander state={state} definition={defs.heroes[state.hero.kind]} busy={busy} equip={(item_id,equipped)=>run(()=>command("/equipment/equip",{item_id,equipped}))} pick={(key)=>run(()=>command("/commander/skill",{key}))}/>}
             </section>
           ) : tab === "Альянс" ? (
             <section className="content">
@@ -557,7 +580,7 @@ function App() {
                 className={tab === t ? "active" : ""}
                 onClick={() => changeTab(t)}
               >
-                <span><Icon name={icon}/></span>
+                <span><Icon name={icon}/>{t === "Армия" && !!state?.commander?.pending && <i className="nav-badge" aria-label="Доступен новый навык">{state.commander.pending}</i>}</span>
                 {t}
               </button>
             ))}

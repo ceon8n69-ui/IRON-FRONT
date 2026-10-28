@@ -161,10 +161,11 @@ def begin(db, p, army, order, tgt, at):
     defender = db.get(Player, tgt["defender_id"])
     hero = db.get(Hero, p.id)
     led = bool(army.commander)
-    bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id == p.id))) if led else 0
+    from . import commander
     seed = str(uuid.uuid4())
     cover = BASE_COVER if tgt["kind"] == "base" else FIELD_COVER
-    state, _, _ = combat.new_battle(stacks, enemy, cover, seed, hero.kind if led else None, bonus)
+    state, _, _ = combat.new_battle(stacks, enemy, cover, seed, hero.kind if led else None, 0,
+                                    commander.army_perks(db, p.id) if led else {})
     state["led"] = led
     tile = db.get(Tile, (1, order.q, order.r))
     state["expedition"] = {"army_id": army.id, "order_id": order.id, "q": order.q, "r": order.r}
@@ -232,10 +233,13 @@ def finish(db, p, battle, outcome, at):
         db.get(Hero, p.id).xp += PVP["xp"]
         kind = info["target"]
         if kind == "base":
+            from . import commander
             loot = _loot(db, defender, at)
+            bonus = commander.perk(db, p.id, "plunder")
+            gained = {k: round(v * (1 + bonus)) for k, v in loot.items()}
             if loot:
                 change(db, defender, {k: -v for k, v in loot.items()}, "pvp_raid_loss")
-                change(db, p, loot, "pvp_raid")
+                change(db, p, gained, "pvp_raid")
             defender.shield_until = max(defender.shield_until, at + PVP["raid_shield_seconds"])
             result = "Налёт удался: трофеи доставлены на базу" if loot else "Налёт удался, но склады противника пусты"
         elif kind == "mine":

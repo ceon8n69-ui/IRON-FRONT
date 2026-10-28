@@ -33,14 +33,21 @@ def has_land(db, army):
     return any(not UNITS.get(k, {}).get("naval") for k in kinds)
 
 
-def movement_max(db, pid):
+def movement_max(db, pid, army=None):
+    from . import commander
     hero = db.get(Hero, pid)
-    return RULES['movement_max'] + (2 if hero and hero.kind == 'storm' else 0)
+    extra = commander.perk(db, pid, 'movement') if army is not None and army.commander else 0
+    return RULES['movement_max'] + (2 if hero and hero.kind == 'storm' else 0) + int(extra)
+
+
+def army_vision(db, army):
+    from . import commander
+    return RULES['army_vision'] + (int(commander.perk(db, army.player_id, 'vision')) if army.commander else 0)
 
 
 def refresh_movement(db, army, at):
     """Lazy real-time regeneration: +1 point per regen period, capped."""
-    cap, period = movement_max(db, army.player_id), RULES['movement_regen_seconds']
+    cap, period = movement_max(db, army.player_id, army), RULES['movement_regen_seconds']
     if not army.movement_at:
         army.movement_at = at
     if army.movement >= cap:
@@ -54,14 +61,14 @@ def refresh_movement(db, army, at):
 
 def spend_movement(db, army, cost, at):
     refresh_movement(db, army, at)
-    if army.movement >= movement_max(db, army.player_id):
+    if army.movement >= movement_max(db, army.player_id, army):
         army.movement_at = at  # regeneration clock starts with the first spent point
     army.movement -= cost
 
 
 def route(db, p, army, target, at):
     """Cheapest path over known, passable hexes. Returns [(q, r, cost), ...] and total."""
-    radius = movement_max(db, p.id) + 1
+    radius = movement_max(db, p.id, army) + 1
     q0, r0 = army.q, army.r
     box = lambda m: (m.world_id == 1, m.q.between(q0-radius, q0+radius), m.r.between(r0-radius, r0+radius))
     tiles = {(t.q, t.r): t.biome for t in db.scalars(select(Tile).where(*box(Tile)))}
@@ -70,10 +77,11 @@ def route(db, p, army, target, at):
     sites = bases.near(db, q0, r0, radius + bases.SAFE_RADIUS + 2)
     home, vision = bases.home(db, p.id), home_vision(db, p.id)
     fleet = has_fleet(db, army)
+    sight = army_vision(db, army)
     cleared = garrisons.cleared_in(db, q0, r0, radius)
 
     def known(c):
-        return c in found or distance(home, c) <= vision or distance((q0, r0), c) <= RULES['army_vision']
+        return c in found or distance(home, c) <= vision or distance((q0, r0), c) <= sight
 
     water_wall = []
 
@@ -155,7 +163,7 @@ def home_vision(db, pid):
 def visible(db, pid, q, r):
     if distance(bases.home(db, pid), [q, r]) <= home_vision(db, pid):
         return True
-    return any(distance([a.q, a.r], [q, r]) <= RULES['army_vision'] for a in armies(db, pid))
+    return any(distance([a.q, a.r], [q, r]) <= army_vision(db, a) for a in armies(db, pid))
 
 
 def armies(db, pid):
@@ -176,7 +184,7 @@ def in_battle(db, pid):
 
 def discover(db, army, at):
     # No arbitrary client coordinates; only actual server-side army position.
-    radius = RULES['army_vision']
+    radius = army_vision(db, army)
     tiles = db.scalars(select(Tile).where(Tile.world_id == 1,
         Tile.q.between(army.q-radius,army.q+radius), Tile.r.between(army.r-radius,army.r+radius)))
     values = [dict(player_id=army.player_id, world_id=1,q=t.q,r=t.r,discovered_at=at)
@@ -308,7 +316,7 @@ def dispatch(db, p, op, data, at, uid, change):
         base = bases.ensure(db, p, at)
         number = min(set(range(1, limit + 2)) - {a.number for a in mine})
         army = Army(id=uid(),player_id=p.id,world_id=1,q=base.q,r=base.r,status='idle',number=number,
-                    commander=not any(a.commander for a in mine),movement=movement_max(db, p.id),movement_at=at)
+                    commander=not any(a.commander for a in mine),movement=RULES['movement_max'],movement_at=at)
         db.add(army);db.flush()
         db.add(ArmyUnit(army_id=army.id,unit_id=unit.id));unit.status='army'
         discover(db,army,at)
@@ -432,12 +440,13 @@ def compose(db, p, op, data):
 
 def state(db,pid):
     views=[]
-    cap=movement_max(db,pid);period=RULES['movement_regen_seconds']
+    period=RULES['movement_regen_seconds']
     fighting=in_battle(db,pid)
     for army in armies(db,pid):
+        cap=movement_max(db,pid,army)
         orders=list(db.scalars(select(ArmyOrder).where(ArmyOrder.army_id == army.id).order_by(ArmyOrder.started_at.desc(),ArmyOrder.id).limit(10)))
         views.append({'id':army.id,'number':army.number,'commander':army.commander,'in_battle':fighting==army.id,
-            'q':army.q,'r':army.r,'status':army.status,
+            'q':army.q,'r':army.r,'status':army.status,'vision':army_vision(db,army),
             'movement':army.movement,'movement_max':cap,
             'movement_next_at':None if army.movement>=cap else army.movement_at+period,
             'unit_ids':list(db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id))),

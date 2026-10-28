@@ -243,7 +243,7 @@ await page.getByRole('button',{name:'Командир',exact:true}).click();
 await page.getByRole('heading',{name:trophy.definition.name,exact:true}).waitFor();
 await page.locator('.commander-art img').evaluate(img=>img.decode());
 await page.screenshot({path:'/tmp/iron-loot-inventory.png',fullPage:true});
-assert.equal((await state()).inventory.filter(i=>i.equipped).length,1);
+{const on=(await state()).inventory.filter(i=>i.equipped);assert.ok(on.some(i=>i.id===trophy.id));assert.equal(new Set(on.map(i=>i.definition.slot)).size,on.length);}
 assert.deepEqual(errors, []);
 console.log(
   "PASS: mobile end-to-end cycle, real timers, reload persistence, equipment, real march/capture, no JS errors",

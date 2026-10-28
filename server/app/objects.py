@@ -119,8 +119,10 @@ def arrive(db, p, q, r, at_time, change):
     if won is None:
         return "Здесь уже побывал другой отряд."
     if obj["kind"] == "pile":
-        change(db, p, {obj["resource"]: obj["amount"]}, "map_pile")
-        return f"Найдено: +{obj['amount']} ({obj['resource']})"
+        from . import commander
+        amount = round(obj["amount"] * (1 + commander.perk(db, p.id, "plunder")))
+        change(db, p, {obj["resource"]: amount}, "map_pile")
+        return f"Найдено: +{amount} ({obj['resource']})"
     return "Найден сундук: выберите награду"
 
 
