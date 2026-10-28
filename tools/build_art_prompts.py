@@ -44,7 +44,7 @@ UNIT_PROMPT = ("Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s
                "{acc}, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, "
                "readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: {subj}.")
 PORTRAITS = {
-    "raven": "stern general with grey temples, charcoal coat, crimson armband, officer cap",
+    "raven": "stern but kind veteran general with grey temples and a short grey moustache, charcoal greatcoat with a crimson scarf, plain peaked cap without any emblem, holding a folded map",
     "valkyrie": "calm female scout commander with short ash-blonde hair, binoculars, steel-blue scarf",
     "titan": "huge bald veteran colonel with grey beard in heavy plated armour, brass trims, arms folded",
     "phoenix": "confident female logistics marshal with dark skin, black hair bun, orange scarf, supply tablet",

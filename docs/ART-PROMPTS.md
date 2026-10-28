@@ -183,7 +183,7 @@
 
 **`portrait-raven`** → `client/public/art/commanders/raven-v2.webp` — Генерал Рейвен
 
-> Original chibi dieselpunk commander portrait for IRON FRONT, oversized head, thick dark ink outline, flat cel shading, head to mid-thigh, 2:3 vertical, dark navy hangar background #101923 with soft rim light. stern general with grey temples, charcoal coat, crimson armband, officer cap. No text, no logos, no real insignia, no real person likeness.
+> Original chibi dieselpunk commander portrait for IRON FRONT, oversized head, thick dark ink outline, flat cel shading, head to mid-thigh, 2:3 vertical, dark navy hangar background #101923 with soft rim light. stern but kind veteran general with grey temples and a short grey moustache, charcoal greatcoat with a crimson scarf, plain peaked cap without any emblem, holding a folded map. No text, no logos, no real insignia, no real person likeness.
 
 **`portrait-valkyrie`** → `client/public/art/commanders/valkyrie-v2.webp` — Командир Валькирия
 
