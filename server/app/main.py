@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.11.0")
+app = FastAPI(title="IRON FRONT", version="0.12.0")
 
 
 class Strict(BaseModel):
