@@ -52,6 +52,7 @@ class Building(Base):
     level = Column(Integer, nullable=False, default=1)
     ready_at = Column(BigInteger, nullable=False)
     status = Column(String, nullable=False)
+    upgrade_ready_at = Column(BigInteger)
     __table_args__ = (
         UniqueConstraint("player_id", "q", "r"),
         CheckConstraint("level >= 1 AND level <= 10"),

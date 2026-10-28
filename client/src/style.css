@@ -726,3 +726,27 @@ progress::-moz-progress-bar { background:#e5b65a; }
 
 .equipment-card.rarity-rare {border-color:#4c9ce5}.equipment-card.rarity-epic {border-color:#ae7adb}
 .inventory-filters {flex-wrap:wrap}.loot-shortcut {margin:0 12px 12px;font-size:12px}
+
+/* ---- Telegram fullscreen + swipe lock (0.4) ---- */
+:root{--safe-top:calc(var(--tg-safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));--safe-bottom:max(env(safe-area-inset-bottom),var(--tg-safe-area-inset-bottom,0px))}
+html,body{overscroll-behavior:none}
+header{padding-top:calc(17px + max(env(safe-area-inset-top),var(--safe-top)))}
+html.locked,html.locked body{overflow:hidden;height:100%;position:fixed;inset:0;width:100%;touch-action:none}
+/* Full-screen world: the canvas fills the device; HUD floats above it. */
+.map-screen{max-width:none;height:100vh;height:var(--tg-viewport-height,100dvh)}
+.map-screen > .world-stage{position:absolute;inset:0;touch-action:none}
+.map-screen > .resources{position:absolute;top:0;left:0;right:0;z-index:5;border:0;background:linear-gradient(#101923f0,#101923b0 70%,#10192300);padding-top:calc(10px + var(--safe-top));padding-bottom:18px;pointer-events:none}
+.map-screen > nav{position:absolute;left:0;right:0;bottom:0;transform:none;max-width:none;z-index:6;background:#14212cd9;padding-bottom:calc(7px + var(--safe-bottom))}
+.map-screen .world-stage .world-tools{top:calc(64px + var(--safe-top))}
+.map-screen .world-stage .world-control-count{top:calc(118px + var(--safe-top))}
+.map-screen .world-stage .world-orders{bottom:calc(74px + var(--safe-bottom));touch-action:pan-y;overscroll-behavior:contain}
+.map-screen .world-stage .map-controls{top:calc(64px + var(--safe-top))}
+.building-effects{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.building-effects div{background:#101923;border:1px solid #31424e;border-radius:8px;padding:8px}
+.building-effects small{display:block;color:#9dafba;font-size:11px}
+.building-effects b{font-size:13px}
+.upgrade-progress{height:6px;border-radius:3px;background:#263746;overflow:hidden;margin:6px 0}
+.upgrade-progress i{display:block;height:100%;background:#e5b65a}
+.level-pips{display:flex;gap:3px;margin:6px 0}
+.level-pips i{flex:1;height:5px;border-radius:2px;background:#263746}
+.level-pips i.on{background:#e5b65a}

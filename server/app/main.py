@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.3.0")
+app = FastAPI(title="IRON FRONT", version="0.4.0")
 
 
 class Strict(BaseModel):
@@ -50,6 +50,10 @@ class Choose(Strict):
 class Build(Choose):
     q: int = Field(ge=-4, le=4)
     r: int = Field(ge=-4, le=4)
+
+
+class Upgrade(Strict):
+    building_id: str = Field(max_length=40)
 
 
 class StartBattle(Strict):
@@ -187,7 +191,8 @@ def definitions():
         "expeditions": config.EXPEDITIONS,
         "balance_version": config.VERSION,
         "offline_hours": 24,
-        "storage_cap": 5000,
+        "storage_cap": config.BASE_STORAGE,
+        "max_level": config.MAX_LEVEL,
     }
 
 
@@ -226,6 +231,15 @@ def build(
     idempotency_key: str | None = Header(default=None),
 ):
     return mutate("build", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/construction/upgrade")
+def upgrade(
+    body: Upgrade,
+    authorization: str | None = Header(default=None),
+    idempotency_key: str | None = Header(default=None),
+):
+    return mutate("upgrade", body.model_dump(), authorization, idempotency_key)
 
 
 @app.post("/api/v1/army/train")
@@ -319,11 +333,10 @@ def tiles(
             Discovery.q.between(q-radius,q+radius), Discovery.r.between(r-radius,r+radius)))}
         owners = {(t.q,t.r):t.player_id for t in db.scalars(select(TileOwnership).where(
             TileOwnership.world_id==1,TileOwnership.q.between(q-radius,q+radius),TileOwnership.r.between(r-radius,r+radius)))}
-        hero = db.get(Hero,pid)
         home = bases.home(db,pid)
         sites = bases.near(db,q,r,radius+bases.SAFE_RADIUS)
         army_state = expeditions.state(db,pid)["armies"]
-        home_vision = 4 if hero and hero.kind == "valkyrie" else 3
+        home_vision = expeditions.home_vision(db,pid)
         from .combat import distance
         result=[]
         for t in ts:
