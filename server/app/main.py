@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
-from . import config, expeditions, garrisons
+from . import config, expeditions, garrisons, bases
 from .db import SessionLocal
 from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery
 from .auth import validate_init_data, token_hash
@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.2.0")
+app = FastAPI(title="IRON FRONT", version="0.3.0")
 
 
 class Strict(BaseModel):
@@ -167,6 +167,7 @@ def login(body: Login, request: Request):
                     status="ready",
                 )
             )
+            bases.ensure(db, player, now())
         token = secrets.token_urlsafe(32)
         db.add(
             Session(
@@ -319,20 +320,27 @@ def tiles(
         owners = {(t.q,t.r):t.player_id for t in db.scalars(select(TileOwnership).where(
             TileOwnership.world_id==1,TileOwnership.q.between(q-radius,q+radius),TileOwnership.r.between(r-radius,r+radius)))}
         hero = db.get(Hero,pid)
+        home = bases.home(db,pid)
+        sites = bases.near(db,q,r,radius+bases.SAFE_RADIUS)
         army_state = expeditions.state(db,pid)["armies"]
         home_vision = 4 if hero and hero.kind == "valkyrie" else 3
         from .combat import distance
         result=[]
         for t in ts:
-            in_view = distance(config.EXPEDITIONS["home"],[t.q,t.r]) <= home_vision or any(distance([a["q"],a["r"]],[t.q,t.r]) <= config.EXPEDITIONS["army_vision"] for a in army_state)
+            in_view = distance(home,[t.q,t.r]) <= home_vision or any(distance([a["q"],a["r"]],[t.q,t.r]) <= config.EXPEDITIONS["army_vision"] for a in army_state)
             known = in_view or (t.q,t.r) in discovered
             owner = owners.get((t.q,t.r)) if in_view else None
+            site = (t.q,t.r) in sites
+            base = None
+            if site and in_view:
+                base = "self" if sites[(t.q,t.r)] == pid else "other" if sites[(t.q,t.r)] else "staging"
             result.append({"id":f"1:{t.q}:{t.r}","q":t.q,"r":t.r,
                 "biome":t.biome if known else "unknown",
-                "garrison":bool(in_view and not owner and garrisons.guarded(t.q,t.r)),
+                "garrison":bool(in_view and not owner and not site and garrisons.guarded(t.q,t.r,sites)),
                 "visibility":"visible" if in_view else "explored" if known else "unknown",
                 "control":("self" if owner == pid else "other" if owner else "neutral") if in_view else None,
-                "home":[t.q,t.r] == config.EXPEDITIONS["home"]})
+                "home":[t.q,t.r] == home,
+                "base":base})
         return {"tiles":result}
 
 

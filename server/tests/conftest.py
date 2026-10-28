@@ -44,6 +44,12 @@ def client(monkeypatch):
         url, connect_args={"prepare_threshold": None}
     ).execution_options(schema_translate_map={None: schema})
     Base.metadata.create_all(scoped)
+    # Same 128x128 world as production bootstrap, uniform plains for stable tests.
+    from app.models import Tile
+    with scoped.begin() as c:
+        c.execute(Tile.__table__.insert(), [
+            {"world_id": 1, "q": q, "r": r, "biome": "plain"}
+            for q in range(128) for r in range(128)])
     factory = sessionmaker(scoped, expire_on_commit=False)
     monkeypatch.setattr(main, "SessionLocal", factory)
     monkeypatch.setattr(main, "rate_limit", lambda *args, **kw: None)

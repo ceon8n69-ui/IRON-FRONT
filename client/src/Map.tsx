@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle, Army } from "./store";
-type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; garrison?: boolean };
+type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean };
 type Props = {
   buildings: Building[];
   paused?: boolean;
@@ -248,9 +248,9 @@ export function MapView(props: Props) {
       if (t.visibility === "explored") g.alpha = .55;
       ground.addChild(g);
       if(t.visibility!=="unknown")ground.addChild(surface(x,y,t.biome,t.q+(props.center?.[0]??0),t.r+(props.center?.[1]??0)));
-      if (t.control === "self" || t.control === "other" || t.home) {
+      if (t.control === "self" || t.control === "other" || t.home || t.base) {
         const border = new Graphics();
-        hex(border,x,y,48,t.home ? 0xb89b5c : t.control === "self" ? 0x4c9ce5 : 0xd95a52);
+        hex(border,x,y,48,t.home ? 0xe5b65a : t.base === "other" ? 0xd95a52 : t.base === "staging" ? 0xa7aeb5 : t.control === "self" ? 0x4c9ce5 : 0xd95a52);
         border.alpha=.3;ground.addChild(border);
       }
       if (t.garrison) {

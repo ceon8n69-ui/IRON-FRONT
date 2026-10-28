@@ -1,18 +1,21 @@
 from sqlalchemy import select, func
 from app.models import Battle, TileOwnership
 from conftest import post
-from test_expeditions import commander, create, order
+from test_expeditions import commander, create, order, home, player_id
+from app import game
+from app.models import Army
 from test_integration import advance
 
 
-def arrive(c,h,a,monkeypatch):
-    assert order(c,h,a,64,65).status_code==200
+def arrive(c,h,a,monkeypatch,target=None):
+    Q,R=target or home(c,h)
+    assert order(c,h,a,Q,R+1).status_code==200
     advance(c,monkeypatch,31)
     s=c.get('/api/v1/player/me',headers=h).json()
-    assert not s['territories']
+    assert not any((t['q'],t['r'])==(Q,R+1) for t in s['territories'])
     b=next(b for b in s['battles'] if b['status']=='active')
-    assert b['state']['expedition']['q']==64
-    assert order(c,h,a,65,64).status_code==409
+    assert (b['state']['expedition']['q'],b['state']['expedition']['r'])==(Q,R+1)
+    assert order(c,h,a,Q+1,R).status_code==409
     return b
 
 
@@ -34,7 +37,8 @@ def test_garrison_capture_and_restart(client,monkeypatch):
     assert next(x for x in s['battles'] if x['id']==b['id'])['status']=='active'
     result=finish(c,h,b)
     assert result['result']['captured'] is True
-    s=result['state'];assert len(s['territories'])==1 and s['armies'][0]['r']==65
+    Q,R=home(c,h)
+    s=result['state'];assert len(s['territories'])==1 and s['armies'][0]['r']==R+1
     assert s['hero']['xp']==150 and len(s['inventory'])==2
     assert s['units'][0]['status']=='army'
     trophy=next(i for i in s['inventory'] if i['source']=='garrison')
@@ -59,18 +63,22 @@ def test_garrison_defeat_keeps_origin_and_no_reward(client,monkeypatch):
     c=client;h,u=commander(c,monkeypatch);a=create(c,h,u);b=arrive(c,h,a,monkeypatch)
     result=finish(c,h,b,'defend');s=result['state']
     assert result['result']['outcome']=='defeat' and not s['territories']
-    assert s['armies'][0]['r']==64 and s['hero']['xp']==100
+    assert s['armies'][0]['r']==home(c,h)[1] and s['hero']['xp']==100
     assert len(s['inventory'])==1
     assert s['units'][0]['hp']>=50 and s['units'][0]['status']=='army'
 
 
 def test_two_garrison_victories_only_one_owner_and_reward(client,monkeypatch):
     c=client;h,u=commander(c,monkeypatch);h2,u2=commander(c,monkeypatch,456)
-    a=create(c,h,u);a2=create(c,h2,u2)
-    b=arrive(c,h,a,monkeypatch);b2=arrive(c,h2,a2,monkeypatch)
+    a=create(c,h,u);a2=create(c,h2,u2);Q,R=home(c,h)
+    # Second commander holds the hex beside the first base's tutorial garrison.
+    with c.factory.begin() as db:
+        db.add(TileOwnership(world_id=1,q=Q+1,r=R+1,player_id=player_id(c,456),acquired_at=game.now()))
+        army=db.get(Army,a2['id']);army.q,army.r=Q+1,R+1
+    b=arrive(c,h,a,monkeypatch);b2=arrive(c,h2,a2,monkeypatch,target=(Q,R))
     assert post(c,'/battles/commands',{'battle_id':b['id'],'turn':1,'action':'defend'},h2).status_code==404
     first=finish(c,h,b);second=finish(c,h2,b2)
     assert first['result']['captured'] and not second['result']['captured']
     assert second['state']['hero']['xp']==100
     assert len(first['state']['inventory'])==2 and len(second['state']['inventory'])==1
-    with c.factory() as db:assert db.scalar(select(func.count()).select_from(TileOwnership))==1
+    with c.factory() as db:assert db.scalar(select(func.count()).select_from(TileOwnership).where(TileOwnership.q==Q,TileOwnership.r==R+1))==1

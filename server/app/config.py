@@ -10,7 +10,7 @@ if DATABASE_URL.startswith("postgresql://"):
 ENV = os.environ.get("APP_ENV", "production")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-VERSION = "slice-2"
+VERSION = "slice-3"
 RESOURCES = ["metal", "oil", "fuel", "electronics", "food"]
 INITIAL = {"metal": 1000, "oil": 300, "fuel": 200, "electronics": 200, "food": 300}
 BUILDINGS = {
@@ -83,7 +83,7 @@ HEROES = {
 }
 
 EXPEDITIONS = {
-    "home": [64, 64],
+    "staging": [64, 64],  # legacy shared point; each player now has a world base
     "seconds": 30,
     "fuel": 2,
     "control_limit": 12,

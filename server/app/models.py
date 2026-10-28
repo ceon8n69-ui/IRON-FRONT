@@ -233,3 +233,17 @@ class Discovery(Base):
     __table_args__ = (
         ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
     )
+
+
+class WorldBase(Base):
+    __tablename__ = "player_bases"
+    player_id = Column(ForeignKey("users.id"), primary_key=True)
+    world_id = Column(Integer, nullable=False, default=1)
+    q = Column(Integer, nullable=False)
+    r = Column(Integer, nullable=False)
+    created_at = Column(BigInteger, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
+        UniqueConstraint("world_id", "q", "r", name="uq_player_bases_site"),
+        CheckConstraint("NOT (q = 64 AND r = 64)", name="ck_player_bases_not_staging"),
+    )

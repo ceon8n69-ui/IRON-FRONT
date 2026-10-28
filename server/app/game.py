@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS
-from . import expeditions, garrisons, equipment
+from . import expeditions, garrisons, equipment, bases
 from .combat import resolve
 
 
@@ -69,6 +69,7 @@ def change(db, p, delta, operation):
 
 def settle(db, p, at=None):
     at = now() if at is None else at
+    bases.ensure(db, p, at)
     marched = expeditions.settle_orders(db, p, at)
     territories = expeditions.state(db, p.id)["territories"]
     buildings = rows(db, Building, p.id)
@@ -134,6 +135,7 @@ def snapshot(db, p):
     serialize = lambda o, keys: {k: getattr(o, k) for k in keys.split()}
     return {
         "player": {"id": p.id, "name": p.name},
+        "base": {"q": base.q, "r": base.r} if (base := bases.get(db, p.id)) else None,
         "revision": p.revision,
         "server_time": now(),
         "resources": {r.kind: r.amount for r in rows(db, Resource, p.id)},
