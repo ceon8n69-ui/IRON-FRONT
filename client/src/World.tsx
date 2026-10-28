@@ -96,7 +96,7 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
        <div className="actions"><button disabled={busy||!!baseReason||!!tile?.garrison} onClick={()=>send('move')}>{tile.object?.kind==="pile"?"Забрать ресурсы":tile.object?.kind==="chest"?"Открыть сундук":tile.object?.kind==="mine"&&tile.object.owner!=="self"?"Поднять флаг":"Переместить армию"}</button><button className="primary" disabled={busy||!!captureReason} onClick={()=>send('capture')}>{tile.garrison?"Атаковать гарнизон":"Захватить гекс"}</button></div>}
        {(hostile?attackReason&&attackReason!=="Разведка…":baseReason||captureReason)&&<p className="action-reason">{hostile?attackReason:baseReason||captureReason}</p>}
      </article>}
-     {!tile&&army&&<p>Выберите соединение вверху или на карте, затем любой разведанный гекс: маршрут и цена в очках хода появятся на карте. Очки восстанавливаются сами, полный запас за 8 часов. Гарнизоны NPC отмечены флагом.</p>}
+     {!tile&&army&&<p>Выберите соединение вверху или на карте, затем любой разведанный гекс: маршрут и цена в очках хода появятся на карте. На каждом рассвете, раз в 4 часа, соединения получают полный запас хода. Доход идёт только с земель, связанных с базой. Гарнизоны NPC отмечены флагом, узлы — ★.</p>}
      {!tile&&!!pvp?.reports.length&&<div className="pvp-reports"><small>ДОНЕСЕНИЯ</small>{pvp.reports.slice(0,3).map(r=><p key={r.id} className={r.outcome} onClick={()=>focus(r.q,r.r)}>{reportLine(r)}</p>)}</div>}
      {!tile&&state.battles.some(b=>b.state.loot)&&<button className="loot-shortcut" onClick={goArmy}>Трофеи → Армия → Командир</button>}
      {error&&<p className="action-reason" role="alert">{error}</p>}
