@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from .models import Army, ArmyUnit, ArmyOrder, Tile, TileOwnership, Discovery, Unit, Hero, Reward
 from .config import EXPEDITIONS as RULES
 from .combat import distance
-from . import garrisons, bases, objects, pvp
+from . import garrisons, bases, objects, pvp, logistics
 
 
 def fail(reason):
@@ -41,13 +41,34 @@ def movement_max(db, pid, army=None):
 
 
 def army_vision(db, army):
-    from . import commander
-    return RULES['army_vision'] + (int(commander.perk(db, army.player_id, 'vision')) if army.commander else 0)
+    from . import commander, seasons
+    fog = int(seasons.effect(db, 'army_vision', _now(), 0))
+    return max(1, RULES['army_vision'] + fog + (int(commander.perk(db, army.player_id, 'vision')) if army.commander else 0))
+
+
+def _now():
+    import time
+    return int(time.time())
+
+
+def control_limit(db, pid):
+    from .models import Building
+    hq = db.scalar(select(Building).where(Building.player_id == pid, Building.kind == 'hq'))
+    level = hq.level if hq else 1
+    return min(RULES['control_cap'], RULES['control_limit'] + RULES['control_per_hq'] * (level - 1))
 
 
 def refresh_movement(db, army, at):
-    """Lazy real-time regeneration: +1 point per regen period, capped."""
+    """Heroes-style days: every army refills its movement in full at each in-game dawn.
+    Without a season (legacy data) points trickle back one per regen period."""
+    from . import seasons
     cap, period = movement_max(db, army.player_id, army), RULES['movement_regen_seconds']
+    dawn = seasons.day_start(db, at)
+    if dawn is not None:
+        if not army.movement_at or army.movement_at < dawn:
+            army.movement, army.movement_at = cap, dawn
+        army.movement = min(army.movement, cap)
+        return
     if not army.movement_at:
         army.movement_at = at
     if army.movement >= cap:
@@ -60,9 +81,10 @@ def refresh_movement(db, army, at):
 
 
 def spend_movement(db, army, cost, at):
+    from . import seasons
     refresh_movement(db, army, at)
-    if army.movement >= movement_max(db, army.player_id, army):
-        army.movement_at = at  # regeneration clock starts with the first spent point
+    if seasons.day_start(db, at) is None and army.movement >= movement_max(db, army.player_id, army):
+        army.movement_at = at  # legacy trickle: the clock starts with the first spent point
     army.movement -= cost
 
 
@@ -80,8 +102,11 @@ def route(db, p, army, target, at):
     sight = army_vision(db, army)
     cleared = garrisons.cleared_in(db, q0, r0, radius)
 
+    radar = logistics.radars(db, p.id)
+
     def known(c):
-        return c in found or distance(home, c) <= vision or distance((q0, r0), c) <= sight
+        return c in found or distance(home, c) <= vision or distance((q0, r0), c) <= sight \
+            or any(distance((rq, rr), c) <= rv for rq, rr, rv in radar)
 
     water_wall = []
 
@@ -106,7 +131,12 @@ def route(db, p, army, target, at):
     reason = blocked(target, True)
     if reason:
         fail(reason)
-    costs = RULES['terrain_cost']
+    costs = dict(RULES['terrain_cost'])
+    from . import seasons
+    mud = seasons.effect(db, 'rough_cost', at, 0)
+    if mud:
+        for k in ('forest', 'hills', 'river'):
+            costs[k] = costs.get(k, 1) + mud
 
     def step_cost(here, there):
         if fleet and there in WATER:
@@ -163,7 +193,8 @@ def home_vision(db, pid):
 def visible(db, pid, q, r):
     if distance(bases.home(db, pid), [q, r]) <= home_vision(db, pid):
         return True
-    return any(distance([a.q, a.r], [q, r]) <= army_vision(db, a) for a in armies(db, pid))
+    return any(distance([a.q, a.r], [q, r]) <= army_vision(db, a) for a in armies(db, pid)) \
+        or any(distance((rq, rr), (q, r)) <= rv for rq, rr, rv in logistics.radars(db, pid))
 
 
 def armies(db, pid):
@@ -238,10 +269,8 @@ def _settle_army(db, p, army, at, change):
     elif order.action == 'capture':
         if owner:
             reason = 'Территория уже под вашим контролем.'
-        elif len(owned(db,p.id)) >= RULES['control_limit']:
+        elif len(owned(db,p.id)) >= control_limit(db,p.id):
             reason = 'Достигнут лимит контроля.'
-        elif not linked(db,p.id,order.q,order.r):
-            reason = 'Нет связи с подконтрольной территорией.'
         elif not garrisons.guarded_at(db,order.q,order.r):
             db.add(TileOwnership(world_id=1,q=tile.q,r=tile.r,player_id=p.id,acquired_at=at))
     if not reason and not owner and not is_base and garrisons.guarded_at(db,order.q,order.r):
@@ -296,10 +325,8 @@ def _order_attack(db, p, army, tile, tgt, at):
     if reason:
         fail(reason)
     if tgt['kind'] == 'territory':
-        if len(owned(db, p.id)) >= RULES['control_limit']:
+        if len(owned(db, p.id)) >= control_limit(db, p.id):
             fail('Достигнут лимит контроля: удержать территорию не получится')
-        if not linked(db, p.id, tile.q, tile.r):
-            fail('Захват требует связи с вашей территорией или базой')
 
 
 def dispatch(db, p, op, data, at, uid, change):
@@ -359,10 +386,8 @@ def dispatch(db, p, op, data, at, uid, change):
             fail('Базу нельзя захватить как территорию')
         if owner:
             fail('Территория уже принадлежит вам')
-        if len(owned(db,p.id)) >= RULES['control_limit']:
+        if len(owned(db,p.id)) >= control_limit(db,p.id):
             fail('Достигнут лимит контроля')
-        if not linked(db,p.id,q,r):
-            fail('Захват требует связи с вашей территорией или базой')
     refresh_movement(db, army, at)
     if cost > army.movement:
         fail(f'Недостаточно очков хода: нужно {cost}, доступно {army.movement}')
@@ -441,6 +466,9 @@ def compose(db, p, op, data):
 def state(db,pid):
     views=[]
     period=RULES['movement_regen_seconds']
+    from . import seasons
+    cal=seasons.calendar(seasons.current(db),_now())
+    dawn_next=cal['next_day_at'] if cal else None
     fighting=in_battle(db,pid)
     for army in armies(db,pid):
         cap=movement_max(db,pid,army)
@@ -448,11 +476,19 @@ def state(db,pid):
         views.append({'id':army.id,'number':army.number,'commander':army.commander,'in_battle':fighting==army.id,
             'q':army.q,'r':army.r,'status':army.status,'vision':army_vision(db,army),
             'movement':army.movement,'movement_max':cap,
-            'movement_next_at':None if army.movement>=cap else army.movement_at+period,
+            'movement_next_at':None if army.movement>=cap else (dawn_next or army.movement_at+period),
             'unit_ids':list(db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id))),
             'orders':[{k:getattr(o,k) for k in ('id','q','r','from_q','from_r','action','status','started_at','ready_at','finished_at','result','path')} for o in orders]})
     territories=[]
+    supply=logistics.supplied(db,pid)
     for t in owned(db,pid):
         tile=db.get(Tile,(1,t.q,t.r))
-        territories.append({'q':t.q,'r':t.r,'biome':tile.biome,'yield':RULES['territory_yield'].get(tile.biome,{}),'acquired_at':t.acquired_at})
+        node=logistics.node_kind(db,t.q,t.r)
+        produce=dict(RULES['territory_yield'].get(tile.biome,{}))
+        if node:
+            from . import nodes
+            for k,v in nodes.KINDS[node]['yield'].items():
+                produce[k]=produce.get(k,0)+v
+        territories.append({'q':t.q,'r':t.r,'biome':tile.biome,'yield':produce,'acquired_at':t.acquired_at,
+                            'supplied':(t.q,t.r) in supply,'node':node})
     return {'armies':views,'armies_max':armies_max(db,pid),'territories':territories}

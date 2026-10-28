@@ -199,3 +199,31 @@ export function vehicle(x:number,y:number,color:number,kind:string,ratio:number)
   g.roundRect(x-20,y+22,40*Math.max(.01,ratio),3,1).fill(color);
   return g;
 }
+
+// Strategic nodes (original code art): oil derrick, electronics plant, radar station.
+export function node(x:number,y:number,kind:string,owner:number|null){
+  const g=new Graphics();
+  const ink=0x1b201e;
+  g.ellipse(x,y+12,32,11).fill({color:0x071319,alpha:.4});
+  g.poly([x-28,y+8,x,y-4,x+28,y+8,x,y+20]).fill(0x7c7f72).stroke({color:ink,width:1.5});
+  if(kind==="oil_field"){
+    // lattice derrick
+    g.poly([x-12,y+8,x-2,y-40,x+2,y-40,x+12,y+8]).stroke({color:ink,width:3});
+    g.poly([x-12,y+8,x-2,y-40,x+2,y-40,x+12,y+8]).stroke({color:0xc49a3c,width:1.6});
+    for(const k of [0.25,0.5,0.75]){const yy=y+8-48*k;const w=12*(1-k)+2;g.moveTo(x-w,yy).lineTo(x+w,yy).stroke({color:0xc49a3c,width:1.4});}
+    g.rect(x-5,y-46,10,6).fill(0xd9604f).stroke({color:ink,width:1});
+    g.ellipse(x+18,y+8,8,5).fill(0x121619).stroke({color:ink,width:1});
+  }else if(kind==="plant"){
+    g.poly([x-22,y+6,x-22,y-12,x-12,y-20,x-12,y-12,x-2,y-20,x-2,y-12,x+8,y-20,x+8,y-12,x+22,y-12,x+22,y+6]).fill(0x9a8f7a).stroke({color:ink,width:1.6});
+    g.rect(x+12,y-38,7,26).fill(0x6c5a48).stroke({color:ink,width:1.4});
+    g.circle(x+16,y-44,5).fill({color:0x9aa5a8,alpha:.8}); g.circle(x+21,y-51,4).fill({color:0x9aa5a8,alpha:.6});
+    for(const dx of [-16,-6,4]) g.rect(x+dx,y-6,6,6).fill(0x3fb7a8).stroke({color:ink,width:1});
+  }else{
+    g.rect(x-3,y-24,6,30).fill(0x6f7a7f).stroke({color:ink,width:1.4});
+    g.ellipse(x,y-30,18,9).fill(0xd8dfe2).stroke({color:ink,width:1.6});
+    g.moveTo(x,y-30).lineTo(x+10,y-42).stroke({color:ink,width:2}); g.circle(x+10,y-42,3).fill(0xe5b65a);
+    g.arc(x,y-30,26,-2.4,-0.7).stroke({color:0x64b87b,width:2,alpha:.7});
+  }
+  if(owner!==null){g.moveTo(x-22,y+2).lineTo(x-22,y-26).stroke({color:0xc3d0c6,width:2});g.poly([x-21,y-26,x-7,y-21,x-21,y-16]).fill(owner);}
+  return g;
+}

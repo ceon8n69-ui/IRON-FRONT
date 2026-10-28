@@ -113,9 +113,15 @@ def defenders(db, tgt, q, r):
     real = [u for u in real if not UNITS[u.kind].get("naval")]
     real.sort(key=lambda u: -u.count * UNITS[u.kind]["hp"])
     forces = [(u.kind, u.count, u.id, u.hp) for u in real[:5]]
+    cut_off = False
+    if kind != "base":
+        from . import logistics
+        supply = logistics.supplied(db, did)
+        cut_off = (q, r) not in supply if kind == "territory" else \
+            not logistics.mine_supplied(tuple(bases.home(db, did)), supply, q, r)
     for k, n in _militia(db, did, kind):
         if len(forces) < 5:
-            forces.append((k, n, None, 100))
+            forces.append((k, max(1, n // 2) if cut_off else n, None, 100))
     return forces
 
 
@@ -204,7 +210,7 @@ def _loot(db, defender, at):
 def finish(db, p, battle, outcome, at):
     """Apply both sides' results. Attacker losses are already applied by the caller."""
     from .game import battle_units, change, settle, notify
-    from .expeditions import owned, linked, discover
+    from .expeditions import owned, discover, control_limit
     s = battle.state
     ctx, info = s["expedition"], s["pvp"]
     army, order = db.get(Army, ctx["army_id"]), db.get(ArmyOrder, ctx["order_id"])
@@ -255,10 +261,8 @@ def finish(db, p, battle, outcome, at):
             tile = db.get(TileOwnership, (1, ctx["q"], ctx["r"]))
             if not tile or tile.player_id != defender.id:
                 result = "Победа, но территория уже сменила владельца"
-            elif len(owned(db, p.id)) >= EXPEDITIONS["control_limit"]:
+            elif len(owned(db, p.id)) >= control_limit(db, p.id):
                 result = "Победа, но достигнут лимит контроля: территория осталась за противником"
-            elif not linked(db, p.id, ctx["q"], ctx["r"]):
-                result = "Победа, но нет связи с вашими землями: территория осталась за противником"
             else:
                 tile.player_id, tile.acquired_at = p.id, at
                 army.q, army.r = ctx["q"], ctx["r"]

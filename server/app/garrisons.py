@@ -21,6 +21,9 @@ def guarded(q, r, sites, biome="plain"):
         return pirates(q, r, sites)
     if biome in LAND_BLOCKED:
         return False
+    from . import nodes
+    if nodes.at(q, r, biome, sites):
+        return True
     if (q, r - 1) in sites:
         return True
     if any(abs(q - b[0]) + abs(r - b[1]) <= bases.SAFE_RADIUS for b in sites):
@@ -84,7 +87,7 @@ def begin(db, p, army, order):
         u.status='battle'
         stacks.append(combat.make_stack(f"p{i+1}","player",u.kind,u.count,PLAYER_SPOTS[i],u.id,u.hp))
     tile = db.get(Tile, (1, order.q, order.r))
-    name,hp,xp=strength(order.q,order.r,tile.biome,bases.near(db,order.q,order.r,1))
+    name,hp,xp=strength(order.q,order.r,tile.biome,bases.near(db,order.q,order.r,bases.SAFE_RADIUS+2))
     tier=tier_definition(name)
     hero=db.get(Hero,p.id)
     led=bool(army.commander)
@@ -110,7 +113,8 @@ def finish(db, p, battle, outcome, at):
     owner=db.get(TileOwnership,(1,ctx['q'],ctx['r']))
     if battle.state.get('terrain') == 'sea':
         return _finish_sea(db, p, battle, outcome, at, ctx, army, order)
-    captured=outcome=='victory' and owner is None and len(owned(db,p.id))<EXPEDITIONS['control_limit'] and linked(db,p.id,ctx['q'],ctx['r'])
+    from .expeditions import control_limit
+    captured=outcome=='victory' and owner is None and len(owned(db,p.id))<control_limit(db,p.id)
     if captured:
         db.add(TileOwnership(world_id=1,q=ctx['q'],r=ctx['r'],player_id=p.id,acquired_at=at))
         army.q,army.r=ctx['q'],ctx['r'];discover(db,army,at)

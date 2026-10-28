@@ -124,7 +124,6 @@ def test_discovery_persists_without_leaking_hidden_owners(client,monkeypatch):
     for q in (Q+1,Q+2,Q+3):
         assert order(c,h,a,q,R,'move').status_code==200
         advance(c,monkeypatch,31);c.get('/api/v1/player/me',headers=h)
-    assert order(c,h,a,Q+4,R,'capture').status_code==409  # isolated territory
     for q in (Q+2,Q+1,Q):
         assert order(c,h,a,q,R,'move').status_code==200
         advance(c,monkeypatch,31);c.get('/api/v1/player/me',headers=h)

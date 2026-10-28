@@ -26,6 +26,7 @@ class Player(Base):
     settled_at = Column(BigInteger, nullable=False)
     revision = Column(Integer, nullable=False, default=0)
     shield_until = Column(BigInteger, nullable=False, default=0, server_default="0")
+    upkeep_at = Column(BigInteger, nullable=False, default=0, server_default="0")
 
 
 class Session(Base):
@@ -336,3 +337,16 @@ class PvpReport(Base):
         Index("ix_pvp_reports_pair", "attacker_id", "defender_id", "created_at"),
         Index("ix_pvp_reports_defender", "defender_id", "created_at"),
     )
+
+
+class Season(Base):
+    """A two-week world. The latest row is the active season."""
+    __tablename__ = "seasons"
+    number = Column(Integer, primary_key=True)
+    seed = Column(String, nullable=False)
+    started_at = Column(BigInteger, nullable=False)
+    ends_at = Column(BigInteger, nullable=False)
+    status = Column(String, nullable=False, default="active")
+    results = Column(JSON)
+    __table_args__ = (CheckConstraint("status IN ('active', 'finished')", name="ck_seasons_status"),
+                      CheckConstraint("ends_at > started_at", name="ck_seasons_span"))

@@ -37,7 +37,7 @@ for _key, _d in DEFINITIONS.items():
     _d['damage_bonus'] = _d['perks'].get('attack', 0)   # legacy field for old clients
 LOOT_VERSION = 'gar-loot-v2'
 RARITY_WEIGHTS = {  # by NPC tier index: uncommon / rare / epic
-    0: (80, 18, 2), 1: (62, 30, 8), 2: (45, 38, 17),
+    0: (80, 18, 2), 1: (62, 30, 8), 2: (45, 38, 17), 3: (25, 45, 30),
 }
 
 

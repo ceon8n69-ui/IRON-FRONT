@@ -82,7 +82,12 @@ def test_mine_is_flagged_and_pays_every_minute(client, monkeypatch):
     c = client; h, u = commander(c, monkeypatch); a = create(c, h, u); Q, R = home(c, h)
     place(monkeypatch, {(Q+2, R): {'kind': 'mine', 'resource': 'oil', 'rate': 4}})
     s = go(c, h, a, monkeypatch, Q+2, R)
-    assert s['mines'] == [{'q': Q+2, 'r': R, 'resource': 'oil', 'rate': 4}]
+    assert s['mines'] == [{'q': Q+2, 'r': R, 'resource': 'oil', 'rate': 4, 'supplied': False}]
+    # Two hexes from the base the mine is cut off; one own hex between them restores supply.
+    with c.factory.begin() as db:
+        db.add(TileOwnership(world_id=1, q=Q+1, r=R, player_id=player_id(c, 123), acquired_at=game.now()))
+    s = me(c, h)
+    assert s['mines'][0]['supplied'] is True
     t0 = game.now(); oil = s['resources']['oil']
     at_time(monkeypatch, t0 + 5 * 60 + 2)
     assert me(c, h)['resources']['oil'] >= oil + 4 * 4

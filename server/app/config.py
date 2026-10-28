@@ -10,7 +10,7 @@ if DATABASE_URL.startswith("postgresql://"):
 ENV = os.environ.get("APP_ENV", "production")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-VERSION = "slice-13"
+VERSION = "slice-14"
 RESOURCES = ["metal", "oil", "fuel", "electronics", "food"]
 INITIAL = {"metal": 1000, "oil": 300, "fuel": 200, "electronics": 200, "food": 300}
 # Fictional balance. Level effects come from app.economy; every value here is
@@ -253,7 +253,7 @@ HEROES = {
 EXPEDITIONS = {
     "staging": [64, 64],  # legacy shared point; each player now has a world base
     # Heroes-style movement: points refill in real time, terrain sets the price.
-    "movement_max": 12,
+    "movement_max": 14,               # refilled in full at every in-game dawn (4 h)
     "movement_regen_seconds": 2400,   # +1 point every 40 min -> full in 8 h
     "terrain_cost": {"plain": 1, "beach": 1, "desert": 2, "forest": 2, "hills": 3, "river": 3},
     "naval_cost": 1,          # sea, lake and river hexes with a fleet
@@ -261,7 +261,9 @@ EXPEDITIONS = {
     "step_seconds": 10,               # real seconds per movement point spent
     "seconds": 30,                    # legacy single-hex duration (pre-0.5 orders)
     "fuel": 1,                        # fuel per hex travelled
-    "control_limit": 12,
+    "control_limit": 12,              # at HQ 1; +2 per HQ level above 1, capped
+    "control_per_hq": 2,
+    "control_cap": 30,
     "army_vision": 2,
     "armies_base": 2,                 # armies at HQ 1; +1 every two HQ levels
     "armies_cap": 5,
@@ -287,3 +289,6 @@ PVP = {
     "xp": 60,
     "militia": {"territory": 1, "mine": 1, "base": 2},
 }
+
+# Hourly upkeep per member (fictional balance).
+UPKEEP = {"infantry_food": 2, "vehicle_fuel": 3, "naval_fuel": 4}

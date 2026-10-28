@@ -50,6 +50,12 @@ def client(monkeypatch):
         c.execute(Tile.__table__.insert(), [
             {"world_id": 1, "q": q, "r": r, "biome": "plain"}
             for q in range(128) for r in range(128)])
+    # Season 1 started a minute ago: in-game day 1 of week 1.
+    from app.models import Season
+    with scoped.begin() as c:
+        started = int(time.time()) - 60
+        c.execute(Season.__table__.insert(), [{"number": 1, "seed": "test-world", "started_at": started,
+                                               "ends_at": started + 14 * 24 * 3600, "status": "active"}])
     factory = sessionmaker(scoped, expire_on_commit=False)
     monkeypatch.setattr(main, "SessionLocal", factory)
     monkeypatch.setattr(main, "rate_limit", lambda *args, **kw: None)

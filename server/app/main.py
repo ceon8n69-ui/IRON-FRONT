@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.12.0")
+app = FastAPI(title="IRON FRONT", version="0.13.0")
 
 
 class Strict(BaseModel):
@@ -165,6 +165,7 @@ def login(body: Login, request: Request):
                 settled_at=now(),
                 revision=0,
                 shield_until=now() + config.PVP["newbie_seconds"],
+                upkeep_at=now(),
             )
             db.add(player)
             db.flush()
@@ -463,9 +464,13 @@ def tiles(
         army_state = expeditions.state(db,pid)["armies"]
         home_vision = expeditions.home_vision(db,pid)
         from .combat import distance
+        from . import logistics, nodes
+        radar = logistics.radars(db,pid)
+        supply = logistics.supplied(db,pid)
         result=[]
         for t in ts:
-            in_view = distance(home,[t.q,t.r]) <= home_vision or any(distance([a["q"],a["r"]],[t.q,t.r]) <= a.get("vision", config.EXPEDITIONS["army_vision"]) for a in army_state)
+            in_view = distance(home,[t.q,t.r]) <= home_vision or any(distance([a["q"],a["r"]],[t.q,t.r]) <= a.get("vision", config.EXPEDITIONS["army_vision"]) for a in army_state) \
+                or any(distance([rq,rr],[t.q,t.r]) <= rv for rq,rr,rv in radar)
             known = in_view or (t.q,t.r) in discovered
             owner = owners.get((t.q,t.r)) if in_view else None
             site = (t.q,t.r) in sites
@@ -482,6 +487,8 @@ def tiles(
                 "visibility":"visible" if in_view else "explored" if known else "unknown",
                 "control":("self" if owner == pid else "other" if owner else "neutral") if in_view else None,
                 "home":[t.q,t.r] == home,
+                "node":nodes.view(nodes.at(t.q,t.r,t.biome,sites)) if known else None,
+                "supplied":((t.q,t.r) in supply) if owner == pid else None,
                 "base":base})
         return {"tiles":result}
 
