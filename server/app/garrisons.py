@@ -46,6 +46,9 @@ def cleared_in(db, q, r, radius):
 
 def guarded_at(db, q, r):
     from .models import ClearedSite
+    from . import raids
+    if raids.active_at(db, q, r):
+        return True
     if db.get(ClearedSite, (1, q, r)):
         return False
     tile = db.get(Tile, (1, q, r))
@@ -87,8 +90,14 @@ def begin(db, p, army, order):
         u.status='battle'
         stacks.append(combat.make_stack(f"p{i+1}","player",u.kind,u.count,PLAYER_SPOTS[i],u.id,u.hp))
     tile = db.get(Tile, (1, order.q, order.r))
-    name,hp,xp=strength(order.q,order.r,tile.biome,bases.near(db,order.q,order.r,bases.SAFE_RADIUS+2))
-    tier=tier_definition(name)
+    from . import raids
+    raid=raids.active_at(db,order.q,order.r)
+    if raid:
+        name,hp,xp=raids.strength(raid)
+        tier={"name":name,"xp":xp,"stacks":raid.stacks}
+    else:
+        name,hp,xp=strength(order.q,order.r,tile.biome,bases.near(db,order.q,order.r,bases.SAFE_RADIUS+2))
+        tier=tier_definition(name)
     hero=db.get(Hero,p.id)
     led=bool(army.commander)
     from . import commander
@@ -114,6 +123,9 @@ def finish(db, p, battle, outcome, at):
     if battle.state.get('terrain') == 'sea':
         return _finish_sea(db, p, battle, outcome, at, ctx, army, order)
     from .expeditions import control_limit
+    if outcome=='victory':
+        from . import raids
+        raids.defeat(db,ctx['q'],ctx['r'])
     captured=outcome=='victory' and owner is None and len(owned(db,p.id))<control_limit(db,p.id)
     if captured:
         db.add(TileOwnership(world_id=1,q=ctx['q'],r=ctx['r'],player_id=p.id,acquired_at=at))

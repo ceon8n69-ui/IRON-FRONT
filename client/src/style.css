@@ -879,3 +879,13 @@ nav button > span { position:relative; }
 .doctrine.done small { color:#7fd6a0; }
 .doctrine.research { border-color:#e5b65a; }
 .doctrine:disabled:not(.done):not(.research) { opacity:.55; }
+.incoming-alert.raid { border-color:#e5b65a; background:#4a3a14e8; color:#ffe7b0; }
+/* Alliance */
+.alliance-card { padding:14px; border-radius:12px; background:#192633; border:1px solid #40515d; margin-bottom:14px; }
+.alliance-card h3 { margin:0 0 4px; }
+.alliance-card .code { font-family:monospace; font-size:16px; letter-spacing:.15em; color:#e5b65a; }
+.alliance-card form, .alliance-card .row { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+.alliance-card input { flex:1; min-width:90px; min-height:40px; padding:6px 10px; border-radius:8px; border:1px solid #40515d; background:#101923; color:#f0f3f5; }
+.alliance-card ul { list-style:none; padding:0; margin:8px 0; }
+.alliance-card li { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 0; border-bottom:1px solid #263746; font-size:14px; }
+.alliance-card li button { min-height:30px; padding:4px 8px; font-size:12px; }

@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS, UNITS, TUTORIAL_NPC, FACTIONS
-from . import expeditions, garrisons, equipment, bases, economy, objects, pvp, commander, logistics, seasons, nodes, doctrines
+from . import expeditions, garrisons, equipment, bases, economy, objects, pvp, commander, logistics, seasons, nodes, doctrines, raids, alliances
 from . import combat
 
 
@@ -148,6 +148,7 @@ def settle(db, p, at=None):
         seasons.accrue(db, p, ticks, at)
         p.settled_at = cursor + ticks * 60
     completed = logistics.charge(db, p, at, change, seasons.effect(db, "upkeep", at))
+    completed = raids.tick(db, p, at) or completed
     for battle in rows(db, Battle, p.id):
         if battle.status == "active" and "stacks" not in battle.state:
             battle.state = combat.from_legacy(battle.state, battle.unit_id)
@@ -204,6 +205,8 @@ def snapshot(db, p):
         ],
         "commander": commander.view(db, p.id),
         "doctrines": doctrines.view(db, p.id, now()),
+        "raids": raids.state(db, p.id, now()),
+        "alliance": alliances.view(db, p.id),
         "first_victory": tutorial_done(db, p),
         "vp": p.vp,
         **expeditions.state(db, p.id),
@@ -457,6 +460,15 @@ def dispatch(db, p, op, data):
         if outcome == "active":
             return {"events": events, "outcome": outcome}
         return conclude(db, p, battle, hero, events, outcome)
+    if op.startswith("alliance_"):
+        if op == "alliance_create":
+            return alliances.create(db, p, data["name"], data["tag"])
+        if op == "alliance_join":
+            return alliances.join(db, p, data["code"])
+        if op == "alliance_leave":
+            return alliances.leave(db, p)
+        if op == "alliance_kick":
+            return alliances.kick(db, p, data["player_id"])
     if op == "doctrine":
         from . import doctrines
         return doctrines.start(db, p, data["key"], now(), change)

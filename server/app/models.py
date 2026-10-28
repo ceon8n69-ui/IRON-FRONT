@@ -29,6 +29,7 @@ class Player(Base):
     upkeep_at = Column(BigInteger, nullable=False, default=0, server_default="0")
     vp = Column(Integer, nullable=False, default=0, server_default="0")
     tutorial_done = Column(Boolean, nullable=False, default=False, server_default="false")
+    alliance_id = Column(String, ForeignKey("alliances.id", use_alter=True, name="fk_users_alliance"), index=True)
 
 
 class Session(Base):
@@ -385,3 +386,35 @@ class CampHire(Base):
     player_id = Column(ForeignKey("users.id"), nullable=False)
     kind = Column(String, nullable=False)
     hired_at = Column(BigInteger, nullable=False)
+
+
+class Alliance(Base):
+    __tablename__ = "alliances"
+    id = Column(String, primary_key=True)
+    name = Column(String(24), nullable=False)
+    tag = Column(String(5), nullable=False, unique=True)
+    code = Column(String(8), nullable=False, unique=True)
+    owner_id = Column(String, nullable=False)
+    created_at = Column(BigInteger, nullable=False)
+
+
+class Raid(Base):
+    """A marauder band camped next to a commander's land; burns the target at strikes_at unless beaten."""
+    __tablename__ = "raids"
+    id = Column(String, primary_key=True)
+    player_id = Column(ForeignKey("users.id"), nullable=False, index=True)
+    q = Column(Integer, nullable=False)
+    r = Column(Integer, nullable=False)
+    target_q = Column(Integer, nullable=False)
+    target_r = Column(Integer, nullable=False)
+    season = Column(Integer, nullable=False)
+    day = Column(Integer, nullable=False)
+    stacks = Column(JSON, nullable=False)
+    strikes_at = Column(BigInteger, nullable=False)
+    status = Column(String, nullable=False, default="active")
+    result = Column(String)
+    __table_args__ = (
+        CheckConstraint("status IN ('active', 'defeated', 'struck')", name="ck_raids_status"),
+        Index("uq_raids_active_hex", "q", "r", unique=True, postgresql_where=text("status = 'active'")),
+        UniqueConstraint("player_id", "season", "day", name="uq_raids_player_day"),
+    )

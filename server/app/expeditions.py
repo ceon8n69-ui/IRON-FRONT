@@ -107,6 +107,9 @@ def route(db, p, army, target, at):
     fleet = has_fleet(db, army)
     sight = army_vision(db, army)
     cleared = garrisons.cleared_in(db, q0, r0, radius)
+    from . import raids, alliances
+    raid_hexes = raids.active_in(db, q0, r0, radius)
+    friends = alliances.ally_ids(db, p.id) | {p.id}
 
     radar = logistics.radars(db, p.id)
 
@@ -119,9 +122,13 @@ def route(db, p, army, target, at):
     def blocked(c, final):
         if c not in tiles or not known(c):
             return 'Маршрут проходит через неразведанную местность'
-        hostile = (c in sites and sites[c] not in (None, p.id)) or (c in owners and owners[c] != p.id)
+        hostile = (c in sites and sites[c] not in (None,) and sites[c] not in friends) or (c in owners and owners[c] not in friends)
         if hostile and not final:
             return 'Путь проходит через чужие владения'
+        if final and c in sites and sites[c] not in (None, p.id) and sites[c] in friends:
+            return 'Это база союзника'
+        if not final and c in raid_hexes:
+            return 'Путь перекрыт мародёрами'
         terrain = tiles[c]
         if terrain in TERRAIN_BLOCKED and not (fleet and terrain in WATER):
             if terrain in WATER:
@@ -272,8 +279,9 @@ def _settle_army(db, p, army, at, change):
         reason = 'Это база другого командира. PvP пока не включён.'
     elif is_base and order.action == 'capture':
         reason = 'Базу нельзя захватить как территорию.'
-    elif owner and owner.player_id != p.id:
-        reason = 'Территорию занял другой игрок. Соединение остановилось на предыдущем гексе.'
+    elif owner and owner.player_id != p.id and not (order.action == 'move' and alliances_allied(db, p.id, owner.player_id)):
+        reason = ('Территория союзника' if alliances_allied(db, p.id, owner.player_id)
+                  else 'Территорию занял другой игрок. Соединение остановилось на предыдущем гексе.')
     elif order.action == 'capture':
         if owner:
             reason = 'Территория уже под вашим контролем.'
@@ -301,6 +309,11 @@ def _settle_army(db, p, army, at, change):
     army.status = 'idle'
     db.flush()
     return True
+
+
+def alliances_allied(db, a, b):
+    from . import alliances
+    return alliances.allied(db, a, b)
 
 
 def _fights_on_arrival(db, p, order):
@@ -394,7 +407,7 @@ def dispatch(db, p, op, data, at, uid, change):
         if is_base:
             fail('Базу нельзя захватить как территорию')
         if owner:
-            fail('Территория уже принадлежит вам')
+            fail('Территория союзника' if owner.player_id != p.id else 'Территория уже принадлежит вам')
         if len(owned(db,p.id)) >= control_limit(db,p.id):
             fail('Достигнут лимит контроля')
     refresh_movement(db, army, at)
