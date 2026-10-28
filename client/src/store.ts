@@ -29,6 +29,7 @@ export type Battle = {
     order?: string[];
     active?: string | null;
     ability_used?: boolean;
+    led?: boolean;
     npc_tier?: {name:string;hp:number;xp:number};
     cover: number[][];
     terrain?: string;
@@ -51,6 +52,7 @@ export type State = {
   mines?: {q:number;r:number;resource:string;rate:number}[];
   pending_chests?: {q:number;r:number;options:{resources:Record<string,number>;xp:number}}[];
   armies: Army[];
+  armies_max?: number;
   territories: Territory[];
   pvp?: PvpState;
 };
@@ -112,7 +114,7 @@ export async function command(path: string, body: unknown) {
 }
 
 export type MarchOrder = { id:string; q:number; r:number; from_q:number; from_r:number; action:string; status:string; started_at:number; ready_at:number; finished_at:number|null; result:string|null; path?: number[][] | null };
-export type Army = { id:string; q:number; r:number; status:string; unit_ids:string[]; orders:MarchOrder[]; movement:number; movement_max:number; movement_next_at:number|null };
+export type Army = { id:string; number:number; commander:boolean; in_battle?:boolean; q:number; r:number; status:string; unit_ids:string[]; orders:MarchOrder[]; movement:number; movement_max:number; movement_next_at:number|null };
 export type RoutePreview = { path:number[][]; cost:number; fuel:number; seconds:number; movement:number; affordable:boolean };
 export type MapObject = { kind:"pile"|"chest"|"mine"; resource?:string; amount?:number; rate?:number; owner?:"self"|"other"|null; pending?:boolean };
 export type WorldTile = { q:number; r:number; biome:string; visibility:string; control:"self"|"other"|"neutral"|null; home:boolean; base?:"self"|"other"|"staging"|null; garrison?:boolean; garrison_strength?:{name:string;hp:number;xp:number}|null; object?:MapObject|null };

@@ -783,7 +783,7 @@ html.locked,html.locked body{overflow:hidden;height:100%;position:fixed;inset:0;
 .unit-skill small{display:block;color:#9dafba;font-size:11px;margin-top:3px}
 /* PvP */
 .shield-chip { color:#9fd0ff; }
-.incoming-alert { position:absolute; top:104px; left:12px; right:12px; z-index:5; padding:9px 12px; border-radius:10px; border:1px solid #d9604f; background:#4a1d1ae8; color:#ffd9d2; font-size:13px; font-weight:600; text-align:left; animation:alert-pulse 1.6s ease-in-out infinite; }
+.incoming-alert { position:absolute; top:calc(166px + var(--safe-top,0px)); left:66px; right:12px; z-index:5; padding:9px 12px; border-radius:10px; border:1px solid #d9604f; background:#4a1d1ae8; color:#ffd9d2; font-size:13px; font-weight:600; text-align:left; animation:alert-pulse 1.6s ease-in-out infinite; }
 @keyframes alert-pulse { 50% { box-shadow:0 0 0 4px #d9604f33; } }
 .target-intel { margin:8px 0; padding:8px 10px; border-radius:8px; background:#2a1e1e; border:1px solid #6b3a33; }
 .target-intel p { margin:3px 0 !important; }
@@ -794,3 +794,20 @@ button.primary.danger:disabled { background:#5b3430; border-color:#6d4540; color
 .pvp-reports p { margin:4px 0 !important; cursor:pointer; }
 .pvp-reports p.victory::before { content:"✔ "; color:#7fc46a; }
 .pvp-reports p.defeat::before { content:"✖ "; color:#e0715f; }
+
+/* Several armies */
+.army-switch { position:absolute; left:12px; top:calc(162px + var(--safe-top,0px)); z-index:4; display:flex; flex-direction:column; gap:6px; }
+.army-switch button { width:46px; min-height:46px; padding:4px 0; border-radius:12px; background:#101923e8; border:1px solid #31424e; display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.05; box-shadow:0 3px 10px #0005; }
+.army-switch button b { font-size:15px; color:#f0f3f5; }
+.army-switch button small { font-size:10px; color:#9dafba; }
+.army-switch button[aria-pressed="true"] { border-color:#e5b65a; background:#3a2f17ee; }
+.army-switch button[aria-pressed="true"] b { color:#e5b65a; }
+.army-switch button.add { font-size:22px; color:#64b87b; border-style:dashed; }
+.army-card.target { border-color:#e5b65a; }
+.army-card h3 .lead { color:#e5b65a; font-weight:500; }
+.army-card .army-stacks { color:#c9d4db; }
+.army-card .actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.army-card .actions button { min-height:36px; font-size:12px; padding:6px 10px; }
+.unit-thumb { width:64px; height:56px; object-fit:contain; flex:none; }
+.card .actions.column { display:flex; flex-direction:column; gap:6px; }
+.card .actions.column button { min-height:36px; font-size:12px; padding:6px 10px; white-space:nowrap; }

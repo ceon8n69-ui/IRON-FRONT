@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.10.0")
+app = FastAPI(title="IRON FRONT", version="0.11.0")
 
 
 class Strict(BaseModel):
@@ -88,6 +88,11 @@ class Train(Strict):
 
 class Compose(Strict):
     unit_id: str = Field(max_length=40)
+    army_id: str | None = Field(default=None, max_length=40)
+
+
+class ArmyRef(Strict):
+    army_id: str = Field(max_length=40)
 
 
 class Equip(Strict):
@@ -293,6 +298,18 @@ def army_release(body: Compose, authorization: str | None = Header(default=None)
     return mutate("army_release", body.model_dump(), authorization, idempotency_key)
 
 
+@app.post("/api/v1/army/disband")
+def army_disband(body: ArmyRef, authorization: str | None = Header(default=None),
+                 idempotency_key: str | None = Header(default=None)):
+    return mutate("army_disband", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/army/lead")
+def army_lead(body: ArmyRef, authorization: str | None = Header(default=None),
+              idempotency_key: str | None = Header(default=None)):
+    return mutate("army_lead", body.model_dump(), authorization, idempotency_key)
+
+
 @app.post("/api/v1/army/create")
 def create_army(body: StartBattle, authorization: str | None = Header(default=None),
                 idempotency_key: str | None = Header(default=None)):
@@ -356,7 +373,7 @@ def replay(battle_id: str, authorization: str | None = Header(default=None)):
 
 
 @app.get("/api/v1/army/route")
-def army_route(q: int, r: int, authorization: str | None = Header(default=None)):
+def army_route(q: int, r: int, army_id: str | None = None, authorization: str | None = Header(default=None)):
     """Read-only preview of the cheapest route for the player's army."""
     if not 0 <= q < 128 or not 0 <= r < 128:
         raise HTTPException(422, "Недопустимые координаты")
@@ -365,7 +382,8 @@ def army_route(q: int, r: int, authorization: str | None = Header(default=None))
         rate_limit(pid)
         p = locked(db, pid)
         settle(db, p)
-        army = db.scalar(select(Army).where(Army.player_id == pid))
+        mine = expeditions.armies(db, pid)
+        army = next((a for a in mine if a.id == army_id), None) if army_id else next((a for a in mine if a.commander), mine[0] if mine else None)
         if not army:
             raise HTTPException(409, "Сформируйте соединение в разделе «Армия»")
         if (q, r) == (army.q, army.r):

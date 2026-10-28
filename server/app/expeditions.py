@@ -155,8 +155,23 @@ def home_vision(db, pid):
 def visible(db, pid, q, r):
     if distance(bases.home(db, pid), [q, r]) <= home_vision(db, pid):
         return True
-    army = db.scalar(select(Army).where(Army.player_id == pid))
-    return bool(army and distance([army.q, army.r], [q, r]) <= RULES['army_vision'])
+    return any(distance([a.q, a.r], [q, r]) <= RULES['army_vision'] for a in armies(db, pid))
+
+
+def armies(db, pid):
+    return list(db.scalars(select(Army).where(Army.player_id == pid).order_by(Army.number, Army.id)))
+
+
+def armies_max(db, pid):
+    from .models import Building
+    hq = db.scalar(select(Building).where(Building.player_id == pid, Building.kind == 'hq'))
+    return min(RULES['armies_cap'], RULES['armies_base'] + ((hq.level if hq else 1) - 1) // 2)
+
+
+def in_battle(db, pid):
+    """Army id currently fighting, or None (one battle at a time per commander)."""
+    battle = garrisons.active(db, pid)
+    return (battle.state.get('expedition') or {}).get('army_id') if battle else None
 
 
 def discover(db, army, at):
@@ -171,9 +186,13 @@ def discover(db, army, at):
 
 
 def settle_orders(db, p, at, change=None):
-    army = db.scalar(select(Army).where(Army.player_id == p.id))
-    if not army:
-        return False
+    moved = False
+    for army in armies(db, p.id):
+        moved = _settle_army(db, p, army, at, change) or moved
+    return moved
+
+
+def _settle_army(db, p, army, at, change):
     refresh_movement(db, army, at)
     if army.status != 'moving':
         return False
@@ -188,6 +207,10 @@ def settle_orders(db, p, at, change=None):
         discover(db, army, at)
         moved = True
     if order.ready_at > at:
+        db.flush()
+        return moved
+    if garrisons.active(db, p.id) and _fights_on_arrival(db, p, order):
+        # One battle at a time: this army waits on its last step until the current one ends.
         db.flush()
         return moved
     # Lock the existing world tile even if no ownership row exists yet.
@@ -235,11 +258,17 @@ def settle_orders(db, p, at, change=None):
     return True
 
 
+def _fights_on_arrival(db, p, order):
+    if order.action == 'attack':
+        return True
+    owner = db.get(TileOwnership, (1, order.q, order.r))
+    is_base, _ = bases.at(db, order.q, order.r)
+    return not owner and not is_base and garrisons.guarded_at(db, order.q, order.r)
+
+
 def _arrive_attack(db, p, army, order, at):
     tgt = pvp.target(db, p.id, order.q, order.r)
     reason = 'Цель больше не принадлежит противнику' if not tgt else pvp.blocked_reason(db, p, tgt, at)
-    if not reason and garrisons.active(db, p.id):
-        reason = 'Атака отменена: идёт другой бой'
     if reason:
         order.status, order.result = 'blocked', reason
         army.status = 'idle'
@@ -269,24 +298,28 @@ def dispatch(db, p, op, data, at, uid, change):
     if not db.get(Reward,(p.id,'first-patrol')):
         fail('Сначала завершите учебную PvE-операцию')
     if op == 'army_create':
-        if db.scalar(select(Army).where(Army.player_id == p.id)):
-            fail('В первом этапе доступно одно соединение')
         unit = db.get(Unit,data['unit_id'])
         if not unit or unit.player_id != p.id or unit.status != 'reserve' or unit.hp <= 0:
             fail('Отряд недоступен')
+        mine = armies(db, p.id)
+        limit = armies_max(db, p.id)
+        if len(mine) >= limit:
+            fail(f'Максимум соединений: {limit}. Улучшайте штаб, чтобы командовать большим числом')
         base = bases.ensure(db, p, at)
-        army = Army(id=uid(),player_id=p.id,world_id=1,q=base.q,r=base.r,status='idle')
+        number = min(set(range(1, limit + 2)) - {a.number for a in mine})
+        army = Army(id=uid(),player_id=p.id,world_id=1,q=base.q,r=base.r,status='idle',number=number,
+                    commander=not any(a.commander for a in mine),movement=movement_max(db, p.id),movement_at=at)
         db.add(army);db.flush()
         db.add(ArmyUnit(army_id=army.id,unit_id=unit.id));unit.status='army'
         discover(db,army,at)
         return {'id':army.id}
-    if garrisons.active(db,p.id):
-        fail('Сначала завершите текущий бой')
-    if op in ('army_assign', 'army_release'):
+    if op in ('army_assign', 'army_release', 'army_disband', 'army_lead'):
         return compose(db, p, op, data)
     army = db.get(Army,data['army_id'])
     if not army or army.player_id != p.id:
         raise HTTPException(404,'Соединение не найдено')
+    if in_battle(db, p.id) == army.id:
+        fail('Сначала завершите текущий бой')
     if army.status != 'idle':
         fail('Дождитесь завершения текущего похода')
     q,r=data['q'],data['r']
@@ -340,17 +373,46 @@ def dispatch(db, p, op, data, at, uid, change):
 
 
 def compose(db, p, op, data):
-    """Pick up or leave stacks, Heroes-style: only while the army stands on its base."""
+    """Pick up or leave stacks, disband, hand over the commander: only on the base, Heroes-style."""
     from .config import ARMY_STACKS
-    army = db.scalar(select(Army).where(Army.player_id == p.id))
-    if not army:
+    mine = armies(db, p.id)
+    if not mine:
         fail('Сначала сформируйте соединение')
-    if army.status != 'idle' or [army.q, army.r] != bases.home(db, p.id):
+    army = next((a for a in mine if a.id == data.get('army_id')), None) if data.get('army_id') else next(
+        (a for a in mine if a.commander), mine[0])
+    if not army:
+        raise HTTPException(404, 'Соединение не найдено')
+    home = bases.home(db, p.id)
+    at_home = lambda a: a.status == 'idle' and [a.q, a.r] == home
+    if not at_home(army) or in_battle(db, p.id) == army.id:
         fail('Состав меняется только на базе: верните соединение домой')
+    members = list(db.scalars(select(ArmyUnit).where(ArmyUnit.army_id == army.id)))
+    if op == 'army_lead':
+        current = next((a for a in mine if a.commander), None)
+        if current and current.id != army.id:
+            if not at_home(current):
+                fail('Командир в походе: верните его соединение на базу')
+            current.commander = False
+            db.flush()
+        army.commander = True
+        db.flush()
+        return {'army_id': army.id}
+    if op == 'army_disband':
+        if army.commander and len(mine) > 1:
+            fail('Сначала передайте командира другому соединению')
+        for m in members:
+            db.get(Unit, m.unit_id).status = 'reserve'
+            db.delete(m)
+        db.flush()
+        for o in db.scalars(select(ArmyOrder).where(ArmyOrder.army_id == army.id)):
+            db.delete(o)
+        db.flush()
+        db.delete(army)
+        db.flush()
+        return {'army_id': army.id}
     unit = db.get(Unit, data['unit_id'])
     if not unit or unit.player_id != p.id:
         raise HTTPException(404, 'Отряд не найден')
-    members = list(db.scalars(select(ArmyUnit).where(ArmyUnit.army_id == army.id)))
     if op == 'army_assign':
         if unit.status != 'reserve':
             fail('Отряд не в резерве')
@@ -362,25 +424,26 @@ def compose(db, p, op, data):
         if not link:
             fail('Отряд не в этом соединении')
         if len(members) == 1:
-            fail('В соединении должен остаться хотя бы один стек')
+            fail('В соединении должен остаться хотя бы один стек: или распустите его')
         db.delete(link); unit.status = 'reserve'
     db.flush()
     return {'army_id': army.id, 'unit_id': unit.id}
 
 
 def state(db,pid):
-    army=db.scalar(select(Army).where(Army.player_id == pid))
-    armies=[]
-    if army:
+    views=[]
+    cap=movement_max(db,pid);period=RULES['movement_regen_seconds']
+    fighting=in_battle(db,pid)
+    for army in armies(db,pid):
         orders=list(db.scalars(select(ArmyOrder).where(ArmyOrder.army_id == army.id).order_by(ArmyOrder.started_at.desc(),ArmyOrder.id).limit(10)))
-        cap=movement_max(db,pid);period=RULES['movement_regen_seconds']
-        armies=[{'id':army.id,'q':army.q,'r':army.r,'status':army.status,
+        views.append({'id':army.id,'number':army.number,'commander':army.commander,'in_battle':fighting==army.id,
+            'q':army.q,'r':army.r,'status':army.status,
             'movement':army.movement,'movement_max':cap,
             'movement_next_at':None if army.movement>=cap else army.movement_at+period,
             'unit_ids':list(db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id))),
-            'orders':[{k:getattr(o,k) for k in ('id','q','r','from_q','from_r','action','status','started_at','ready_at','finished_at','result','path')} for o in orders]}]
+            'orders':[{k:getattr(o,k) for k in ('id','q','r','from_q','from_r','action','status','started_at','ready_at','finished_at','result','path')} for o in orders]})
     territories=[]
     for t in owned(db,pid):
         tile=db.get(Tile,(1,t.q,t.r))
         territories.append({'q':t.q,'r':t.r,'biome':tile.biome,'yield':RULES['territory_yield'].get(tile.biome,{}),'acquired_at':t.acquired_at})
-    return {'armies':armies,'territories':territories}
+    return {'armies':views,'armies_max':armies_max(db,pid),'territories':territories}

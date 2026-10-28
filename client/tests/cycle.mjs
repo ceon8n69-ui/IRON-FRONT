@@ -166,7 +166,7 @@ await page.screenshot({path:"/tmp/iron-base-mobile.png",fullPage:true});
 // Real server-side march and capture after the original vertical slice.
 await page.getByRole("button",{name:"Армия",exact:true}).click();
 await page.getByRole("button",{name:"Подразделения",exact:true}).click();
-await page.getByRole("button",{name:"Сформировать",exact:true}).click();
+await page.getByRole("button",{name:"Новое соединение",exact:true}).click();
 await page.locator(".world-stage canvas").waitFor();
 await page.locator("canvas").scrollIntoViewIfNeeded();
 const worldBox=await page.locator("canvas").boundingBox();

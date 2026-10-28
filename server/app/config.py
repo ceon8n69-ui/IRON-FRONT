@@ -10,7 +10,7 @@ if DATABASE_URL.startswith("postgresql://"):
 ENV = os.environ.get("APP_ENV", "production")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-VERSION = "slice-11"
+VERSION = "slice-12"
 RESOURCES = ["metal", "oil", "fuel", "electronics", "food"]
 INITIAL = {"metal": 1000, "oil": 300, "fuel": 200, "electronics": 200, "food": 300}
 # Fictional balance. Level effects come from app.economy; every value here is
@@ -263,6 +263,8 @@ EXPEDITIONS = {
     "fuel": 1,                        # fuel per hex travelled
     "control_limit": 12,
     "army_vision": 2,
+    "armies_base": 2,                 # armies at HQ 1; +1 every two HQ levels
+    "armies_cap": 5,
     "territory_yield": {
         "plain": {"food": 2}, "forest": {"metal": 2},
         "hills": {"metal": 3}, "desert": {"oil": 2}, "beach": {"food": 1}, "river": {"food": 3},
