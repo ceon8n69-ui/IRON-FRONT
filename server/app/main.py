@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
-from . import config, expeditions, garrisons, bases
+from . import config, expeditions, garrisons, bases, objects
 from .db import SessionLocal
 from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery, Army
 from .auth import validate_init_data, token_hash
@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.5.0")
+app = FastAPI(title="IRON FRONT", version="0.6.0")
 
 
 class Strict(BaseModel):
@@ -50,6 +50,12 @@ class Choose(Strict):
 class Build(Choose):
     q: int = Field(ge=-4, le=4)
     r: int = Field(ge=-4, le=4)
+
+
+class Chest(Strict):
+    q: int = Field(ge=0, le=127)
+    r: int = Field(ge=0, le=127)
+    choice: Literal["resources", "xp"]
 
 
 class Upgrade(Strict):
@@ -233,6 +239,15 @@ def build(
     return mutate("build", body.model_dump(), authorization, idempotency_key)
 
 
+@app.post("/api/v1/world/chest")
+def chest(
+    body: Chest,
+    authorization: str | None = Header(default=None),
+    idempotency_key: str | None = Header(default=None),
+):
+    return mutate("chest", body.model_dump(), authorization, idempotency_key)
+
+
 @app.post("/api/v1/construction/upgrade")
 def upgrade(
     body: Upgrade,
@@ -366,12 +381,16 @@ def tiles(
             known = in_view or (t.q,t.r) in discovered
             owner = owners.get((t.q,t.r)) if in_view else None
             site = (t.q,t.r) in sites
+            guarded = bool(in_view and not owner and not site and garrisons.guarded(t.q,t.r,sites))
+            tier = objects.strength(t.q,t.r) if guarded else None
             base = None
             if site and in_view:
                 base = "self" if sites[(t.q,t.r)] == pid else "other" if sites[(t.q,t.r)] else "staging"
             result.append({"id":f"1:{t.q}:{t.r}","q":t.q,"r":t.r,
                 "biome":t.biome if known else "unknown",
-                "garrison":bool(in_view and not owner and not site and garrisons.guarded(t.q,t.r,sites)),
+                "garrison":guarded,
+                "garrison_strength":{"name":tier[0],"hp":tier[1],"xp":tier[2]} if tier else None,
+                "object":objects.view(db,pid,t.q,t.r,sites) if in_view and not site else None,
                 "visibility":"visible" if in_view else "explored" if known else "unknown",
                 "control":("self" if owner == pid else "other" if owner else "neutral") if in_view else None,
                 "home":[t.q,t.r] == home,

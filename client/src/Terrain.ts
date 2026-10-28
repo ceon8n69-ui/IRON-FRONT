@@ -75,3 +75,37 @@ export function squad(x:number,y:number,color:number,hp?:number){
  g.roundRect(x-20,y+22,40*Math.max(.01,(hp??100)/100),3,1).fill(color);
  return g;
 }
+
+// Adventure-map objects. Original code-drawn shapes on the map projection.
+const RESOURCE_TINT: Record<string, number> = { metal: 0x9aa7ad, oil: 0x3a3f46, fuel: 0xd08a3c, food: 0x8db35a };
+export function pile(x:number,y:number,resource:string){
+  const g=new Graphics();const tint=RESOURCE_TINT[resource]??0xb0a27a;
+  g.ellipse(x,y+10,24,9).fill({color:0x071319,alpha:.35});
+  for(const [dx,dy,w] of [[-10,4,12],[8,6,11],[-1,-6,12]] as const){
+    g.poly([x+dx-w,y+dy,x+dx,y+dy-w*.5,x+dx+w,y+dy,x+dx,y+dy+w*.5]).fill(tint);
+    g.poly([x+dx-w,y+dy,x+dx,y+dy+w*.5,x+dx,y+dy+w*.5+8,x+dx-w,y+dy+8]).fill(0x5a4a33);
+    g.poly([x+dx,y+dy+w*.5,x+dx+w,y+dy,x+dx+w,y+dy+8,x+dx,y+dy+w*.5+8]).fill(0x3e3324);
+  }
+  return g;
+}
+export function chest(x:number,y:number){
+  const g=new Graphics();
+  g.ellipse(x,y+10,20,8).fill({color:0x071319,alpha:.35});
+  g.poly([x-16,y,x,y-8,x+16,y,x,y+8]).fill(0xe5b65a);
+  g.poly([x-16,y,x,y+8,x,y+20,x-16,y+12]).fill(0x8a5a2b);
+  g.poly([x,y+8,x+16,y,x+16,y+12,x,y+20]).fill(0x6b4320);
+  g.rect(x-2,y+6,4,6).fill(0xf6dc8c);
+  g.moveTo(x-16,y+4).lineTo(x,y+12).lineTo(x+16,y+4).stroke({color:0xc49a3c,width:2});
+  return g;
+}
+export function mine(x:number,y:number,resource:string,owner:number|null){
+  const g=new Graphics();
+  g.ellipse(x,y+10,28,10).fill({color:0x071319,alpha:.35});
+  g.poly([x-24,y+6,x-8,y-12,x+14,y-10,x+24,y+6,x,y+16]).fill(0x4b524c);
+  g.poly([x-8,y+2,x+2,y-8,x+12,y+2,x+2,y+10]).fill(0x161e22);
+  g.moveTo(x-10,y+4).lineTo(x-2,y-14).lineTo(x+6,y+4).stroke({color:0xb9a67c,width:3});
+  g.circle(x+14,y+8,4).fill(RESOURCE_TINT[resource]??0xaaaaaa);
+  g.moveTo(x+18,y-2).lineTo(x+18,y-30).stroke({color:0xc3d0c6,width:2});
+  g.poly([x+19,y-30,x+33,y-25,x+19,y-20]).fill(owner??0xa7aeb5);
+  return g;
+}

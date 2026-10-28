@@ -252,3 +252,35 @@ class WorldBase(Base):
         UniqueConstraint("world_id", "q", "r", name="uq_player_bases_site"),
         CheckConstraint("NOT (q = 64 AND r = 64)", name="ck_player_bases_not_staging"),
     )
+
+
+class MapPickup(Base):
+    """One-time adventure-map pickup (resource pile or chest); first claim wins."""
+    __tablename__ = "map_pickups"
+    world_id = Column(Integer, primary_key=True)
+    q = Column(Integer, primary_key=True)
+    r = Column(Integer, primary_key=True)
+    kind = Column(String, nullable=False)
+    player_id = Column(ForeignKey("users.id"), nullable=False, index=True)
+    taken_at = Column(BigInteger, nullable=False)
+    choice = Column(String)
+    __table_args__ = (
+        ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
+        CheckConstraint("kind IN ('pile', 'chest')", name="ck_map_pickups_kind"),
+        CheckConstraint("choice IS NULL OR choice IN ('resources', 'xp')", name="ck_map_pickups_choice"),
+    )
+
+
+class MapMine(Base):
+    __tablename__ = "map_mines"
+    world_id = Column(Integer, primary_key=True)
+    q = Column(Integer, primary_key=True)
+    r = Column(Integer, primary_key=True)
+    player_id = Column(ForeignKey("users.id"), nullable=False, index=True)
+    resource = Column(String, nullable=False)
+    rate = Column(Integer, nullable=False)
+    acquired_at = Column(BigInteger, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
+        CheckConstraint("rate > 0", name="ck_map_mines_rate"),
+    )

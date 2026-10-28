@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from .models import Army, ArmyUnit, ArmyOrder, Tile, TileOwnership, Discovery, Unit, Hero, Reward
 from .config import EXPEDITIONS as RULES
 from .combat import distance
-from . import garrisons, bases
+from . import garrisons, bases, objects
 
 
 def fail(reason):
@@ -68,6 +68,8 @@ def route(db, p, army, target, at):
             return 'Вход на чужую территорию пока недоступен: PvP не включён'
         if not final and c not in owners and c not in sites and garrisons.guarded(c[0], c[1], sites):
             return 'Путь перекрыт гарнизоном NPC'
+        if not final and objects.blocks_path(db, c, p.id, sites):
+            return 'Путь перекрыт объектом карты: выберите его целью'
         return None
 
     target = tuple(target)
@@ -137,7 +139,7 @@ def discover(db, army, at):
         db.execute(insert(Discovery).values(values).on_conflict_do_nothing())
 
 
-def settle_orders(db, p, at):
+def settle_orders(db, p, at, change=None):
     army = db.scalar(select(Army).where(Army.player_id == p.id))
     if not army:
         return False
@@ -190,6 +192,9 @@ def settle_orders(db, p, at):
         army.q, army.r = order.q, order.r
         order.status = 'complete'
         order.result = 'Территория захвачена' if order.action == 'capture' else 'Армия прибыла'
+        found = objects.arrive(db, p, order.q, order.r, at, change) if change else None
+        if found:
+            order.result += '. ' + found
         discover(db, army, at)
     order.finished_at = at
     army.status = 'idle'
