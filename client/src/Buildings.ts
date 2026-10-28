@@ -8,16 +8,24 @@ export function createBuilding(b: Building): BuildingVisual {
   const g = new Graphics();
   node.addChild(g);
   const stage = b.level >= 8 ? 4 : b.level >= 5 ? 3 : b.level >= 3 ? 2 : 1;
-  const roof = [0, 0x899990, 0x9ba99b, 0xa7b1a3, 0xbac2b0][stage];
+  // Diorama palette: warm roofs per building family, stone/plaster walls, ink outline.
+  const warm: Record<string, number> = { hq: 0xb5523b, barracks: 0x8a9a5b, power: 0xc9a04a, quarry: 0xb98a55, refinery: 0xc46a3c,
+    oil_well: 0x9a6a44, farm: 0xc4553e, warehouse: 0xb07a45, watchtower: 0x9a5a3a, electronics: 0x4f8fa8, repair: 0xc9873c };
+  const base = warm[b.kind] ?? 0xa8865a;
+  const roof = stage >= 3 ? base + 0x101008 : base;
+  const ink = { color: 0x1b201e, width: 1.4, alignment: 0.5 } as const;
   const box = (x: number, y: number, w: number, d: number, h: number, top = roof) => {
     y = -y;
-    g.poly([x-w,y-d,x,y-d-w*.48,x+w,y-d,x,y-d+w*.48]).fill(top);
-    g.poly([x-w,y-d,x,y-d+w*.48,x,y-d+w*.48+h,x-w,y-d+h]).fill(0x53676b);
-    g.poly([x,y-d+w*.48,x+w,y-d,x+w,y-d+h,x,y-d+w*.48+h]).fill(0x30494f);
-    g.moveTo(x-w,y-d).lineTo(x,y-d+w*.48).lineTo(x+w,y-d).stroke({color:0xc0c9b4,alpha:.35,width:1});
+    const wallL = top === roof ? 0xd8c7a4 : 0x8d9688, wallR = top === roof ? 0xb3a07c : 0x6b7468;
+    g.poly([x-w,y-d,x,y-d+w*.48,x,y-d+w*.48+h,x-w,y-d+h]).fill(wallL).stroke(ink);
+    g.poly([x,y-d+w*.48,x+w,y-d,x+w,y-d+h,x,y-d+w*.48+h]).fill(wallR).stroke(ink);
+    g.poly([x-w,y-d,x,y-d-w*.48,x+w,y-d,x,y-d+w*.48]).fill(top).stroke(ink);
+    g.moveTo(x-w*.7,y-d).lineTo(x,y-d-w*.34).stroke({color:0xffffff,alpha:.18,width:1.5});
   };
-  g.ellipse(7,8,41,17).fill({color:0x071319,alpha:.4});
-  g.poly([-43,0,0,-22,43,0,0,22]).fill(0x737b6b).stroke({color:0x939b81,width:1});
+  g.ellipse(7,8,41,17).fill({color:0x071319,alpha:.35});
+  g.poly([-43,0,0,-22,43,0,0,22]).fill(0x9a8b6a).stroke(ink);
+  g.poly([-43,0,0,22,0,28,-43,6]).fill(0x6b4a2e).stroke(ink);
+  g.poly([0,22,43,0,43,6,0,28]).fill(0x553b25).stroke(ink);
   // Concrete seams and hazard-marked entrances.
   g.moveTo(-34,2).lineTo(2,19).moveTo(0,-18).lineTo(35,0).stroke({color:0x4d5a53,width:1});
   const radar = new Graphics();

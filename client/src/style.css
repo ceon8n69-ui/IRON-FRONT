@@ -768,3 +768,13 @@ html.locked,html.locked body{overflow:hidden;height:100%;position:fixed;inset:0;
 .train-option{margin:8px 0}
 .train-option button{width:100%;text-align:left}
 .train-option small{display:block;color:#9dafba;font-size:11px;margin-top:4px}
+.roster{width:100%;overflow:hidden;display:flex;justify-content:space-around;align-items:flex-end}
+.roster img{display:block;height:100%;width:auto;max-width:20%;object-fit:contain}
+.gallery{max-width:720px;margin:auto;padding:calc(16px + var(--safe-top,0px)) 16px 40px}
+.gallery-faction{border:1px solid;border-radius:12px;padding:12px;margin:12px 0;background:#192633}
+.gallery-faction h2{margin:2px 0 4px}
+.gallery-names{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;font-size:10px;text-align:center}
+.gallery-names b{display:block;font-size:10px}
+.gallery-names em{display:block;color:#9dafba;font-style:normal}
+.faction-line{display:block;font-weight:700;font-style:normal;font-size:12px;margin:6px 0 0;letter-spacing:.02em}
+.train-option small.trait{color:#e5b65a}

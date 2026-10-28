@@ -54,7 +54,7 @@ def test_unit_types_need_barracks_level_and_train_as_stacks(client, monkeypatch)
     r = post(c, '/army/train', {'kind': 'assault'}, h)
     assert r.status_code == 200, r.text
     at_time(monkeypatch, r.json()['state']['jobs'][0]['ready_at'] + 1)
-    assault = next(x for x in me(c, h)['units'] if x['kind'] == 'assault')
+    assault = next(x for x in me(c, h)['units'] if x['kind'] == 'raven_assault')
     assert assault['count'] == 8 and assault['hp'] == 100
 
 

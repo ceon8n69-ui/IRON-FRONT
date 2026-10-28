@@ -6,6 +6,9 @@ import "./style.css";
 import {Icon} from "./Icon";
 import { Commander, Portrait } from "./Commander";
 import { World } from "./World";
+import { Gallery } from "./Gallery";
+import { SpriteStage } from "./SpriteStage";
+import { Roster } from "./Roster";
 import type { ExpeditionRules } from "./store";
 declare global {
   interface Window {
@@ -41,7 +44,9 @@ type Definitions = {
     string,
     { name: string; role: string; bio: string; effect: string }
   >;
-  units: Record<string, { name: string; hp: number; damage: number; defense: number; speed: number; initiative: number; range: number; melee: boolean; count: number; seconds: number; cost: Record<string, number>; requires: Record<string, number> }>;
+  factions: Record<string, { name: string; accent: string; units: { key: string; name: string; art: string; role: string; trait?: string }[] }>;
+  traits: Record<string, string>;
+  units: Record<string, { name: string; gen?: string; trait?: string | null; art?: string; hp: number; damage: number; defense: number; speed: number; initiative: number; range: number; melee: boolean; count: number; seconds: number; cost: Record<string, number>; requires: Record<string, number> }>;
   abilities: Record<string, { name: string; about: string }>;
   army_stacks: number;
 };
@@ -465,16 +470,22 @@ function App() {
               ))}
               {army && !atBase && <p className="action-reason">Состав соединения меняется только на базе.</p>}
               <div className="section-label">НАЙМ В КАЗАРМАХ</div>
-              {defs && Object.entries(defs.units).map(([kind, unit]) => {
-                const reason = unitReason(kind);
-                return <div key={kind} className="train-option">
-                  <button disabled={busy || !!reason} aria-describedby={`train-${kind}`} onClick={() => run(() => command("/army/train", { kind }))}>
-                    Подготовить {genitive[kind] ?? unit.name} · {unit.count} · {cost(unit.cost)} · {unit.seconds} сек.
-                  </button>
-                  <small>HP {unit.hp} · урон {unit.damage} · защита {unit.defense} · скорость {unit.speed} · инициатива {unit.initiative} · {unit.melee ? "ближний бой" : `дальность ${unit.range}`}</small>
-                  {reason && <p id={`train-${kind}`} className="action-reason">{reason}</p>}
-                </div>;
-              })}
+              {defs && state.hero && defs.factions[state.hero.kind] && <>
+                <p className="faction-line" style={{ color: defs.factions[state.hero.kind].accent }}>{defs.factions[state.hero.kind].name}</p>
+                <Roster units={defs.factions[state.hero.kind].units} faction={state.hero.kind} height={86} />
+                {defs.factions[state.hero.kind].units.map(({ key: kind }) => {
+                  const unit = defs.units[kind];
+                  const reason = unitReason(kind);
+                  return <div key={kind} className="train-option">
+                    <button disabled={busy || !!reason} aria-describedby={`train-${kind}`} onClick={() => run(() => command("/army/train", { kind }))}>
+                      Подготовить {unit.gen ?? genitive[kind] ?? unit.name} · {unit.count} · {cost(unit.cost)} · {unit.seconds} сек.
+                    </button>
+                    <small>HP {unit.hp} · урон {unit.damage} · защита {unit.defense} · скорость {unit.speed} · инициатива {unit.initiative} · {unit.melee ? "ближний бой" : `дальность ${unit.range}`}</small>
+                    {unit.trait && <small className="trait">★ {defs.traits[unit.trait]}</small>}
+                    {reason && <p id={`train-${kind}`} className="action-reason">{reason}</p>}
+                  </div>;
+                })}
+              </>}
               </> : state.hero && defs && <Commander state={state} definition={defs.heroes[state.hero.kind]} busy={busy} equip={(item_id,equipped)=>run(()=>command("/equipment/equip",{item_id,equipped}))}/>}
             </section>
           ) : tab === "Альянс" ? (
@@ -695,6 +706,10 @@ function App() {
                     <small>{h.role}</small>
                     <b>{h.name}</b>
                     <p>{h.effect}</p>
+                    {defs.factions?.[id] && <>
+                      <em className="faction-line" style={{ color: defs.factions[id].accent }}>{defs.factions[id].name}</em>
+                      <Roster units={defs.factions[id].units} faction={id} height={58} scale={0.62} />
+                    </>}
                   </button>
                 ))}
               </div>
@@ -707,4 +722,5 @@ function App() {
     </main>
   );
 }
-createRoot(document.getElementById("root")!).render(<App />);
+const page = new URLSearchParams(location.search);
+createRoot(document.getElementById("root")!).render(page.has("sprite") ? <SpriteStage /> : page.has("gallery") ? <Gallery /> : <App />);

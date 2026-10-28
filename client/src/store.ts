@@ -13,7 +13,7 @@ export type Building = {
   effects?: { current: Effects; next: Effects | null };
 };
 export type Effects = { output: Record<string, number>; input: Record<string, number>; power: number; storage: number; vision: number; repair: number };
-export type Stack = { id:string; side:"player"|"npc"; kind:string; count:number; start:number; hp:number; pos:number[]; acted:boolean; defending:boolean; unit_id?:string };
+export type Stack = { id:string; side:"player"|"npc"; kind:string; count:number; start:number; hp:number; pos:number[]; acted:boolean; defending:boolean; unit_id?:string; each?:number; art?:string; trait?:string|null; faction?:string|null };
 export type Battle = {
   id: string;
   status: string;
