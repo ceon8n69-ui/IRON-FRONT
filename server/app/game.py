@@ -285,7 +285,7 @@ def dispatch(db, p, op, data):
         return {"selected": data["kind"]}
     if not hero:
         fail("Сначала выберите командира")
-    if op in ("army_create", "army_order", "army_assign", "army_release"):
+    if op in ("army_create", "army_order", "army_assign", "army_release", "army_disband", "army_lead"):
         return expeditions.dispatch(db, p, op, data, now(), uid, change)
     if op == "build":
         kind = data["kind"]
@@ -380,9 +380,10 @@ def dispatch(db, p, op, data):
             fail("Бой уже завершён")
         if data["turn"] != battle.state["turn"]:
             fail("Раунд устарел: обновите состояние")
-        bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id)))
+        led = battle.state.get("led", True)
+        bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id))) if led else 0
         try:
-            state, events, outcome = combat.resolve(battle.state, data, battle.seed, hero.kind, bonus)
+            state, events, outcome = combat.resolve(battle.state, data, battle.seed, hero.kind if led else None, bonus)
         except ValueError as exc:
             fail(str(exc))
         db.add(BattleTurn(battle_id=battle.id, turn=data["turn"], command=data, events=events))

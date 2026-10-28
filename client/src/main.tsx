@@ -6,6 +6,7 @@ import "./style.css";
 import {Icon} from "./Icon";
 import { Commander, Portrait } from "./Commander";
 import { World } from "./World";
+import { Armies } from "./Armies";
 import { Gallery } from "./Gallery";
 import { SpriteStage } from "./SpriteStage";
 import { Roster } from "./Roster";
@@ -205,8 +206,6 @@ function App() {
     "База снабжает армию, а победы развивают командира. Прогресс сохранён: можно вернуться позже.",
   ];
   const genitive: Record<string, string> = { rifles: "стрелков", scouts: "разведчиков", assault: "штурмовиков", artillery: "артиллерию", armor: "бронетехнику" };
-  const army = state?.armies?.[0];
-  const atBase = !!army && !!state?.base && army.status === "idle" && army.q === state.base.q && army.r === state.base.r;
   const unitReason = (kind: string) => {
     const unit = defs?.units[kind]; if (!unit || !state) return "Недоступно";
     const ready = (k: string) => state.buildings.find((b) => b.kind === k && b.status === "ready")?.level ?? 0;
@@ -398,12 +397,12 @@ function App() {
                 })()}
                 <div className="actions">
                   <button disabled={busy} onClick={() => battleCommand({ action: "wait" })}>Ждать</button>
-                  {state.hero && defs?.abilities[state.hero.kind] && <button disabled={busy || !!battle.state.ability_used} title={defs.abilities[state.hero.kind].about}
+                  {state.hero && defs?.abilities[state.hero.kind] && battle.state.led !== false && <button disabled={busy || !!battle.state.ability_used} title={defs.abilities[state.hero.kind].about}
                     onClick={() => battleCommand({ action: "ability", ...(targetStack ? { target: targetStack.id } : {}) })}>
                     ★ {defs.abilities[state.hero.kind].name}{battle.state.ability_used ? " · использовано" : ""}
                   </button>}
                 </div>
-                {state.hero && defs?.abilities[state.hero.kind] && !battle.state.ability_used && <small>{defs.abilities[state.hero.kind].about}. Один раз за бой.</small>}
+                {state.hero && defs?.abilities[state.hero.kind] && battle.state.led !== false && !battle.state.ability_used && <small>{defs.abilities[state.hero.kind].about}. Один раз за бой.</small>}
               </div>
             </>
           ) : tab === "База" ? (
@@ -447,40 +446,12 @@ function App() {
                 <button aria-pressed={armyView === "commander"} onClick={()=>setArmyView("commander")}>Командир</button>
               </div>
               {armyView === "units" ? <>
-              <div className="section-label">РЕЗЕРВ И ПОДГОТОВКА</div>
-              {(state.armies || []).map(a=><article className="card" key={a.id}><div><h3>Первое соединение</h3><p>{a.status === "moving" ? "В походе" : "Готово к приказу"} · {a.q} : {a.r}</p></div><button className="primary" onClick={()=>changeTab("Карта")}>На карту</button></article>)}
-              {state.units.map((u) => (
-                <article className="card" key={u.id}>
-                  <div className="unit-icon"><Icon name="army"/></div>
-                  <div>
-                    <h3>{defs?.units[u.kind]?.name ?? "Стрелки"} · {u.count}</h3>
-                    <p>Здоровье {u.hp}/100 · {u.status === "army" ? "В составе соединения" : u.status === "battle" ? "В бою" : "В резерве"}</p>
-                  </div>
-                  {atBase && u.status === "reserve" && army && <button disabled={busy || army.unit_ids.length >= (defs?.army_stacks ?? 5)} onClick={()=>run(()=>command("/army/assign",{unit_id:u.id}))}>В соединение</button>}
-                  {atBase && u.status === "army" && army && army.unit_ids.length > 1 && <button disabled={busy} onClick={()=>run(()=>command("/army/release",{unit_id:u.id}))}>В резерв</button>}
-                  {state.first_victory && u.status === "reserve" && !(state.armies || []).length && <button disabled={busy} className="primary" onClick={()=>run(async()=>{await command("/army/create",{unit_id:u.id});changeTab("Карта");})}>Сформировать</button>}
-                  {!state.first_victory && (
-                    <button
-                      className="primary"
-                      disabled={busy}
-                      onClick={() =>
-                        run(() => command("/battles", { unit_id: u.id }))
-                      }
-                    >
-                      В бой
-                    </button>
-                  )}
-                </article>
-              ))}
-              {!state.units.length && (
-                <p>Подготовьте первый отряд в казармах.</p>
-              )}
+              {defs && <Armies state={state} units={defs.units} stacks={defs.army_stacks ?? 5} busy={busy} run={run} toMap={()=>changeTab("Карта")}/>}
               {state.jobs.map((j) => (
                 <div className="notice" key={j.id}>
                   Подготовка: {defs?.units[(j as {kind?:string}).kind ?? "rifles"]?.name ?? "отряд"} · {Math.max(0, j.ready_at - clock)} сек.
                 </div>
               ))}
-              {army && !atBase && <p className="action-reason">Состав соединения меняется только на базе.</p>}
               <div className="section-label">НАЙМ В КАЗАРМАХ</div>
               {defs && state.hero && defs.factions[state.hero.kind] && <>
                 <p className="faction-line" style={{ color: defs.factions[state.hero.kind].accent }}>{defs.factions[state.hero.kind].name}</p>

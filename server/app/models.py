@@ -173,17 +173,21 @@ class Tile(Base):
 class Army(Base):
     __tablename__ = "armies"
     id = Column(String, primary_key=True)
-    player_id = Column(ForeignKey("users.id"), nullable=False, unique=True)
+    player_id = Column(ForeignKey("users.id"), nullable=False, index=True)
     world_id = Column(Integer, nullable=False, default=1)
     q = Column(Integer, nullable=False)
     r = Column(Integer, nullable=False)
     status = Column(String, nullable=False, default="idle")
+    number = Column(Integer, nullable=False, default=1, server_default="1")
+    commander = Column(Boolean, nullable=False, default=False, server_default="false")
     movement = Column(Integer, nullable=False, server_default="12")
     movement_at = Column(BigInteger, nullable=False, server_default="0")
     __table_args__ = (
         ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
         CheckConstraint("status IN ('idle', 'moving')"),
         CheckConstraint("movement >= 0", name="ck_armies_movement"),
+        UniqueConstraint("player_id", "number", name="uq_armies_player_number"),
+        Index("uq_armies_commander", "player_id", unique=True, postgresql_where=text("commander")),
     )
 
 

@@ -56,6 +56,8 @@ def resolve(state, command, seed, hero, bonus):
     if not me or me["side"] != "player":
         raise ValueError("Сейчас ход противника")
     action = command["action"]
+    if action == "ability" and not hero:
+        raise ValueError("Командира нет в этом соединении: его способность недоступна")
     extra = False
     if action == "move":
         _move(s, me, [command["q"], command["r"]], hero)

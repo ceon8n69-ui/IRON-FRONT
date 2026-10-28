@@ -100,13 +100,12 @@ def _militia(db, defender_id, kind):
 def defenders(db, tgt, q, r):
     """Defender's stacks for this target: [(kind, count, unit_id or None, hp)], max 5.
 
-    Real stacks: the defender's idle army standing on the hex, plus reserve
+    Real stacks: the defender's idle armies standing on the hex, plus reserve
     units for a base. Militia fills the remaining slots.
     """
     did, kind = tgt["defender_id"], tgt["kind"]
     real = []
-    army = db.scalar(select(Army).where(Army.player_id == did))
-    if army and army.status == "idle" and (army.q, army.r) == (q, r):
+    for army in db.scalars(select(Army).where(Army.player_id == did, Army.status == "idle", Army.q == q, Army.r == r)):
         ids = list(db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id == army.id).order_by(ArmyUnit.unit_id)))
         real += [u for u in (db.get(Unit, i) for i in ids) if u and u.status == "army"]
     if kind == "base":
@@ -161,10 +160,12 @@ def begin(db, p, army, order, tgt, at):
         enemy.append(st)
     defender = db.get(Player, tgt["defender_id"])
     hero = db.get(Hero, p.id)
-    bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id == p.id)))
+    led = bool(army.commander)
+    bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id == p.id))) if led else 0
     seed = str(uuid.uuid4())
     cover = BASE_COVER if tgt["kind"] == "base" else FIELD_COVER
-    state, _, _ = combat.new_battle(stacks, enemy, cover, seed, hero.kind, bonus)
+    state, _, _ = combat.new_battle(stacks, enemy, cover, seed, hero.kind if led else None, bonus)
+    state["led"] = led
     tile = db.get(Tile, (1, order.q, order.r))
     state["expedition"] = {"army_id": army.id, "order_id": order.id, "q": order.q, "r": order.r}
     state["pvp"] = {"target": tgt["kind"], "defender_id": defender.id, "defender": defender.name}

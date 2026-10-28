@@ -87,9 +87,11 @@ def begin(db, p, army, order):
     name,hp,xp=strength(order.q,order.r,tile.biome,bases.near(db,order.q,order.r,1))
     tier=tier_definition(name)
     hero=db.get(Hero,p.id)
-    bonus=equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id)))
+    led=bool(army.commander)
+    bonus=equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id))) if led else 0
     seed=str(uuid.uuid4())
-    state,_,outcome=combat.new_battle(stacks,npc_stacks(tier["stacks"]),[] if at_sea else [[3,4],[4,2],[5,5]],seed,hero.kind,bonus)
+    state,_,outcome=combat.new_battle(stacks,npc_stacks(tier["stacks"]),[] if at_sea else [[3,4],[4,2],[5,5]],seed,hero.kind if led else None,bonus)
+    state['led']=led
     state['expedition']={'army_id':army.id,'order_id':order.id,'q':order.q,'r':order.r}
     state['npc_tier']={'name':name,'hp':hp,'xp':xp}
     state['terrain']='sea' if at_sea else tile.biome

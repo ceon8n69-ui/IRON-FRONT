@@ -12,8 +12,7 @@ type Props = {
   battle?: Battle;
   world?: Tile[];
   center?: number[];
-  army?: Army;
-  armyKinds?: string[];
+  armies?: { army: Army; kinds: string[]; active: boolean }[];
   route?: number[][] | null;
   now?: number;
   selected: number[] | null;
@@ -239,7 +238,7 @@ export function MapView(props: Props) {
     };
   }, []);
   // Snapshots arrive frequently; rebuild geometry only when renderable state changes.
-  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.army, props.armyKinds, props.center, props.route, textures]);
+  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.armies, props.center, props.route, textures]);
   useEffect(() => {
     if (!ready || !app.current) return;
     const s = scene.current;
@@ -386,27 +385,34 @@ export function MapView(props: Props) {
         labels.addChild(badge);
       }
     }
-    if (props.army && props.world) {
-      const army = props.army;
-      const order = army.orders.find(o=>o.status === "moving");
+    if (props.armies?.length && props.world) {
       const project = (q:number,r:number) => [54*Math.sqrt(3)*(q-(props.center?.[0]??64)+(r-(props.center?.[1]??64))/2),54*.975*(r-(props.center?.[1]??64))];
+      // Inactive armies first so the active one is drawn on top.
+      for (const {army, kinds, active} of [...props.armies].sort((a, b) => Number(a.active) - Number(b.active))) {
+      const order = army.orders.find(o=>o.status === "moving");
       const [x,y]=project(army.q,army.r);
       const marker = new Container();marker.label="march";marker.position.set(x,y);
       const afloat = (props.world ?? []).some((t) => t.q === army.q && t.r === army.r && (t.biome === "sea" || t.biome === "lake"));
       // Lead stack's raster sprite (ship afloat, land unit ashore); code art until it loads.
-      const kinds = props.armyKinds ?? [];
       const lead = afloat ? kinds.find((k) => NAVAL_KINDS.has(k)) ?? "transport" : kinds.find((k) => !NAVAL_KINDS.has(k));
       const url = lead ? `/art/units/${lead}.png` : "";
       const tex = url && Assets.cache.has(url) ? (Assets.cache.get(url) as Texture) : null;
+      const shadow = new Graphics().ellipse(0, 4, 30, 10).fill({ color: active ? 0xe5b65a : 0x4c9ce5, alpha: active ? .6 : .4 });
+      if (active) shadow.stroke({ color: 0xffe2a0, width: 2, alpha: .9 });
+      marker.addChild(shadow);
       if (tex) {
-        const shadow = new Graphics().ellipse(0, 4, 30, 10).fill({ color: 0x4c9ce5, alpha: .45 });
         const img = new Sprite(tex); img.anchor.set(0.5, RASTER_FEET); img.scale.set(RASTER_SCALE * 1.15);
         img.position.set(0, 6);
-        marker.addChild(shadow, img);
+        marker.addChild(img);
       } else {
         marker.addChild(afloat ? unitSprite("boat_transport", undefined, "player", 1) : squad(0,0,0x4c9ce5));
         if (url && !failed.has(url)) Assets.load(url).then(() => setTextures((n) => n + 1)).catch(() => failed.add(url));
       }
+      // Number badge (gold with a star for the commander's army).
+      const badge = new Container(); badge.position.set(22, -34);
+      badge.addChild(new Graphics().circle(0, 0, 11).fill(army.commander ? 0xe5b65a : 0x1d4f7a).stroke({ color: 0x101923, width: 2 }));
+      const num = new Text({ text: army.commander ? "★" : String(army.number), style: { fontSize: 12, fill: army.commander ? 0x101923 : 0xf0f3f5, fontFamily: "sans-serif", fontWeight: "bold" } });
+      num.anchor.set(.5); badge.addChild(num); marker.addChild(badge);
       s.addChild(marker);
       if (order) {
         // Walk the server path hex by hex: [[q, r, arrive_at], ...] after the start hex.
@@ -414,8 +420,8 @@ export function MapView(props: Props) {
         const points = [[order.from_q, order.from_r, order.started_at], ...steps].map(([q,r,t]) => [...project(q,r), t]);
         const line = new Graphics().moveTo(points[0][0],points[0][1]);
         points.slice(1).forEach(([px,py]) => line.lineTo(px,py));
-        line.stroke({color:0xe5b65a,width:3,alpha:.75}); ground.addChild(line);
-        for (const [px,py] of points.slice(1)) ground.addChild(new Graphics().circle(px,py,5).fill({color:0xe5b65a,alpha:.85}));
+        line.stroke({color:0xe5b65a,width:3,alpha:active ? .8 : .45}); ground.addChild(line);
+        for (const [px,py] of points.slice(1)) ground.addChild(new Graphics().circle(px,py,5).fill({color:0xe5b65a,alpha:active ? .85 : .45}));
         animations.current.push({node:marker,animate:()=>{
           const now = latest.current.now ?? order.started_at;
           let i = 1; while (i < points.length - 1 && points[i][2] <= now) i++;
@@ -424,7 +430,7 @@ export function MapView(props: Props) {
           marker.position.set(ax+(bx-ax)*k, ay+(by-ay)*k);
         }});
       }
-      if (props.route?.length && !order) {
+      if (active && props.route?.length && !order) {
         const points = [[army.q, army.r], ...props.route].map(([q,r]) => project(q,r));
         const preview = new Graphics().moveTo(points[0][0], points[0][1]);
         points.slice(1).forEach(([px,py]) => preview.lineTo(px,py));
@@ -437,6 +443,7 @@ export function MapView(props: Props) {
           const t = new Text({text:String(spent),style:{fontSize:12,fill:0xf0f3f5,fontFamily:"sans-serif",fontWeight:"bold"}});
           t.anchor.set(.5); t.position.set(px,py); labels.addChild(t);
         });
+      }
       }
     }
     s.addChild(labels);
