@@ -38,6 +38,11 @@ def fail(message):
     raise HTTPException(409, message)
 
 
+def tutorial_done(db, p):
+    """The first patrol is fought once per account; seasons keep it done."""
+    return bool(p.tutorial_done) or db.get(Reward, (p.id, "first-patrol")) is not None
+
+
 def notify(db, p, kind):
     p.revision += 1
     db.add(Event(player_id=p.id, revision=p.revision, kind=kind, created_at=now()))
@@ -137,6 +142,7 @@ def settle(db, p, at=None):
         if boost != 1:
             totals = {k: round(v * boost) if v > 0 else v for k, v in totals.items()}
         change(db, p, totals, "production")
+        seasons.accrue(db, p, ticks, at)
         p.settled_at = cursor + ticks * 60
     completed = logistics.charge(db, p, at, change, seasons.effect(db, "upkeep", at))
     for battle in rows(db, Battle, p.id):
@@ -194,7 +200,8 @@ def snapshot(db, p):
             for b in rows(db, Battle, p.id)
         ],
         "commander": commander.view(db, p.id),
-        "first_victory": db.get(Reward, (p.id, "first-patrol")) is not None,
+        "first_victory": tutorial_done(db, p),
+        "vp": p.vp,
         **expeditions.state(db, p.id),
         "mines": [{"q": m.q, "r": m.r, "resource": m.resource, "rate": m.rate,
                    "supplied": logistics.mine_supplied(tuple(bases.home(db, p.id)), logistics.supplied(db, p.id), m.q, m.r)}
@@ -393,7 +400,7 @@ def dispatch(db, p, op, data):
         db.add(job)
         return {"id": job.id}
     if op == "battle":
-        if db.get(Reward, (p.id, "first-patrol")):
+        if tutorial_done(db, p):
             fail("Учебная операция уже завершена")
         if any(b.status == "active" for b in rows(db, Battle, p.id)):
             fail("У вас уже есть активный бой")
@@ -475,7 +482,9 @@ def conclude(db, p, battle, hero, events, outcome):
             hero.xp += battle.state.get('npc_tier', {}).get('xp', 50)
             from .config import NPC_TIERS
             name = battle.state.get('npc_tier', {}).get('name')
-            tier = next((i for i, t in enumerate(NPC_TIERS) if t['name'] == name), 0)
+            fortress = name in (nodes.TIER['name'], nodes.CAPITAL_TIER['name'])
+            tier = 3 if fortress else next((i for i, t in enumerate(NPC_TIERS) if t['name'] == name), 0)
+            seasons.award(p, 'capital' if name == nodes.CAPITAL_TIER['name'] else 'fortress' if fortress else 'garrison')
             definition_id, roll = equipment.loot(battle.seed, tier)
             item = Item(id=uid(), owner_id=p.id, definition_id=definition_id, source_id=battle.id, equipped=False, created_at=now())
             db.add(item); db.flush()
@@ -486,6 +495,7 @@ def conclude(db, p, battle, hero, events, outcome):
     for unit in battle_units(db, battle):
         unit.status = "reserve"
     if outcome == "victory":
+        p.tutorial_done = True
         db.add(Reward(player_id=p.id, mission="first-patrol", battle_id=battle.id))
         change(db, p, {"metal": 150, "food": 60}, "first-patrol")
         hero.xp += 100

@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.13.0")
+app = FastAPI(title="IRON FRONT", version="0.14.0")
 
 
 class Strict(BaseModel):
@@ -419,6 +419,18 @@ def army_route(q: int, r: int, army_id: str | None = None, authorization: str | 
                 "movement": army.movement, "affordable": cost <= army.movement}
 
 
+@app.get("/api/v1/season")
+def season(authorization: str | None = Header(default=None)):
+    """Season standings, calendar, scoring rules, last winners and the player's medals."""
+    from . import seasons
+    with SessionLocal.begin() as db:
+        pid = identify(db, authorization)
+        rate_limit(pid)
+        p = locked(db, pid)
+        settle(db, p)
+        return seasons.leaderboard(db, pid)
+
+
 @app.get("/api/v1/world/target")
 def world_target(q: int, r: int, authorization: str | None = Header(default=None)):
     """Scout report on another commander's holding within your sight."""
@@ -478,7 +490,7 @@ def tiles(
             tier = objects.strength(t.q,t.r,t.biome,sites) if guarded else None
             base = None
             if site and in_view:
-                base = "self" if sites[(t.q,t.r)] == pid else "other" if sites[(t.q,t.r)] else "staging"
+                base = "self" if sites[(t.q,t.r)] == pid else "other"
             result.append({"id":f"1:{t.q}:{t.r}","q":t.q,"r":t.r,
                 "biome":t.biome if known else "unknown",
                 "garrison":guarded,

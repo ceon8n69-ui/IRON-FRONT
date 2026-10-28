@@ -61,8 +61,9 @@ def strength(q, r, biome="plain", sites=()):
     if biome == "sea":
         return SEA_TIERS[_roll(q, r, "sea-tier") % 3]
     from . import nodes
-    if nodes.at(q, r, biome, sites):
-        t = nodes.TIER
+    node = nodes.at(q, r, biome, sites)
+    if node:
+        t = nodes.tier(node)
         return (t["name"], sum(UNITS[k]["hp"] * n for k, n in t["stacks"]), t["xp"])
     if (q, r - 1) in set(sites) or _is_tutorial(q, r):
         return TIERS[0]
@@ -71,12 +72,12 @@ def strength(q, r, biome="plain", sites=()):
 
 def tier_definition(name):
     from . import nodes
-    return next(t for t in NPC_TIERS + NPC_SEA_TIERS + [nodes.TIER] if t["name"] == name)
+    return next(t for t in NPC_TIERS + NPC_SEA_TIERS + [nodes.TIER, nodes.CAPITAL_TIER] if t["name"] == name)
 
 
 def _is_tutorial(q, r):
     # Tutorial garrisons sit directly south of a base on the spaced grid.
-    return (q, r - 1) in set(bases.candidates()) or (q, r - 1) == bases.STAGING
+    return (q, r - 1) in set(bases.candidates())
 
 
 def blocks_path(db, c, pid, sites, biome="plain"):

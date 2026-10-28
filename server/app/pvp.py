@@ -119,7 +119,14 @@ def defenders(db, tgt, q, r):
         supply = logistics.supplied(db, did)
         cut_off = (q, r) not in supply if kind == "territory" else \
             not logistics.mine_supplied(tuple(bases.home(db, did)), supply, q, r)
-    for k, n in _militia(db, did, kind):
+    militia = _militia(db, did, kind)
+    if kind == "territory":
+        from . import logistics as _l
+        if _l.node_kind(db, q, r) == "capital":
+            # The Capital's own guard turns out for whoever holds it.
+            militia = [(k, n * 3) for k, n in militia] + [(k2, 2 + hq_level(db, did)) for k2 in
+                       [next((v["key"] for v in FACTIONS[db.get(Hero, did).kind]["units"] if v["role"] == "artillery"), "artillery")]]
+    for k, n in militia:
         if len(forces) < 5:
             forces.append((k, max(1, n // 2) if cut_off else n, None, 100))
     return forces
@@ -235,8 +242,10 @@ def finish(db, p, battle, outcome, at):
     lost_att = {x["kind"]: x["start"] - combat.alive(x) for x in s["stacks"] if x["side"] == "player"}
     loot, result = {}, None
     db.scalar(select(Tile).where(Tile.world_id == 1, Tile.q == ctx["q"], Tile.r == ctx["r"]).with_for_update())
+    from . import seasons
     if outcome == "victory":
         db.get(Hero, p.id).xp += PVP["xp"]
+        seasons.award(p, "pvp_attack")
         kind = info["target"]
         if kind == "base":
             from . import commander
@@ -269,6 +278,7 @@ def finish(db, p, battle, outcome, at):
                 discover(db, army, at)
                 result = "Территория захвачена"
     else:
+        seasons.award(defender, "pvp_defence")
         result = "Поражение. Соединение отступило"
     order.result = result
     db.add(PvpReport(id=str(uuid.uuid4()), battle_id=battle.id, attacker_id=p.id, defender_id=defender.id,

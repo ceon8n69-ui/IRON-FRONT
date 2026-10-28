@@ -7,6 +7,7 @@ import {Icon} from "./Icon";
 import { Commander, Portrait } from "./Commander";
 import { World } from "./World";
 import { Armies } from "./Armies";
+import { Season } from "./Season";
 import { Gallery } from "./Gallery";
 import { SpriteStage } from "./SpriteStage";
 import { Roster } from "./Roster";
@@ -510,15 +511,8 @@ function App() {
               </>}
               </> : state.hero && defs && <Commander state={state} definition={defs.heroes[state.hero.kind]} busy={busy} equip={(item_id,equipped)=>run(()=>command("/equipment/equip",{item_id,equipped}))} pick={(key)=>run(()=>command("/commander/skill",{key}))}/>}
             </section>
-          ) : tab === "Альянс" ? (
-            <section className="content">
-              <div className="empty-emblem">⚑</div>
-              <h2>Союз начинается с командиров</h2>
-              <p>
-                Альянсы запланированы для многопользовательского этапа. В
-                текущем срезе ещё недоступны.
-              </p>
-            </section>
+          ) : tab === "Сезон" ? (
+            <Season clock={clock} revision={state.revision} heroes={defs?.heroes ?? {}} />
           ) : (
             <section className="content">
               <div className="section-label">БОЕВОЙ ОТЧЁТ</div>
@@ -571,7 +565,7 @@ function App() {
               ["База", "base"],
               ["Армия", "army"],
               ["Карта", "map"],
-              ["Альянс", "alliance"],
+              ["Сезон", "alliance"],
               ["Командование", "command"],
             ].map(([t, icon]) => (
               <button
