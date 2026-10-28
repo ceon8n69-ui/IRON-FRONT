@@ -750,3 +750,9 @@ html.locked,html.locked body{overflow:hidden;height:100%;position:fixed;inset:0;
 .level-pips{display:flex;gap:3px;margin:6px 0}
 .level-pips i{flex:1;height:5px;border-radius:2px;background:#263746}
 .level-pips i.on{background:#e5b65a}
+.movement-meter{position:absolute;right:12px;top:calc(118px + var(--safe-top,0px));z-index:3;background:#101923e0;border:1px solid #31424e;border-radius:10px;padding:7px 10px;pointer-events:none;min-width:132px}
+.movement-meter b{display:block;font-size:13px;color:#e5b65a}
+.movement-meter small{display:block;font-size:10px;color:#9dafba;margin-top:3px}
+.movement-meter .pips{display:flex;gap:2px;margin-top:4px}
+.movement-meter .pips i{flex:1;height:5px;border-radius:2px;background:#263746}
+.movement-meter .pips i.on{background:#e5b65a}

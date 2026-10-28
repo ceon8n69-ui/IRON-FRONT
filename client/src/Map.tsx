@@ -12,6 +12,7 @@ type Props = {
   world?: Tile[];
   center?: number[];
   army?: Army;
+  route?: number[][] | null;
   now?: number;
   selected: number[] | null;
   onSelect: (q: number, r: number) => void;
@@ -218,7 +219,7 @@ export function MapView(props: Props) {
     };
   }, []);
   // Snapshots arrive frequently; rebuild geometry only when renderable state changes.
-  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.army, props.center]);
+  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.army, props.center, props.route]);
   useEffect(() => {
     if (!ready || !app.current) return;
     const s = scene.current;
@@ -336,12 +337,34 @@ export function MapView(props: Props) {
       const flag = squad(0,0,0x4c9ce5);
       marker.addChild(flag);s.addChild(marker);
       if (order) {
-        const [tx,ty]=project(order.q,order.r);
-        const route = new Graphics().moveTo(x,y).lineTo(tx,ty).stroke({color:0xe5b65a,width:2,alpha:.7});ground.addChild(route);
+        // Walk the server path hex by hex: [[q, r, arrive_at], ...] after the start hex.
+        const steps = order.path?.length ? order.path : [[order.q, order.r, order.ready_at]];
+        const points = [[order.from_q, order.from_r, order.started_at], ...steps].map(([q,r,t]) => [...project(q,r), t]);
+        const line = new Graphics().moveTo(points[0][0],points[0][1]);
+        points.slice(1).forEach(([px,py]) => line.lineTo(px,py));
+        line.stroke({color:0xe5b65a,width:3,alpha:.75}); ground.addChild(line);
+        for (const [px,py] of points.slice(1)) ground.addChild(new Graphics().circle(px,py,5).fill({color:0xe5b65a,alpha:.85}));
         animations.current.push({node:marker,animate:()=>{
-          const progress=Math.max(0,Math.min(1,((latest.current.now??order.started_at)-order.started_at)/(order.ready_at-order.started_at)));
-          marker.position.set(x+(tx-x)*progress,y+(ty-y)*progress);
+          const now = latest.current.now ?? order.started_at;
+          let i = 1; while (i < points.length - 1 && points[i][2] <= now) i++;
+          const [ax,ay,at] = points[i-1], [bx,by,bt] = points[i];
+          const k = Math.max(0, Math.min(1, (now - at) / Math.max(1, bt - at)));
+          marker.position.set(ax+(bx-ax)*k, ay+(by-ay)*k);
         }});
+      }
+      if (props.route?.length && !order) {
+        const points = [[army.q, army.r], ...props.route].map(([q,r]) => project(q,r));
+        const preview = new Graphics().moveTo(points[0][0], points[0][1]);
+        points.slice(1).forEach(([px,py]) => preview.lineTo(px,py));
+        preview.stroke({color:0x64b87b,width:3,alpha:.8}); ground.addChild(preview);
+        let spent = 0;
+        props.route.forEach(([,, cost], i) => {
+          spent += cost;
+          const [px,py] = points[i+1];
+          ground.addChild(new Graphics().circle(px,py,11).fill({color:0x101923,alpha:.85}).stroke({color:0x64b87b,width:2}));
+          const t = new Text({text:String(spent),style:{fontSize:12,fill:0xf0f3f5,fontFamily:"sans-serif",fontWeight:"bold"}});
+          t.anchor.set(.5); t.position.set(px,py); labels.addChild(t);
+        });
       }
     }
     s.addChild(labels);

@@ -21,7 +21,7 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 from . import config, expeditions, garrisons, bases
 from .db import SessionLocal
-from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery
+from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery, Army
 from .auth import validate_init_data, token_hash
 from .game import uid, now, settle, snapshot, execute
 
@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.4.0")
+app = FastAPI(title="IRON FRONT", version="0.5.0")
 
 
 class Strict(BaseModel):
@@ -310,6 +310,28 @@ def replay(battle_id: str, authorization: str | None = Header(default=None)):
                 )
             ],
         }
+
+
+@app.get("/api/v1/army/route")
+def army_route(q: int, r: int, authorization: str | None = Header(default=None)):
+    """Read-only preview of the cheapest route for the player's army."""
+    if not 0 <= q < 128 or not 0 <= r < 128:
+        raise HTTPException(422, "Недопустимые координаты")
+    with SessionLocal.begin() as db:
+        pid = identify(db, authorization)
+        rate_limit(pid)
+        p = locked(db, pid)
+        settle(db, p)
+        army = db.scalar(select(Army).where(Army.player_id == pid))
+        if not army:
+            raise HTTPException(409, "Сформируйте соединение в разделе «Армия»")
+        if (q, r) == (army.q, army.r):
+            raise HTTPException(409, "Соединение уже на этом гексе")
+        steps, cost = expeditions.route(db, p, army, (q, r), now())
+        rules = config.EXPEDITIONS
+        return {"path": [[sq, sr, c] for sq, sr, c in steps], "cost": cost,
+                "fuel": rules["fuel"] * len(steps), "seconds": cost * rules["step_seconds"],
+                "movement": army.movement, "affordable": cost <= army.movement}
 
 
 @app.get("/api/v1/world/tiles")
