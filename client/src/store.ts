@@ -58,7 +58,12 @@ export type State = {
   armies_max?: number;
   territories: Territory[];
   pvp?: PvpState;
+  calendar?: Calendar | null;
+  upkeep?: Record<string, number>;
+  control_limit?: number;
+  nodes?: {q:number;r:number;kind:string;name:string;supplied:boolean}[];
 };
+export type Calendar = { season:number; day:number; week:number; day_index:number; day_started_at:number; next_day_at:number; ends_at:number; event:{key:string;name:string;about:string} };
 export type SkillView = { key:string; name:string; icon:string; rank:number; about:string };
 export type CommanderView = { level:number; xp:number; level_xp:number; next_xp:number|null; pending:number; offers:SkillView[]; skills:SkillView[]; perks:Record<string,number>; max_skills:number };
 export type PvpReport = { id:string; role:"attacker"|"defender"; enemy:string; target:"base"|"territory"|"mine"; q:number; r:number; outcome:"victory"|"defeat"; loot:Record<string,number>; losses:{attacker?:Record<string,number>;defender?:Record<string,number>}; created_at:number };
@@ -122,6 +127,6 @@ export type MarchOrder = { id:string; q:number; r:number; from_q:number; from_r:
 export type Army = { id:string; number:number; commander:boolean; in_battle?:boolean; q:number; r:number; status:string; unit_ids:string[]; orders:MarchOrder[]; movement:number; movement_max:number; movement_next_at:number|null };
 export type RoutePreview = { path:number[][]; cost:number; fuel:number; seconds:number; movement:number; affordable:boolean };
 export type MapObject = { kind:"pile"|"chest"|"mine"; resource?:string; amount?:number; rate?:number; owner?:"self"|"other"|null; pending?:boolean };
-export type WorldTile = { q:number; r:number; biome:string; visibility:string; control:"self"|"other"|"neutral"|null; home:boolean; base?:"self"|"other"|"staging"|null; garrison?:boolean; garrison_strength?:{name:string;hp:number;xp:number}|null; object?:MapObject|null };
-export type Territory = { q:number; r:number; biome:string; yield:Record<string,number>; acquired_at:number };
+export type WorldTile = { q:number; r:number; biome:string; visibility:string; control:"self"|"other"|"neutral"|null; home:boolean; base?:"self"|"other"|"staging"|null; garrison?:boolean; garrison_strength?:{name:string;hp:number;xp:number}|null; object?:MapObject|null; node?:{kind:string;name:string;about:string;yield:Record<string,number>;vision:number}|null; supplied?:boolean|null };
+export type Territory = { q:number; r:number; biome:string; yield:Record<string,number>; acquired_at:number; supplied?:boolean; node?:string|null };
 export type ExpeditionRules = {staging:number[];movement_max:number;movement_regen_seconds:number;terrain_cost:Record<string,number>;step_seconds:number;seconds:number;fuel:number;control_limit:number;army_vision:number;territory_yield:Record<string,Record<string,number>>};

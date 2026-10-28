@@ -96,7 +96,8 @@ def test_territory_victory_transfers_tile_and_defender_keeps_half(client, monkey
     assert incoming_before == []
     b = run(c, monkeypatch, h, a, Q+1, R)
     npc = [x for x in b['state']['stacks'] if x['side'] == 'npc']
-    assert npc[0]['count'] == start and npc[1]['count'] == 6               # real stack + militia (4 + 2*HQ1)
+    # Real stack + militia (4 + 2*HQ1 = 6), halved: this tile is cut off from the defender's base.
+    assert npc[0]['count'] == start and npc[1]['count'] == 3
     result = finish(c, h, b)
     assert result['result']['outcome'] == 'victory'
     s = result['state']

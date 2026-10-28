@@ -24,7 +24,12 @@ export function Armies({ state, units, stacks, busy, run, toMap }: Props) {
   const owner = (unitId: string) => armies.find((a) => a.unit_ids.includes(unitId));
   const name = (kind: string) => units[kind]?.name ?? kind;
   const status = (a: Army) => a.in_battle ? "В бою" : a.status === "moving" ? "В походе" : atBase(a) ? "На базе" : "Готово к приказу";
+  const upkeep = state.upkeep ?? {};
+  const hungry = Object.entries(upkeep).some(([k, v]) => v > 0 && (state.resources[k] ?? 0) < v);
   return <>
+    {(upkeep.food > 0 || upkeep.fuel > 0) && <p className={`upkeep-line${hungry ? " hungry" : ""}`}>
+      Содержание войск: {upkeep.food ? `${upkeep.food} провизии` : ""}{upkeep.food && upkeep.fuel ? " и " : ""}{upkeep.fuel ? `${upkeep.fuel} топлива` : ""} в час.
+      {hungry ? " Запасов меньше чем на час: без провизии и топлива бойцы начнут дезертировать." : ""}</p>}
     <div className="section-label">СОЕДИНЕНИЯ · {armies.length}/{max}</div>
     {!armies.length && state.first_victory && <p>Сформируйте первое соединение из резерва: оно выйдет с базы на карту мира.</p>}
     {armies.map((a) => <article className={`card army-card${target?.id === a.id ? " target" : ""}`} key={a.id}>

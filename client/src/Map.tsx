@@ -1,11 +1,11 @@
-import {surface, environment, bunker, squad, pile, chest, mine} from "./Terrain";
+import {surface, environment, bunker, squad, pile, chest, mine, node} from "./Terrain";
 import { unitSprite, pirateShip } from "./Units";
 import {Icon} from "./Icon";
 import { useEffect, useRef, useState } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle, Army } from "./store";
-type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean; garrison_strength?: {name:string;hp:number} | null; object?: {kind:string;resource?:string;amount?:number;owner?:string|null;pending?:boolean} | null };
+type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean; garrison_strength?: {name:string;hp:number} | null; object?: {kind:string;resource?:string;amount?:number;owner?:string|null;pending?:boolean} | null; node?: {kind:string;name:string} | null; supplied?: boolean | null };
 type Props = {
   buildings: Building[];
   paused?: boolean;
@@ -283,10 +283,19 @@ export function MapView(props: Props) {
         const border = new Graphics();
         hex(border,x,y,48,t.home ? 0xe5b65a : t.base === "other" ? 0xd95a52 : t.base === "staging" ? 0xa7aeb5 : t.control === "self" ? 0x4c9ce5 : 0xd95a52);
         border.alpha=.3;ground.addChild(border);
+        if (t.control === "self" && t.supplied === false) {
+          // Cut off from the base: red rim and a broken-chain mark.
+          const cut = new Graphics(); hex(cut,x,y,46,0xd95a52); cut.alpha=.22; ground.addChild(cut);
+          const mark = new Text({text:"⛓",style:{fontSize:15,fill:0xffb4a0,fontFamily:"sans-serif"}});
+          mark.anchor.set(.5); mark.position.set(x+26,y-22); labels.addChild(mark);
+        }
+      }
+      if (t.node && t.visibility !== "unknown") {
+        s.addChild(node(x, y - 6, t.node.kind, t.control === "self" ? 0x4c9ce5 : t.control === "other" ? 0xd95a52 : null));
       }
       if (t.garrison) {
         if (t.biome === "sea") { const p = pirateShip(); p.position.set(x, y + 6); s.addChild(p); }
-        else s.addChild(bunker(x,y-7));
+        else if (!t.node) s.addChild(bunker(x,y-7));
         const tag = t.garrison_strength ? `⚑ ${t.garrison_strength.name} ${t.garrison_strength.hp}` : "⚑ NPC";
         const badge = new Text({text:tag,style:{fontSize:13,fill:0xffb4a0,fontFamily:"sans-serif",fontWeight:"bold"}});
         badge.anchor.set(.5);badge.position.set(x,y+20);
@@ -334,7 +343,7 @@ export function MapView(props: Props) {
         const plate = new Graphics().roundRect(x-label.width/2-6,y+21,label.width+12,17,3).fill({color:0x101923,alpha:.9});
         labels.addChild(plate);
         labels.addChild(label);
-      } else if (!props.battle && !t.garrison && !(t as {object?:unknown}).object && t.biome!=="unknown") {
+      } else if (!props.battle && !t.garrison && !t.node && !(t as {object?:unknown}).object && t.biome!=="unknown") {
         const detail=environment(x,y,t.biome,t.q+(props.center?.[0]??0),t.r+(props.center?.[1]??0));
         if(t.visibility==="explored")detail.alpha=.55;
         s.addChild(detail);

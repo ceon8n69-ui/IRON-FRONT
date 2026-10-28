@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS, UNITS, TUTORIAL_NPC, FACTIONS
-from . import expeditions, garrisons, equipment, bases, economy, objects, pvp, commander
+from . import expeditions, garrisons, equipment, bases, economy, objects, pvp, commander, logistics, seasons, nodes
 from . import combat
 
 
@@ -87,8 +87,12 @@ def settle(db, p, at=None):
     at = now() if at is None else at
     bases.ensure(db, p, at)
     marched = expeditions.settle_orders(db, p, at, change)
-    territories = expeditions.state(db, p.id)["territories"] + [
-        {"acquired_at": m.acquired_at, "yield": {m.resource: m.rate}} for m in objects.mines(db, p.id)]
+    # Only supplied land works: territories chained to the base, mines touching them.
+    supply = logistics.supplied(db, p.id)
+    home = tuple(bases.home(db, p.id))
+    territories = [t for t in expeditions.state(db, p.id)["territories"] if t["supplied"]] + [
+        {"acquired_at": m.acquired_at, "yield": {m.resource: m.rate}} for m in objects.mines(db, p.id)
+        if logistics.mine_supplied(home, supply, m.q, m.r)]
     buildings = rows(db, Building, p.id)
     # Each whole minute is simulated with the buildings actually ready at its start.
     # Bounded offline accrual: 24h. Fractional final minute remains in settled_at.
@@ -129,12 +133,12 @@ def settle(db, p, at=None):
                 balances[k] += v
                 totals[k] += v
     if ticks:
-        supply = commander.perk(db, p.id, "supply")
-        if supply:
-            totals = {k: round(v * (1 + supply)) if v > 0 else v for k, v in totals.items()}
+        boost = (1 + commander.perk(db, p.id, "supply")) * seasons.effect(db, "production", at)
+        if boost != 1:
+            totals = {k: round(v * boost) if v > 0 else v for k, v in totals.items()}
         change(db, p, totals, "production")
         p.settled_at = cursor + ticks * 60
-    completed = False
+    completed = logistics.charge(db, p, at, change, seasons.effect(db, "upkeep", at))
     for battle in rows(db, Battle, p.id):
         if battle.status == "active" and "stacks" not in battle.state:
             battle.state = combat.from_legacy(battle.state, battle.unit_id)
@@ -192,9 +196,16 @@ def snapshot(db, p):
         "commander": commander.view(db, p.id),
         "first_victory": db.get(Reward, (p.id, "first-patrol")) is not None,
         **expeditions.state(db, p.id),
-        "mines": [{"q": m.q, "r": m.r, "resource": m.resource, "rate": m.rate} for m in objects.mines(db, p.id)],
+        "mines": [{"q": m.q, "r": m.r, "resource": m.resource, "rate": m.rate,
+                   "supplied": logistics.mine_supplied(tuple(bases.home(db, p.id)), logistics.supplied(db, p.id), m.q, m.r)}
+                  for m in objects.mines(db, p.id)],
         "pending_chests": objects.pending_chests(db, p.id),
         "pvp": pvp.state(db, p, now()),
+        "calendar": seasons.calendar(seasons.current(db), now()),
+        "upkeep": logistics.per_hour(db, p.id, seasons.effect(db, "upkeep", now())),
+        "control_limit": expeditions.control_limit(db, p.id),
+        "nodes": [{"q": q, "r": r, "kind": k, "name": nodes.KINDS[k]["name"], "supplied": ok}
+                  for q, r, k, ok in logistics.owned_nodes(db, p.id)],
     }
 
 
@@ -375,8 +386,10 @@ def dispatch(db, p, op, data):
             fail("Недостаточно энергии")
         if any(j.status == "queued" for j in rows(db, Job, p.id)):
             fail("Очередь подготовки занята")
-        change(db, p, {k: -v for k, v in spec["cost"].items()}, "training")
-        job = Job(id=uid(), player_id=p.id, kind=kind, ready_at=now() + spec["seconds"], status="queued")
+        cost_factor = seasons.effect(db, "infantry_cost", now()) if spec.get("infantry") else 1
+        time_factor = seasons.effect(db, "vehicle_time", now()) if not spec.get("infantry") and not spec.get("naval") else 1
+        change(db, p, {k: -max(1, round(v * cost_factor)) for k, v in spec["cost"].items()}, "training")
+        job = Job(id=uid(), player_id=p.id, kind=kind, ready_at=now() + max(1, round(spec["seconds"] * time_factor)), status="queued")
         db.add(job)
         return {"id": job.id}
     if op == "battle":

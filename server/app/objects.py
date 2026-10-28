@@ -60,13 +60,18 @@ def strength(q, r, biome="plain", sites=()):
     """Visible neutral stack strength: (label, hp, xp)."""
     if biome == "sea":
         return SEA_TIERS[_roll(q, r, "sea-tier") % 3]
+    from . import nodes
+    if nodes.at(q, r, biome, sites):
+        t = nodes.TIER
+        return (t["name"], sum(UNITS[k]["hp"] * n for k, n in t["stacks"]), t["xp"])
     if (q, r - 1) in set(sites) or _is_tutorial(q, r):
         return TIERS[0]
     return TIERS[_roll(q, r, "tier") % 3]
 
 
 def tier_definition(name):
-    return next(t for t in NPC_TIERS + NPC_SEA_TIERS if t["name"] == name)
+    from . import nodes
+    return next(t for t in NPC_TIERS + NPC_SEA_TIERS + [nodes.TIER] if t["name"] == name)
 
 
 def _is_tutorial(q, r):
@@ -120,7 +125,8 @@ def arrive(db, p, q, r, at_time, change):
         return "Здесь уже побывал другой отряд."
     if obj["kind"] == "pile":
         from . import commander
-        amount = round(obj["amount"] * (1 + commander.perk(db, p.id, "plunder")))
+        from . import seasons
+        amount = round(obj["amount"] * (1 + commander.perk(db, p.id, "plunder")) * seasons.effect(db, "pickups", at_time))
         change(db, p, {obj["resource"]: amount}, "map_pile")
         return f"Найдено: +{amount} ({obj['resource']})"
     return "Найден сундук: выберите награду"

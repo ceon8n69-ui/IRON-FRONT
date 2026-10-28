@@ -109,7 +109,7 @@ def test_logistics_and_first_aid(client, monkeypatch):
     c = client; h, u = setup(c, monkeypatch); a = create(c, h, u)
     with c.factory.begin() as db:
         db.get(Hero, player_id(c, 123)).skills = {'logistics': 3}
-    assert me(c, h)['armies'][0]['movement_max'] == 18
+    assert me(c, h)['armies'][0]['movement_max'] == 20
     from app.game import apply_losses
     battle = SimpleNamespace(state={'perks': {'first_aid': 0.3}, 'stacks': [
         {**make_stack('p1', 'player', 'rifles', 10, [1, 1], u), 'hp': 41}]})
