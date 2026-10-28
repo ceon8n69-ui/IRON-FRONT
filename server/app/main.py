@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
-from . import config, expeditions, garrisons, bases, objects
+from . import config, expeditions, garrisons, bases, objects, pvp
 from .db import SessionLocal
 from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery, Army
 from .auth import validate_init_data, token_hash
@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.9.0")
+app = FastAPI(title="IRON FRONT", version="0.10.0")
 
 
 class Strict(BaseModel):
@@ -68,7 +68,7 @@ class StartBattle(Strict):
 
 class March(Strict):
     army_id: str = Field(max_length=40)
-    action: Literal["move", "capture"]
+    action: Literal["move", "capture", "attack"]
     q: int = Field(ge=0, le=127)
     r: int = Field(ge=0, le=127)
 
@@ -151,6 +151,7 @@ def login(body: Login, request: Request):
                 created_at=now(),
                 settled_at=now(),
                 revision=0,
+                shield_until=now() + config.PVP["newbie_seconds"],
             )
             db.add(player)
             db.flush()
@@ -374,6 +375,24 @@ def army_route(q: int, r: int, authorization: str | None = Header(default=None))
         return {"path": [[sq, sr, c] for sq, sr, c in steps], "cost": cost,
                 "fuel": rules["fuel"] * len(steps), "seconds": cost * rules["step_seconds"],
                 "movement": army.movement, "affordable": cost <= army.movement}
+
+
+@app.get("/api/v1/world/target")
+def world_target(q: int, r: int, authorization: str | None = Header(default=None)):
+    """Scout report on another commander's holding within your sight."""
+    if not 0 <= q < 128 or not 0 <= r < 128:
+        raise HTTPException(422, "Недопустимые координаты")
+    with SessionLocal.begin() as db:
+        pid = identify(db, authorization)
+        rate_limit(pid)
+        p = locked(db, pid)
+        settle(db, p)
+        if not expeditions.visible(db, pid, q, r):
+            raise HTTPException(404, "Цель вне зоны видимости")
+        info = pvp.preview(db, pid, q, r, now())
+        if not info:
+            raise HTTPException(404, "Здесь нет владений другого командира")
+        return info
 
 
 @app.get("/api/v1/world/tiles")

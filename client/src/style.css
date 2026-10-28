@@ -781,3 +781,16 @@ html.locked,html.locked body{overflow:hidden;height:100%;position:fixed;inset:0;
 .unit-skill{margin:6px 0}
 .unit-skill button.skill{width:100%;background:#2a3a2a;border-color:#64b87b;color:#d8f0dc;font-weight:700}
 .unit-skill small{display:block;color:#9dafba;font-size:11px;margin-top:3px}
+/* PvP */
+.shield-chip { color:#9fd0ff; }
+.incoming-alert { position:absolute; top:104px; left:12px; right:12px; z-index:5; padding:9px 12px; border-radius:10px; border:1px solid #d9604f; background:#4a1d1ae8; color:#ffd9d2; font-size:13px; font-weight:600; text-align:left; animation:alert-pulse 1.6s ease-in-out infinite; }
+@keyframes alert-pulse { 50% { box-shadow:0 0 0 4px #d9604f33; } }
+.target-intel { margin:8px 0; padding:8px 10px; border-radius:8px; background:#2a1e1e; border:1px solid #6b3a33; }
+.target-intel p { margin:3px 0 !important; }
+button.primary.danger { background:#c8433a; border-color:#e06a5c; color:#fff; }
+button.primary.danger:disabled { background:#5b3430; border-color:#6d4540; color:#c9aaa5; }
+.pvp-reports { margin:6px 12px 10px; padding:8px 10px; border-radius:8px; background:#101923; }
+.pvp-reports small { color:#8fa3b1; letter-spacing:.08em; font-size:10px; }
+.pvp-reports p { margin:4px 0 !important; cursor:pointer; }
+.pvp-reports p.victory::before { content:"✔ "; color:#7fc46a; }
+.pvp-reports p.defeat::before { content:"✖ "; color:#e0715f; }

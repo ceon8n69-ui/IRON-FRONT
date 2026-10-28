@@ -20,7 +20,7 @@ Every commander now has one exclusive base hex on the 128×128 world map instead
 - Vision radius 3 (Valkyrie 4) is counted from the base.
 - A capture must touch the player's base or an existing territory.
 - Every base has a tutorial NPC garrison directly south of it, at (q, r+1). The rest of the safe zone (|dq|+|dr| ≤ 4) has no garrisons. The first eastward hex is always open.
-- A base is never claimable territory. Entering another player's base is rejected both when the order is issued and on arrival, until PvP is enabled.
+- A base is never claimable territory. Another player's base can only be raided with an explicit attack order (see PVP.md); it is never captured.
 - The world endpoint marks visible bases as `self`, `other` or `staging`. Hidden foreign bases are not disclosed.
 - The snapshot exposes `base: {q, r}`. The client centres the map on it and shows "Моя база" and the sector number.
 
@@ -37,4 +37,4 @@ Migration `b7c41e2d9f05` only creates `player_bases` and rewrites no existing ro
 
 ## Not done yet
 
-PvP against bases, base relocation, more than one world, and widening the grid when 141 sites fill up.
+Base relocation, more than one world, and widening the grid when 141 sites fill up.

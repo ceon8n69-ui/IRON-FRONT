@@ -13,6 +13,7 @@ type Props = {
   world?: Tile[];
   center?: number[];
   army?: Army;
+  armyKinds?: string[];
   route?: number[][] | null;
   now?: number;
   selected: number[] | null;
@@ -39,6 +40,7 @@ export const BATTLE_SCALE = 0.72, BATTLE_SHIFT = -70;
 // Displayed at the same size as the code-drawn figure, which is scaled 1.45 in that frame.
 const RASTER_FEET = 92 / 112, RASTER_SCALE = 0.5 / 1.45;
 const failed = new Set<string>();
+const NAVAL_KINDS = new Set(["transport", "gunboat", "ironclad"]);
 function hex(g: Graphics, x: number, y: number, size: number, color: number) {
   const p: number[] = [];
   for (let i = 0; i < 6; i++) {
@@ -237,7 +239,7 @@ export function MapView(props: Props) {
     };
   }, []);
   // Snapshots arrive frequently; rebuild geometry only when renderable state changes.
-  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.army, props.center, props.route, textures]);
+  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.army, props.armyKinds, props.center, props.route, textures]);
   useEffect(() => {
     if (!ready || !app.current) return;
     const s = scene.current;
@@ -391,8 +393,21 @@ export function MapView(props: Props) {
       const [x,y]=project(army.q,army.r);
       const marker = new Container();marker.label="march";marker.position.set(x,y);
       const afloat = (props.world ?? []).some((t) => t.q === army.q && t.r === army.r && (t.biome === "sea" || t.biome === "lake"));
-      const flag = afloat ? unitSprite("boat_transport", undefined, "player", 1) : squad(0,0,0x4c9ce5);
-      marker.addChild(flag);s.addChild(marker);
+      // Lead stack's raster sprite (ship afloat, land unit ashore); code art until it loads.
+      const kinds = props.armyKinds ?? [];
+      const lead = afloat ? kinds.find((k) => NAVAL_KINDS.has(k)) ?? "transport" : kinds.find((k) => !NAVAL_KINDS.has(k));
+      const url = lead ? `/art/units/${lead}.png` : "";
+      const tex = url && Assets.cache.has(url) ? (Assets.cache.get(url) as Texture) : null;
+      if (tex) {
+        const shadow = new Graphics().ellipse(0, 4, 30, 10).fill({ color: 0x4c9ce5, alpha: .45 });
+        const img = new Sprite(tex); img.anchor.set(0.5, RASTER_FEET); img.scale.set(RASTER_SCALE * 1.15);
+        img.position.set(0, 6);
+        marker.addChild(shadow, img);
+      } else {
+        marker.addChild(afloat ? unitSprite("boat_transport", undefined, "player", 1) : squad(0,0,0x4c9ce5));
+        if (url && !failed.has(url)) Assets.load(url).then(() => setTextures((n) => n + 1)).catch(() => failed.add(url));
+      }
+      s.addChild(marker);
       if (order) {
         // Walk the server path hex by hex: [[q, r, arrive_at], ...] after the start hex.
         const steps = order.path?.length ? order.path : [[order.q, order.r, order.ready_at]];

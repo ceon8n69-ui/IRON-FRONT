@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS, UNITS, TUTORIAL_NPC, FACTIONS
-from . import expeditions, garrisons, equipment, bases, economy, objects
+from . import expeditions, garrisons, equipment, bases, economy, objects, pvp
 from . import combat
 
 
@@ -190,6 +190,7 @@ def snapshot(db, p):
         **expeditions.state(db, p.id),
         "mines": [{"q": m.q, "r": m.r, "resource": m.resource, "rate": m.rate} for m in objects.mines(db, p.id)],
         "pending_chests": objects.pending_chests(db, p.id),
+        "pvp": pvp.state(db, p, now()),
     }
 
 
@@ -390,6 +391,9 @@ def dispatch(db, p, op, data):
         if outcome == "active":
             return {"events": events, "outcome": outcome}
         apply_losses(db, battle, outcome, hero)
+        if 'pvp' in state:
+            won = pvp.finish(db, p, battle, outcome, now())
+            return {"events": events, "outcome": outcome, "captured": won}
         if 'expedition' in state:
             captured=garrisons.finish(db,p,battle,outcome,now())
             if captured:
