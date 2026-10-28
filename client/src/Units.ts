@@ -279,6 +279,35 @@ function automaton(g: Graphics, x: number, accent: number) {
   g.roundRect(x - 13, -28, 5, 14, 2).fill(STEEL_D).stroke(line);
 }
 
+/** Dieselpunk boats: hull, deckhouse, stack; flag in accent colour. */
+function ship(g: Graphics, accent: number, kind: "transport" | "gunboat" | "ironclad" | "pirate") {
+  const big = kind === "ironclad" || kind === "pirate";
+  const w = big ? 34 : 28;
+  g.ellipse(2, 4, w + 6, 8).fill({ color: 0x0f3a66, alpha: 0.35 });
+  for (const dx of [-w + 6, -4, w - 10]) g.moveTo(dx, 6).quadraticCurveTo(dx + 4, 3, dx + 8, 6).stroke({ color: 0xd6efff, width: 1.4 });
+  g.poly([-w, -10, w + 6, -10, w - 4, 2, -w + 6, 2]).fill(kind === "pirate" ? 0x3b2f2a : kind === "ironclad" ? STEEL_D : OLIVE_D).stroke(line);
+  g.rect(-w + 4, -9, 2 * w - 4, 3).fill(accent);
+  if (kind === "transport") {
+    g.roundRect(-w + 6, -18, 16, 8, 2).fill(OLIVE).stroke(line);
+    g.roundRect(0, -16, 22, 6, 2).fill(OLIVE_L).stroke(line);
+    soldier(g, 10, -16, accent, { mask: true, tool: "none", pack: false });
+  } else {
+    g.roundRect(-10, -24, 20, 14, 3).fill(kind === "pirate" ? 0x5a4632 : OLIVE).stroke(line);
+    g.rect(-6, -20, 12, 3).fill(0xf8e58c);
+    g.roundRect(-18, -34, 6, 14, 2).fill(STEEL_D).stroke(line); smoke(g, -15, -38);
+    g.roundRect(10, -20, kind === "gunboat" ? 26 : 18, 5, 2).fill(STEEL).stroke(line);
+    if (kind === "ironclad") g.poly([w + 6, -10, w + 14, -4, w - 4, 2]).fill(STEEL_L).stroke(line);
+  }
+  g.moveTo(2, -24).lineTo(2, -40).stroke({ color: INK, width: 2 });
+  g.poly([3, -40, 15, -36, 3, -32]).fill(kind === "pirate" ? 0x1b1b1b : accent).stroke({ color: INK, width: 1 });
+}
+
+export function pirateShip() {
+  const g = new Graphics();
+  ship(g, 0x8f4a44, "pirate");
+  return g;
+}
+
 /** Draw a unit stack. Returns a container whose origin is the stack's hex centre. */
 export function unitSprite(art: string | undefined, faction: string | undefined, side: string, ratio: number) {
   const accent = side === "npc" ? ACCENTS.npc : ACCENTS[faction ?? ""] ?? 0x4c9ce5;
@@ -362,6 +391,15 @@ export function unitSprite(art: string | undefined, faction: string | undefined,
       exosuit(g, accent, art === "exosuit_drill" ? "drill" : art === "exosuit_cannon" ? "cannon" : "claw");
       g.scale.set(0.8 * flip, 0.8);
       break;
+    case "boat_transport":
+      ship(g, accent, "transport"); g.scale.x = flip;
+      break;
+    case "gunboat":
+      ship(g, accent, "gunboat"); g.scale.x = flip;
+      break;
+    case "ironclad":
+      ship(g, accent, "ironclad"); g.scale.x = flip;
+      break;
     default:
       soldier(g, 0, 0, accent, { mask: true });
   }
@@ -376,4 +414,4 @@ export function unitSprite(art: string | undefined, faction: string | undefined,
 /** Every art key, for previews and tests. */
 export const ART_KEYS = ["rifleman", "scout", "stormtrooper", "raider", "sniper", "shieldbearer", "medic", "engineer",
   "mg_crew", "mortar", "field_gun", "tesla", "drone", "automaton", "armored_car", "spg", "walker", "walker_heavy",
-  "walker_tank", "exosuit_drill", "exosuit_cannon", "exosuit_claw"];
+  "walker_tank", "exosuit_drill", "exosuit_cannon", "exosuit_claw", "boat_transport", "gunboat", "ironclad"];

@@ -68,6 +68,8 @@ def resolve(state, command, seed, hero, bonus):
         events.append({"type": "defend", "actor": me["id"]})
     elif action == "wait":
         events.append({"type": "wait", "actor": me["id"]})
+    elif action == "skill":
+        extra = _skill(s, me, command, seed, hero, bonus, events)
     elif action == "ability":
         if s["ability_used"]:
             raise ValueError("Способность командира уже использована в этом бою")
@@ -180,6 +182,7 @@ def _damage(s, attacker, target, seed, hero, bonus, factor, tag):
     if not a["melee"] and a.get("trait") != "marksman" and any(distance(attacker["pos"], e["pos"]) == 1
                               for e in _living(s, "npc" if attacker["side"] == "player" else "player")):
         value *= 0.5   # shooters fire badly with an enemy in their face
+    value *= attacker.get("buff", 1) * attacker.get("weak", 1) * target.get("guard", 1)
     value *= factor * roll(seed, s["turn"], f"{tag}:{attacker['id']}") / 100
     return max(1, round(value))
 
@@ -196,7 +199,7 @@ def _hit(s, attacker, target, seed, hero, bonus, events, factor, kind):
 
 def _attack(s, me, target, seed, hero, bonus, events, ranged_any, factor):
     spec = UNITS[me["kind"]]
-    if spec["melee"]:
+    if spec["melee"] and not ranged_any:
         spot = _approach(s, me, target, hero)
         if spot is None:
             raise ValueError("Цель вне досягаемости: подойдите ближе")
@@ -210,7 +213,7 @@ def _attack(s, me, target, seed, hero, bonus, events, ranged_any, factor):
     _hit(s, me, target, seed, hero, bonus, events, factor, "attack")
     # One retaliation per round when struck at close quarters.
     if alive(target) and not target["retaliated"] and distance(me["pos"], target["pos"]) == 1 \
-            and spec.get("trait") != "first_strike":
+            and spec.get("trait") != "first_strike" and not target.get("mute"):
         target["retaliated"] = True
         t = UNITS[target["kind"]]
         _hit(s, target, me, seed, hero, bonus, events,
@@ -253,10 +256,67 @@ def _ability(s, me, command, seed, hero, bonus, events):
     return False
 
 
+def _skill(s, me, command, seed, hero, bonus, events):
+    """The stack's own once-per-battle ability. Returns True when the stack may act again."""
+    spec = UNITS[me["kind"]].get("ability")
+    if not spec:
+        raise ValueError("У этого отряда нет способности")
+    if me.get("skill_used"):
+        raise ValueError("Способность отряда уже использована в этом бою")
+    effect, v = spec["effect"], spec["value"]
+    events.append({"type": "skill", "actor": me["id"], "name": spec["name"]})
+    allies = _living(s, me["side"])
+    near = lambda radius: [x for x in allies if distance(x["pos"], me["pos"]) <= radius]
+    extra = False
+    if effect in ("strike", "longshot", "splash", "suppress_attack"):
+        target = _target(s, me, command.get("target"))
+        _attack(s, me, target, seed, hero, bonus, events, effect == "longshot",
+                v if effect in ("strike", "longshot", "suppress_attack") else 1.0)
+        if effect == "splash":
+            for x in _living(s, target["side"]):
+                if x is not target and distance(x["pos"], target["pos"]) == 1:
+                    _hit(s, me, x, seed, hero, bonus, events, v, "splash")
+        if effect == "suppress_attack" and alive(target):
+            target["weak"], target["mute"] = 0.7, True
+    elif effect in ("suppress", "jam", "mark"):
+        target = _target(s, me, command.get("target"))
+        if effect == "suppress":
+            target["weak"], target["mute"] = v, True
+        elif effect == "jam":
+            target["skip"] = True
+        else:
+            target["guard"] = v
+        events.append({"type": effect, "actor": me["id"], "target": target["id"]})
+    elif effect == "dash":
+        target = [command.get("q", -1), command.get("r", -1)]
+        if not _inside(target) or _occupied(s, target, me) or target == me["pos"] \
+                or distance(me["pos"], target) > _speed(me, hero) + v:
+            raise ValueError("Выберите свободный гекс в пределах рывка")
+        me["pos"] = list(target)
+        events.append({"type": "move", "actor": me["id"], "pos": me["pos"]})
+        extra = True
+    elif effect == "fortify":
+        me["defending"], me["guard"] = True, v
+    elif effect in ("guard_aura", "smoke"):
+        for x in near(1 if effect == "guard_aura" else 2):
+            x["guard"] = min(x.get("guard", 1), v)
+    elif effect in ("heal", "heal_aura"):
+        for x in ([me] if effect == "heal" else near(1)):
+            top = x["start"] * UNITS[x["kind"]]["hp"]
+            healed = min(top, x["hp"] + math.ceil(v * top)) - x["hp"]
+            if healed > 0:
+                x["hp"] += healed
+                events.append({"type": "heal", "actor": me["id"], "target": x["id"], "amount": healed})
+    me["skill_used"] = True
+    return extra
+
+
 def _new_round(s):
     for x in s["stacks"]:
         x["acted"] = x["retaliated"] = False
         x["defending"] = False
+        for flag in ("buff", "weak", "guard", "mute"):
+            x.pop(flag, None)
     s["order"] = [x["id"] for x in sorted(_living(s), key=lambda x: (
         -UNITS[x["kind"]]["initiative"], 0 if x["side"] == "player" else 1, x["id"]))]
 

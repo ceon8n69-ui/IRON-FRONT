@@ -7,6 +7,9 @@ export function SpriteStage() {
   const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const params = new URLSearchParams(location.search);
+    // Transparent page so screenshots keep the alpha channel.
+    for (const el of [document.documentElement, document.body]) el.style.background = "transparent";
+    document.documentElement.style.colorScheme = "normal";
     const app = new Application();
     (async () => {
       await app.init({ width: 128, height: 112, backgroundAlpha: 0, antialias: true, resolution: 2, autoDensity: true, preserveDrawingBuffer: true });

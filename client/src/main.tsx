@@ -46,7 +46,7 @@ type Definitions = {
   >;
   factions: Record<string, { name: string; accent: string; units: { key: string; name: string; art: string; role: string; trait?: string }[] }>;
   traits: Record<string, string>;
-  units: Record<string, { name: string; gen?: string; trait?: string | null; art?: string; hp: number; damage: number; defense: number; speed: number; initiative: number; range: number; melee: boolean; count: number; seconds: number; cost: Record<string, number>; requires: Record<string, number> }>;
+  units: Record<string, { name: string; gen?: string; trait?: string | null; art?: string; ability?: { name: string; effect: string; value: number; about: string }; hp: number; damage: number; defense: number; speed: number; initiative: number; range: number; melee: boolean; count: number; seconds: number; cost: Record<string, number>; requires: Record<string, number> }>;
   abilities: Record<string, { name: string; about: string }>;
   army_stacks: number;
 };
@@ -210,7 +210,7 @@ function App() {
   const unitReason = (kind: string) => {
     const unit = defs?.units[kind]; if (!unit || !state) return "Недоступно";
     const ready = (k: string) => state.buildings.find((b) => b.kind === k && b.status === "ready")?.level ?? 0;
-    if (!ready("barracks")) return "Сначала завершите строительство казарм";
+    if (!(unit as { naval?: boolean }).naval && !ready("barracks")) return "Сначала завершите строительство казарм";
     for (const [need, level] of Object.entries(unit.requires)) if (ready(need) < level) return `Нужно: ${defs?.buildings[need]?.name} ${level} уровня`;
     if (state.jobs.length) return "Дождитесь завершения текущей подготовки";
     if (Object.entries(unit.cost).some(([k, v]) => state.resources[k] < v)) return "Недостаточно ресурсов";
@@ -384,6 +384,18 @@ function App() {
                     Защита
                   </button>
                 </div>
+                {activeStack && defs?.units[activeStack.kind]?.ability && (() => {
+                  const ab = defs.units[activeStack.kind].ability!;
+                  const used = !!(activeStack as { skill_used?: boolean }).skill_used;
+                  const needsHex = ab.effect === "dash";
+                  return <div className="unit-skill">
+                    <button className="skill" disabled={busy || used || (needsHex && (!selected || !!targetStack))}
+                      onClick={() => battleCommand(needsHex ? { action: "skill", q: selected![0], r: selected![1] } : { action: "skill", ...(targetStack ? { target: targetStack.id } : {}) })}>
+                      ◆ {ab.name}{used ? " · использовано" : ""}
+                    </button>
+                    <small>{ab.about}{needsHex ? ". Выберите гекс." : ""}</small>
+                  </div>;
+                })()}
                 <div className="actions">
                   <button disabled={busy} onClick={() => battleCommand({ action: "wait" })}>Ждать</button>
                   {state.hero && defs?.abilities[state.hero.kind] && <button disabled={busy || !!battle.state.ability_used} title={defs.abilities[state.hero.kind].about}
@@ -482,7 +494,23 @@ function App() {
                     </button>
                     <small>HP {unit.hp} · урон {unit.damage} · защита {unit.defense} · скорость {unit.speed} · инициатива {unit.initiative} · {unit.melee ? "ближний бой" : `дальность ${unit.range}`}</small>
                     {unit.trait && <small className="trait">★ {defs.traits[unit.trait]}</small>}
+                    {unit.ability && <small className="trait">◆ {unit.ability.name}: {unit.ability.about}</small>}
                     {reason && <p id={`train-${kind}`} className="action-reason">{reason}</p>}
+                  </div>;
+                })}
+                <div className="section-label">ВЕРФЬ · ФЛОТ</div>
+                <p className="faction-line">С кораблями соединение ходит по морям, озёрам и рекам. В морском бою сражаются только корабли.</p>
+                <Roster units={["transport", "gunboat", "ironclad"].map((key) => ({ key, art: defs.units[key]?.art ?? "" }))} faction={state.hero.kind} height={70} />
+                {["transport", "gunboat", "ironclad"].filter((k) => defs.units[k]).map((kind) => {
+                  const unit = defs.units[kind];
+                  const reason = unitReason(kind);
+                  return <div key={kind} className="train-option">
+                    <button disabled={busy || !!reason} onClick={() => run(() => command("/army/train", { kind }))}>
+                      Построить {unit.gen ?? unit.name} · {unit.count} · {cost(unit.cost)} · {unit.seconds} сек.
+                    </button>
+                    <small>HP {unit.hp} · урон {unit.damage} · защита {unit.defense} · скорость {unit.speed} · {unit.melee ? "таран" : `дальность ${unit.range}`}</small>
+                    {unit.ability && <small className="trait">◆ {unit.ability.name}: {unit.ability.about}</small>}
+                    {reason && <p className="action-reason">{reason}</p>}
                   </div>;
                 })}
               </>}

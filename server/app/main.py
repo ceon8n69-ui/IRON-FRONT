@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.8.0")
+app = FastAPI(title="IRON FRONT", version="0.9.0")
 
 
 class Strict(BaseModel):
@@ -76,7 +76,7 @@ class March(Strict):
 class Turn(Strict):
     battle_id: str = Field(max_length=40)
     turn: int = Field(ge=1, le=50)
-    action: Literal["move", "attack", "defend", "wait", "ability"]
+    action: Literal["move", "attack", "defend", "wait", "ability", "skill"]
     q: int = Field(default=0, ge=0, le=8)
     r: int = Field(default=0, ge=0, le=8)
     target: str | None = Field(default=None, max_length=20)
@@ -398,7 +398,8 @@ def tiles(
         owners = {(t.q,t.r):t.player_id for t in db.scalars(select(TileOwnership).where(
             TileOwnership.world_id==1,TileOwnership.q.between(q-radius,q+radius),TileOwnership.r.between(r-radius,r+radius)))}
         home = bases.home(db,pid)
-        sites = bases.near(db,q,r,radius+bases.SAFE_RADIUS)
+        sites = bases.near(db,q,r,radius+bases.SAFE_RADIUS+2)
+        cleared = garrisons.cleared_in(db,q,r,radius)
         army_state = expeditions.state(db,pid)["armies"]
         home_vision = expeditions.home_vision(db,pid)
         from .combat import distance
@@ -408,8 +409,8 @@ def tiles(
             known = in_view or (t.q,t.r) in discovered
             owner = owners.get((t.q,t.r)) if in_view else None
             site = (t.q,t.r) in sites
-            guarded = bool(in_view and not owner and not site and garrisons.guarded(t.q,t.r,sites))
-            tier = objects.strength(t.q,t.r) if guarded else None
+            guarded = bool(in_view and not owner and not site and (t.q,t.r) not in cleared and garrisons.guarded(t.q,t.r,sites,t.biome))
+            tier = objects.strength(t.q,t.r,t.biome,sites) if guarded else None
             base = None
             if site and in_view:
                 base = "self" if sites[(t.q,t.r)] == pid else "other" if sites[(t.q,t.r)] else "staging"
@@ -417,7 +418,7 @@ def tiles(
                 "biome":t.biome if known else "unknown",
                 "garrison":guarded,
                 "garrison_strength":{"name":tier[0],"hp":tier[1],"xp":tier[2]} if tier else None,
-                "object":objects.view(db,pid,t.q,t.r,sites) if in_view and not site else None,
+                "object":objects.view(db,pid,t.q,t.r,sites,t.biome) if in_view and not site else None,
                 "visibility":"visible" if in_view else "explored" if known else "unknown",
                 "control":("self" if owner == pid else "other" if owner else "neutral") if in_view else None,
                 "home":[t.q,t.r] == home,

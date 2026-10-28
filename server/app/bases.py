@@ -33,6 +33,17 @@ def candidates():
     return sorted(sites, key=lambda s: (distance(STAGING, s), s))
 
 
+def sites_near_grid():
+    """Grid points first, then nearby nudges so coastal or mountain points still yield a base."""
+    nudges = [(0, 0)] + [(dq, dr) for d in (1, 2, 3) for dq in range(-d, d + 1) for dr in range(-d, d + 1)
+                         if max(abs(dq), abs(dr), abs(dq + dr)) == d]
+    for q, r in candidates():
+        for dq, dr in nudges:
+            a, b = q + dq, r + dr
+            if MARGIN <= a < 128 - MARGIN and MARGIN <= b < 128 - MARGIN and distance(STAGING, (a, b)) > STAGING_CLEARANCE:
+                yield a, b
+
+
 def get(db, pid):
     return db.get(WorldBase, pid)
 
@@ -63,9 +74,19 @@ def at(db, q, r):
     return (True, base.player_id) if base else (False, None)
 
 
+LAND_RING = 2
+BAD_GROUND = {"sea", "lake", "river", "mountain"}
+
+
 def _free(db, q, r):
-    if not db.get(Tile, (1, q, r)) or not db.get(Tile, (1, q, r + 1)):
-        return False
+    # The base and two rings around it must be walkable land (tutorial garrison sits at r+1).
+    ring = list(db.scalars(select(Tile).where(Tile.world_id == 1,
+        Tile.q.between(q - LAND_RING, q + LAND_RING), Tile.r.between(r - LAND_RING, r + LAND_RING))))
+    cells = {(t.q, t.r): t.biome for t in ring}
+    for dq in range(-LAND_RING, LAND_RING + 1):
+        for dr in range(-LAND_RING, LAND_RING + 1):
+            if max(abs(dq), abs(dr), abs(dq + dr)) <= LAND_RING and cells.get((q + dq, r + dr), "sea") in BAD_GROUND:
+                return False
     window = max(SPACING, OWNED_CLEARANCE, ARMY_CLEARANCE)
 
     def box(model):
@@ -87,7 +108,7 @@ def ensure(db, p, now):
     if base:
         return base
     db.execute(text("SELECT pg_advisory_xact_lock(:a, :b)"), {"a": LOCK_KEY[0], "b": LOCK_KEY[1]})
-    for q, r in candidates():
+    for q, r in sites_near_grid():
         if _free(db, q, r):
             base = WorldBase(player_id=p.id, world_id=1, q=q, r=r, created_at=now)
             db.add(base)

@@ -10,7 +10,7 @@ const jobs = [];
 for (const [hero, f] of Object.entries(cfg.factions)) for (const u of f.units) jobs.push({ key: u.key, art: u.art, faction: hero, side: "player" });
 for (const [key, u] of Object.entries(cfg.units)) if (!u.faction) jobs.push({ key, art: u.art, faction: "npc", side: "npc" });
 const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROMIUM_EXECUTABLE, args: ["--no-sandbox"] });
-const page = await browser.newPage({ viewport: { width: 200, height: 200 }, deviceScaleFactor: 1 });
+const page = await browser.newPage({ viewport: { width: 200, height: 200 }, deviceScaleFactor: 2 });  // 256x224 output
 for (const j of jobs) {
   await page.goto(`${base}/?sprite=${j.art}&faction=${j.faction}&side=${j.side}`);
   await page.waitForFunction(() => window.__spriteReady === true);

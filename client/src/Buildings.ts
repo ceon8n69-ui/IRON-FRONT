@@ -94,6 +94,15 @@ export function createBuilding(b: Building): BuildingVisual {
     g.moveTo(-19,-31).lineTo(-19,-49).lineTo(13,-49).lineTo(13,-34).stroke({color:0xb9a67c,width:3});
     smoke.position.set(-19,-52); node.addChild(smoke);
   }
+  else if (b.kind === "shipyard") {
+    g.poly([-36,6,0,-12,36,6,0,24]).fill(0x3a7fc0).stroke(ink);
+    for (const dx of [-18, 4]) g.moveTo(dx-6,8).quadraticCurveTo(dx-3,5,dx,8).stroke({color:0xd6efff,width:1.2});
+    box(-16,26,14,0,16);
+    g.poly([-2,-4,26,-16,32,-12,4,0]).fill(0x7a5434).stroke(ink);
+    g.poly([4,-10,24,-18,20,-8,2,0]).fill(0x5c625d).stroke(ink);
+    g.moveTo(26,-16).lineTo(26,-52).lineTo(2,-44).stroke({color:0xc5a35f,width:3});
+    g.moveTo(10,-46).lineTo(10,-24).stroke({color:0x1b201e,width:1});
+  }
   else if (b.kind === "oil_well") {
     g.poly([-30,4,0,-12,30,4,0,20]).fill(0x3b4642);
     // Pump jack: frame, beam, horse head.

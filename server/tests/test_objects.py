@@ -13,7 +13,7 @@ def me(c, h):
 
 def place(monkeypatch, layout):
     real = objects.placed
-    monkeypatch.setattr(objects, 'placed', lambda q, r, sites: layout.get((q, r)))
+    monkeypatch.setattr(objects, 'placed', lambda q, r, sites, biome='plain': layout.get((q, r)))
     return real
 
 

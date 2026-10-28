@@ -286,3 +286,25 @@ class MapMine(Base):
         ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
         CheckConstraint("rate > 0", name="ck_map_mines_rate"),
     )
+
+
+class BiomeBackup(Base):
+    """Pre-v2 terrain kept by migration a2c4e6f8b0d1 so the world change can be reverted."""
+    __tablename__ = "hex_tiles_biome_v1"
+    world_id = Column(Integer, primary_key=True)
+    q = Column(Integer, primary_key=True)
+    r = Column(Integer, primary_key=True)
+    biome = Column(String, nullable=False)
+
+
+class ClearedSite(Base):
+    """A defeated sea raider site; stays clear for everyone (no territory on water)."""
+    __tablename__ = "map_cleared"
+    world_id = Column(Integer, primary_key=True)
+    q = Column(Integer, primary_key=True)
+    r = Column(Integer, primary_key=True)
+    player_id = Column(ForeignKey("users.id"), nullable=False)
+    cleared_at = Column(BigInteger, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
+    )

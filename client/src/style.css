@@ -778,3 +778,6 @@ html.locked,html.locked body{overflow:hidden;height:100%;position:fixed;inset:0;
 .gallery-names em{display:block;color:#9dafba;font-style:normal}
 .faction-line{display:block;font-weight:700;font-style:normal;font-size:12px;margin:6px 0 0;letter-spacing:.02em}
 .train-option small.trait{color:#e5b65a}
+.unit-skill{margin:6px 0}
+.unit-skill button.skill{width:100%;background:#2a3a2a;border-color:#64b87b;color:#d8f0dc;font-weight:700}
+.unit-skill small{display:block;color:#9dafba;font-size:11px;margin-top:3px}

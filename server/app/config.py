@@ -10,7 +10,7 @@ if DATABASE_URL.startswith("postgresql://"):
 ENV = os.environ.get("APP_ENV", "production")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-VERSION = "slice-8"
+VERSION = "slice-10"
 RESOURCES = ["metal", "oil", "fuel", "electronics", "food"]
 INITIAL = {"metal": 1000, "oil": 300, "fuel": 200, "electronics": 200, "food": 300}
 # Fictional balance. Level effects come from app.economy; every value here is
@@ -36,6 +36,8 @@ BUILDINGS = {
                    "vision": 1, "about": "Расширяет обзор мировой карты вокруг базы."},
     "electronics": {"name": "Электронный завод", "cost": {"metal": 260, "electronics": 40}, "seconds": 90, "power": -8, "hq": 3,
                     "input": {"metal": 4}, "output": {"electronics": 2}, "about": "Превращает металл в электронику."},
+    "shipyard": {"name": "Верфь", "cost": {"metal": 260, "electronics": 40}, "seconds": 90, "power": -3, "hq": 2,
+                 "about": "Строит корабли. С флотом соединение ходит по морям, озёрам и рекам."},
     "repair": {"name": "Ремонтный центр", "cost": {"metal": 240, "electronics": 50}, "seconds": 90, "power": -4, "hq": 3,
                "repair": 2, "about": "Восстанавливает здоровье отрядов вне боя."},
 }
@@ -131,6 +133,69 @@ for _role, _art in ART.items():
     UNITS[_role].setdefault("art", _art)
     UNITS[_role].setdefault("trait", None)
     UNITS[_role].setdefault("role", _role)
+# Fleet: shared by every commander, built at the shipyard, fights only at sea.
+NAVAL = {
+    "transport": {"name": "Десантный катер", "gen": "десантный катер", "hp": 30, "damage": 2, "defense": 2, "speed": 3,
+                  "initiative": 4, "range": 2, "melee": False, "infantry": False, "count": 2, "seconds": 90,
+                  "cost": {"metal": 160, "fuel": 40}, "requires": {"shipyard": 1}, "art": "boat_transport"},
+    "gunboat": {"name": "Канонерка", "gen": "канонерку", "hp": 40, "damage": 8, "defense": 3, "speed": 3,
+                "initiative": 5, "range": 5, "melee": False, "infantry": False, "count": 2, "seconds": 120,
+                "cost": {"metal": 220, "fuel": 60, "electronics": 20}, "requires": {"shipyard": 2}, "art": "gunboat"},
+    "ironclad": {"name": "Бронекатер", "gen": "бронекатер", "hp": 50, "damage": 10, "defense": 4, "speed": 4,
+                 "initiative": 6, "range": 1, "melee": True, "infantry": False, "count": 2, "seconds": 150,
+                 "cost": {"metal": 260, "fuel": 80, "electronics": 40}, "requires": {"shipyard": 3}, "art": "ironclad"},
+}
+for _k, _u in NAVAL.items():
+    UNITS[_k] = {**_u, "role": "naval", "naval": True, "faction": None, "trait": None}
+# One active ability per unit, once per battle ("skill" command). Effects are
+# implemented generically in combat._skill; values are fictional balance.
+UNIT_ABILITIES = {
+    "rifles": ("Залп", "strike", 1.3), "scouts": ("Марш-бросок", "dash", 2), "assault": ("Гранаты", "splash", 0.5),
+    "artillery": ("Огневой вал", "splash", 0.6), "armor": ("Таранный удар", "strike", 1.5),
+    "raven_line": ("Штыковая атака", "strike", 1.4), "raven_scouts": ("Марш-бросок", "dash", 2),
+    "raven_assault": ("Гранаты", "splash", 0.5), "raven_artillery": ("Огневой вал", "splash", 0.6),
+    "raven_heavy": ("Таранный удар", "strike", 1.6),
+    "valkyrie_line": ("Прицельный залп", "strike", 1.3), "valkyrie_walker": ("Прожектор", "suppress", 0.7),
+    "valkyrie_raiders": ("Засада", "strike", 1.5), "valkyrie_snipers": ("Выстрел в офицера", "jam", 1),
+    "valkyrie_heavy": ("Прыжок", "dash", 3),
+    "titan_line": ("Окопаться", "fortify", 0.5), "titan_mg": ("Подавляющий огонь", "suppress_attack", 0.8),
+    "titan_shields": ("Стена щитов", "guard_aura", 0.6), "titan_gun": ("Шрапнель", "splash", 0.5),
+    "titan_heavy": ("Несокрушимость", "fortify", 0.4),
+    "phoenix_line": ("Сухпаёк", "heal", 0.2), "phoenix_medics": ("Полевая операция", "heal_aura", 0.25),
+    "phoenix_sappers": ("Подрыв", "strike", 1.5), "phoenix_howitzer": ("Дымовая завеса", "smoke", 0.6),
+    "phoenix_heavy": ("Ремонтный манипулятор", "heal_aura", 0.2),
+    "ghost_line": ("Глушилка", "jam", 1), "ghost_drones": ("Целеуказание", "mark", 1.3),
+    "ghost_automatons": ("Перегрузка", "strike", 1.4), "ghost_tesla": ("Цепная молния", "splash", 0.7),
+    "ghost_heavy": ("Электромагнитный импульс", "suppress_attack", 0.9),
+    "storm_line": ("Десант с брони", "dash", 2), "storm_cars": ("Пулемётная очередь", "suppress_attack", 0.8),
+    "storm_tankers": ("Прорыв обороны", "strike", 1.5), "storm_spg": ("Беглый огонь", "splash", 0.5),
+    "storm_heavy": ("Главный калибр", "longshot", 1.3),
+    "transport": ("Дымовая завеса", "smoke", 0.6), "gunboat": ("Бортовой залп", "splash", 0.5),
+    "ironclad": ("Таран", "strike", 1.6),
+}
+EFFECTS = {
+    "strike": "Усиленная атака ×{v}",
+    "splash": "Атака по цели и {p}% урона соседним с ней врагам",
+    "dash": "Рывок на +{v} гекса, затем стек ещё действует",
+    "suppress": "Цель до конца раунда наносит {p}% урона и не отвечает",
+    "suppress_attack": "Атака ×{v}; цель до конца раунда ослаблена и не отвечает",
+    "jam": "Цель пропускает свой следующий ход",
+    "fortify": "Оборона: входящий урон ×{v} до конца раунда",
+    "guard_aura": "Свои стеки рядом получают урон ×{v} до конца раунда",
+    "smoke": "Дым: свои стеки в радиусе 2 получают урон ×{v} до конца раунда",
+    "heal": "Стек восстанавливает {p}% здоровья",
+    "heal_aura": "Стек и соседние свои стеки восстанавливают {p}% здоровья",
+    "mark": "Цель получает урон ×{v} от всех до конца раунда",
+    "longshot": "Выстрел на любую дальность ×{v}",
+}
+for _k, (_n, _e, _v) in UNIT_ABILITIES.items():
+    UNITS[_k]["ability"] = {"name": _n, "effect": _e, "value": _v,
+                            "about": EFFECTS[_e].format(v=_v, p=round(_v * 100))}
+NPC_SEA_TIERS = [
+    {"name": "Пиратский дозор", "xp": 60, "loot": {"metal": 120, "fuel": 60}, "stacks": [["gunboat", 1]]},
+    {"name": "Пиратская флотилия", "xp": 90, "loot": {"metal": 200, "fuel": 100}, "stacks": [["gunboat", 2], ["ironclad", 1]]},
+    {"name": "Пиратская армада", "xp": 140, "loot": {"metal": 320, "fuel": 160, "electronics": 60}, "stacks": [["gunboat", 3], ["ironclad", 2]]},
+]
 ARMY_STACKS = 5
 NPC_TIERS = [
     {"name": "Патруль", "xp": 50, "stacks": [["rifles", 5]]},
@@ -190,7 +255,9 @@ EXPEDITIONS = {
     # Heroes-style movement: points refill in real time, terrain sets the price.
     "movement_max": 12,
     "movement_regen_seconds": 2400,   # +1 point every 40 min -> full in 8 h
-    "terrain_cost": {"plain": 1, "desert": 2, "forest": 2, "hills": 3},
+    "terrain_cost": {"plain": 1, "beach": 1, "desert": 2, "forest": 2, "hills": 3, "river": 3},
+    "naval_cost": 1,          # sea, lake and river hexes with a fleet
+    "landing_cost": 2,        # extra points to embark or go ashore
     "step_seconds": 10,               # real seconds per movement point spent
     "seconds": 30,                    # legacy single-hex duration (pre-0.5 orders)
     "fuel": 1,                        # fuel per hex travelled
@@ -198,6 +265,6 @@ EXPEDITIONS = {
     "army_vision": 2,
     "territory_yield": {
         "plain": {"food": 2}, "forest": {"metal": 2},
-        "hills": {"metal": 3}, "desert": {"oil": 2},
+        "hills": {"metal": 3}, "desert": {"oil": 2}, "beach": {"food": 1}, "river": {"food": 3},
     },
 }
