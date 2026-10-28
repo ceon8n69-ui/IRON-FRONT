@@ -25,6 +25,7 @@ class Player(Base):
     created_at = Column(BigInteger, nullable=False)
     settled_at = Column(BigInteger, nullable=False)
     revision = Column(Integer, nullable=False, default=0)
+    shield_until = Column(BigInteger, nullable=False, default=0, server_default="0")
 
 
 class Session(Base):
@@ -210,7 +211,7 @@ class ArmyOrder(Base):
     path = Column(JSON)          # [[q, r, arrive_at], ...] excluding the start hex
     __table_args__ = (
         ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
-        CheckConstraint("action IN ('move', 'capture')"),
+        CheckConstraint("action IN ('move', 'capture', 'attack')", name="army_orders_action_check"),
         CheckConstraint("status IN ('moving', 'complete', 'blocked')"),
         CheckConstraint("ready_at > started_at"),
         Index("uq_army_active_order", "army_id", unique=True, postgresql_where=text("status = 'moving'")),
@@ -307,4 +308,26 @@ class ClearedSite(Base):
     cleared_at = Column(BigInteger, nullable=False)
     __table_args__ = (
         ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
+    )
+
+
+class PvpReport(Base):
+    """One finished PvP battle, visible to both sides; also drives repeat-attack limits."""
+    __tablename__ = "pvp_reports"
+    id = Column(String, primary_key=True)
+    battle_id = Column(ForeignKey("battles.id"), nullable=False, unique=True)
+    attacker_id = Column(ForeignKey("users.id"), nullable=False)
+    defender_id = Column(ForeignKey("users.id"), nullable=False)
+    target = Column(String, nullable=False)
+    q = Column(Integer, nullable=False)
+    r = Column(Integer, nullable=False)
+    outcome = Column(String, nullable=False)
+    loot = Column(JSON, nullable=False)
+    losses = Column(JSON, nullable=False)
+    created_at = Column(BigInteger, nullable=False)
+    __table_args__ = (
+        CheckConstraint("target IN ('base', 'territory', 'mine')", name="ck_pvp_reports_target"),
+        CheckConstraint("outcome IN ('victory', 'defeat')", name="ck_pvp_reports_outcome"),
+        Index("ix_pvp_reports_pair", "attacker_id", "defender_id", "created_at"),
+        Index("ix_pvp_reports_defender", "defender_id", "created_at"),
     )

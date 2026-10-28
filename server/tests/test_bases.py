@@ -90,7 +90,7 @@ def test_world_tiles_mark_bases_and_block_foreign_base(client, monkeypatch):
     # Hidden foreign base is not disclosed.
     far = c.get(f'/api/v1/world/tiles?q={oq}&r={orr}&radius=1', headers=h).json()['tiles']
     assert next(t for t in far if (t['q'], t['r']) == (oq, orr))['base'] is None
-    # Even when adjacent, a foreign base cannot be entered or captured.
+    # Even when adjacent, a foreign base can't be entered or captured, only attacked.
     from app.models import Army
     with c.factory.begin() as db:
         army = db.get(Army, a['id']); army.q, army.r = oq - 1, orr
@@ -98,7 +98,7 @@ def test_world_tiles_mark_bases_and_block_foreign_base(client, monkeypatch):
     assert next(t for t in near if (t['q'], t['r']) == (oq, orr))['base'] == 'other'
     for action in ('move', 'capture'):
         response = order(c, h, a, oq, orr, action)
-        assert response.status_code == 409 and 'база' in response.json()['detail'].lower()
+        assert response.status_code == 409 and 'атаковать' in response.json()['detail'].lower()
 
 
 def test_foreign_base_appearing_mid_march_blocks_arrival(client, monkeypatch):

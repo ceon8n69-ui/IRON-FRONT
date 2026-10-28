@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import insert
 from .models import Army, ArmyUnit, ArmyOrder, Tile, TileOwnership, Discovery, Unit, Hero, Reward
 from .config import EXPEDITIONS as RULES
 from .combat import distance
-from . import garrisons, bases, objects
+from . import garrisons, bases, objects, pvp
 
 
 def fail(reason):
@@ -80,10 +80,9 @@ def route(db, p, army, target, at):
     def blocked(c, final):
         if c not in tiles or not known(c):
             return 'Маршрут проходит через неразведанную местность'
-        if c in sites and sites[c] not in (None, p.id):
-            return 'Это база другого командира. PvP пока не включён'
-        if c in owners and owners[c] != p.id:
-            return 'Вход на чужую территорию пока недоступен: PvP не включён'
+        hostile = (c in sites and sites[c] not in (None, p.id)) or (c in owners and owners[c] != p.id)
+        if hostile and not final:
+            return 'Путь проходит через чужие владения'
         terrain = tiles[c]
         if terrain in TERRAIN_BLOCKED and not (fleet and terrain in WATER):
             if terrain in WATER:
@@ -91,7 +90,7 @@ def route(db, p, army, target, at):
             return 'Туда не пройти: ' + TERRAIN_BLOCKED[terrain]
         if not final and c not in owners and c not in sites and c not in cleared and garrisons.guarded(c[0], c[1], sites, terrain):
             return 'Путь перекрыт гарнизоном NPC'
-        if not final and objects.blocks_path(db, c, p.id, sites, terrain):
+        if not final and not hostile and objects.blocks_path(db, c, p.id, sites, terrain):
             return 'Путь перекрыт объектом карты: выберите его целью'
         return None
 
@@ -194,7 +193,9 @@ def settle_orders(db, p, at, change=None):
     # Lock the existing world tile even if no ownership row exists yet.
     # All capture paths use player -> tile order; never lock another player.
     tile = db.scalar(select(Tile).where(Tile.world_id == 1, Tile.q == order.q, Tile.r == order.r).with_for_update())
-    owner = db.get(TileOwnership, (1,order.q,order.r))
+    if order.action == 'attack':
+        return _arrive_attack(db, p, army, order, at)
+    owner = db.get(TileOwnership,(1,order.q,order.r))
     reason = None
     is_base, base_owner = bases.at(db, order.q, order.r)
     if is_base and base_owner not in (None, p.id):
@@ -234,6 +235,36 @@ def settle_orders(db, p, at, change=None):
     return True
 
 
+def _arrive_attack(db, p, army, order, at):
+    tgt = pvp.target(db, p.id, order.q, order.r)
+    reason = 'Цель больше не принадлежит противнику' if not tgt else pvp.blocked_reason(db, p, tgt, at)
+    if not reason and garrisons.active(db, p.id):
+        reason = 'Атака отменена: идёт другой бой'
+    if reason:
+        order.status, order.result = 'blocked', reason
+        army.status = 'idle'
+    else:
+        pvp.begin(db, p, army, order, tgt, at)
+    order.finished_at = at
+    db.flush()
+    return True
+
+
+def _order_attack(db, p, army, tile, tgt, at):
+    if tile.biome in WATER:
+        fail('Морские владения атаковать пока нельзя')
+    if not has_land(db, army):
+        fail('Нет сухопутных отрядов для боя')
+    reason = pvp.blocked_reason(db, p, tgt, at)
+    if reason:
+        fail(reason)
+    if tgt['kind'] == 'territory':
+        if len(owned(db, p.id)) >= RULES['control_limit']:
+            fail('Достигнут лимит контроля: удержать территорию не получится')
+        if not linked(db, p.id, tile.q, tile.r):
+            fail('Захват требует связи с вашей территорией или базой')
+
+
 def dispatch(db, p, op, data, at, uid, change):
     if not db.get(Reward,(p.id,'first-patrol')):
         fail('Сначала завершите учебную PvE-операцию')
@@ -266,20 +297,23 @@ def dispatch(db, p, op, data, at, uid, change):
         fail('Гекс недоступен для приказа')
     owner = db.get(TileOwnership,(1,q,r))
     is_base, base_owner = bases.at(db, q, r)
-    if is_base and base_owner not in (None, p.id):
-        fail('Это база другого командира. PvP пока не включён')
-    if owner and owner.player_id != p.id:
-        fail('Вход на чужую территорию пока недоступен: PvP не включён')
+    tgt = pvp.target(db, p.id, q, r)
+    if tgt and data['action'] != 'attack':
+        fail('Это владения другого командира: выберите «Атаковать»')
+    if not tgt and data['action'] == 'attack':
+        fail('Здесь нет противника')
     steps, cost = route(db, p, army, (q, r), at)
+    if tgt:
+        _order_attack(db, p, army, tile, tgt, at)
     at_water = tile.biome in WATER
     if data['action'] == 'capture' and at_water:
         fail('Водные гексы нельзя захватить: выберите «Переместить»')
-    if not owner and not is_base and garrisons.guarded_at(db, q, r):
+    if not tgt and not owner and not is_base and garrisons.guarded_at(db, q, r):
         if at_water and tile.biome == 'sea' and not has_fleet(db, army):
             fail('Для морского боя нужны корабли')
         if not at_water and not has_land(db, army):
             fail('Нет сухопутных отрядов для боя')
-    if not at_water and (data['action'] == 'capture' or (not owner and not is_base and garrisons.guarded_at(db,q,r))):
+    if not tgt and not at_water and (data['action'] == 'capture' or (not owner and not is_base and garrisons.guarded_at(db,q,r))):
         if is_base:
             fail('Базу нельзя захватить как территорию')
         if owner:
@@ -293,6 +327,8 @@ def dispatch(db, p, op, data, at, uid, change):
         fail(f'Недостаточно очков хода: нужно {cost}, доступно {army.movement}')
     change(db,p,{'fuel':-RULES['fuel']*len(steps)},'army_march')
     spend_movement(db, army, cost, at)
+    if tgt:
+        p.shield_until = 0   # a voluntary attack ends your own protection
     t, path = at, []
     for sq, sr, step_cost in steps:
         t += step_cost * RULES['step_seconds']

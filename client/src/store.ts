@@ -22,6 +22,7 @@ export type Battle = {
     loot?: {item_id:string;definition_id:string;table_version:string};
     captured?: boolean;
     expedition?: {army_id:string;order_id:string;q:number;r:number};
+    pvp?: {target:"base"|"territory"|"mine";defender_id:string;defender:string;result?:string;loot?:Record<string,number>};
     turn: number;
     round?: number;
     stacks?: Stack[];
@@ -51,7 +52,11 @@ export type State = {
   pending_chests?: {q:number;r:number;options:{resources:Record<string,number>;xp:number}}[];
   armies: Army[];
   territories: Territory[];
+  pvp?: PvpState;
 };
+export type PvpReport = { id:string; role:"attacker"|"defender"; enemy:string; target:"base"|"territory"|"mine"; q:number; r:number; outcome:"victory"|"defeat"; loot:Record<string,number>; losses:{attacker?:Record<string,number>;defender?:Record<string,number>}; created_at:number };
+export type PvpState = { shield_until:number; newbie:boolean; incoming:{q:number;r:number;target:string;attacker:string;arrive_at:number}[]; reports:PvpReport[] };
+export type TargetPreview = { kind:"base"|"territory"|"mine"; title:string; defender:string; hero:string|null; shield_until:number; allowed:boolean; reason:string|null; forces:{kind:string;name:string;count:number;approx:boolean;militia:boolean}[]; my_shield_until:number; loses_shield:boolean; attacks_left:number };
 type Store = {
   state: State | null;
   token: string;

@@ -86,13 +86,12 @@ def test_mine_is_flagged_and_pays_every_minute(client, monkeypatch):
     t0 = game.now(); oil = s['resources']['oil']
     at_time(monkeypatch, t0 + 5 * 60 + 2)
     assert me(c, h)['resources']['oil'] >= oil + 4 * 4
-    # A second commander cannot take it before PvP.
+    # A second commander can't just walk in: a foreign mine needs an attack order.
     h2, u2 = commander(c, monkeypatch, 456); a2 = create(c, h2, u2)
     with c.factory.begin() as db:
         army = db.get(Army, a2['id']); army.q, army.r = Q+3, R
-    res = order(c, h2, a2, Q+2, R, 'move'); assert res.status_code == 200
-    at_time(monkeypatch, res.json()['state']['armies'][0]['orders'][0]['ready_at'] + 1)
-    assert 'другому командиру' in me(c, h2)['armies'][0]['orders'][0]['result']
+    res = order(c, h2, a2, Q+2, R, 'move')
+    assert res.status_code == 409 and 'Атаковать' in res.json()['detail']
     with c.factory() as db:
         assert db.get(MapMine, (1, Q+2, R)).player_id == player_id(c, 123)
 

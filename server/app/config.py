@@ -10,7 +10,7 @@ if DATABASE_URL.startswith("postgresql://"):
 ENV = os.environ.get("APP_ENV", "production")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-VERSION = "slice-10"
+VERSION = "slice-11"
 RESOURCES = ["metal", "oil", "fuel", "electronics", "food"]
 INITIAL = {"metal": 1000, "oil": 300, "fuel": 200, "electronics": 200, "food": 300}
 # Fictional balance. Level effects come from app.economy; every value here is
@@ -267,4 +267,21 @@ EXPEDITIONS = {
         "plain": {"food": 2}, "forest": {"metal": 2},
         "hills": {"metal": 3}, "desert": {"oil": 2}, "beach": {"food": 1}, "river": {"food": 3},
     },
+}
+
+# Asynchronous PvP (ТЗ 8.7–8.8). The attacker fights a server-controlled copy of
+# the defender's forces; nothing here can be farmed repeatedly.
+PVP = {
+    "newbie_seconds": 72 * 3600,      # start shield; lost on the first voluntary attack
+    "raid_shield_seconds": 8 * 3600,  # after a lost base raid the defender is shielded
+    "pair_limit": 3,                  # attacks on the same commander ...
+    "pair_window": 24 * 3600,         # ... within this window
+    "weaker_ratio": 0.5,              # no attacks on commanders below half your strength
+    "protected_share": 0.3,           # share of storage cap that can never be raided
+    "protected_min": 1000,
+    "loot_share": 0.25,               # of the unprotected surplus per resource
+    "loot_max": 1500,
+    "defender_floor": 0.5,            # defending stacks never drop below half
+    "xp": 60,
+    "militia": {"territory": 1, "mine": 1, "base": 2},
 }

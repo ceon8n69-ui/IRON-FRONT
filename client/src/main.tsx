@@ -356,7 +356,7 @@ function App() {
                 onSelect={chooseTile}
               />
               <div className="combat">
-                {battle.state.expedition && <h2>{battle.state.npc_tier?.name ?? "Гарнизон"} NPC · {battle.state.expedition.q}:{battle.state.expedition.r}</h2>}
+                {battle.state.expedition && <h2>{battle.state.pvp ? `⚔ Атака: ${battle.state.pvp.defender}` : `${battle.state.npc_tier?.name ?? "Гарнизон"} NPC`} · {battle.state.expedition.q}:{battle.state.expedition.r}</h2>}
                 <div className="initiative" aria-label="Очередь ходов">
                   {(battle.state.order ?? []).map((id) => {
                     const st = battle.state.stacks?.find((x) => x.id === id);
@@ -539,7 +539,9 @@ function App() {
                           : "Бой продолжается"}
                     </h2>
                     <p>
-                      {lastBattle.status === "victory"
+                      {lastBattle.state.pvp?.result
+                        ? `${lastBattle.state.pvp.result}.${lastBattle.status === "victory" ? ` +${lastBattle.state.npc_tier?.xp ?? 60} XP.` : " Каждый стек сохранил минимум половину бойцов."}`
+                        : lastBattle.status === "victory"
                         ? lastBattle.state.expedition ? lastBattle.state.loot ? `Территория захвачена. +${lastBattle.state.npc_tier?.xp ?? 50} XP и трофейный модуль в инвентаре командира.` : "Бой завершён. Результат захвата указан в приказе армии." : "Награда: 150 металла, 60 провизии, 100 XP и полевой модуль."
                         : "Потери сохраняются, но после поражения каждый стек сохраняет минимум половину бойцов."}
                     </p>
