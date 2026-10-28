@@ -41,6 +41,8 @@ export type State = {
   first_victory: boolean;
   base: {q:number;r:number} | null;
   storage_cap?: number;
+  mines?: {q:number;r:number;resource:string;rate:number}[];
+  pending_chests?: {q:number;r:number;options:{resources:Record<string,number>;xp:number}}[];
   armies: Army[];
   territories: Territory[];
 };
@@ -101,6 +103,7 @@ export async function command(path: string, body: unknown) {
 export type MarchOrder = { id:string; q:number; r:number; from_q:number; from_r:number; action:string; status:string; started_at:number; ready_at:number; finished_at:number|null; result:string|null; path?: number[][] | null };
 export type Army = { id:string; q:number; r:number; status:string; unit_ids:string[]; orders:MarchOrder[]; movement:number; movement_max:number; movement_next_at:number|null };
 export type RoutePreview = { path:number[][]; cost:number; fuel:number; seconds:number; movement:number; affordable:boolean };
-export type WorldTile = { q:number; r:number; biome:string; visibility:string; control:"self"|"other"|"neutral"|null; home:boolean; base?:"self"|"other"|"staging"|null; garrison?:boolean };
+export type MapObject = { kind:"pile"|"chest"|"mine"; resource?:string; amount?:number; rate?:number; owner?:"self"|"other"|null; pending?:boolean };
+export type WorldTile = { q:number; r:number; biome:string; visibility:string; control:"self"|"other"|"neutral"|null; home:boolean; base?:"self"|"other"|"staging"|null; garrison?:boolean; garrison_strength?:{name:string;hp:number;xp:number}|null; object?:MapObject|null };
 export type Territory = { q:number; r:number; biome:string; yield:Record<string,number>; acquired_at:number };
 export type ExpeditionRules = {staging:number[];movement_max:number;movement_regen_seconds:number;terrain_cost:Record<string,number>;step_seconds:number;seconds:number;fuel:number;control_limit:number;army_vision:number;territory_yield:Record<string,Record<string,number>>};

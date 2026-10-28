@@ -1,10 +1,10 @@
-import {surface, environment, bunker, squad} from "./Terrain";
+import {surface, environment, bunker, squad, pile, chest, mine} from "./Terrain";
 import {Icon} from "./Icon";
 import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Text } from "pixi.js";
 import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle, Army } from "./store";
-type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean };
+type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean; garrison_strength?: {name:string;hp:number} | null; object?: {kind:string;resource?:string;amount?:number;owner?:string|null;pending?:boolean} | null };
 type Props = {
   buildings: Building[];
   paused?: boolean;
@@ -261,9 +261,17 @@ export function MapView(props: Props) {
       }
       if (t.garrison) {
         s.addChild(bunker(x,y-7));
-        const badge = new Text({text:"⚑ NPC",style:{fontSize:14,fill:0xffb4a0,fontFamily:"sans-serif",fontWeight:"bold"}});
+        const tag = t.garrison_strength ? `⚑ ${t.garrison_strength.name} ${t.garrison_strength.hp}` : "⚑ NPC";
+        const badge = new Text({text:tag,style:{fontSize:13,fill:0xffb4a0,fontFamily:"sans-serif",fontWeight:"bold"}});
         badge.anchor.set(.5);badge.position.set(x,y+20);
-        labels.addChild(new Graphics().roundRect(x-30,y+8,60,24,5).fill(0x382126));labels.addChild(badge);
+        const w = Math.max(60, badge.width + 14);
+        labels.addChild(new Graphics().roundRect(x-w/2,y+8,w,24,5).fill(0x382126));labels.addChild(badge);
+      }
+      if (t.object) {
+        const o = t.object;
+        if (o.kind === "pile") s.addChild(pile(x,y-6,o.resource ?? ""));
+        else if (o.kind === "chest") s.addChild(chest(x,y-8));
+        else if (o.kind === "mine") s.addChild(mine(x,y-6,o.resource ?? "",o.owner === "self" ? 0x4c9ce5 : o.owner === "other" ? 0xd95a52 : null));
       }
       const b = props.buildings.find((b) => b.q === t.q && b.r === t.r);
       if (b && !props.battle && !props.world) {

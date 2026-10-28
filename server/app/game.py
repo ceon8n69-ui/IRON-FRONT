@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS
-from . import expeditions, garrisons, equipment, bases, economy
+from . import expeditions, garrisons, equipment, bases, economy, objects
 from .combat import resolve
 
 
@@ -86,8 +86,9 @@ def change(db, p, delta, operation):
 def settle(db, p, at=None):
     at = now() if at is None else at
     bases.ensure(db, p, at)
-    marched = expeditions.settle_orders(db, p, at)
-    territories = expeditions.state(db, p.id)["territories"]
+    marched = expeditions.settle_orders(db, p, at, change)
+    territories = expeditions.state(db, p.id)["territories"] + [
+        {"acquired_at": m.acquired_at, "yield": {m.resource: m.rate}} for m in objects.mines(db, p.id)]
     buildings = rows(db, Building, p.id)
     # Each whole minute is simulated with the buildings actually ready at its start.
     # Bounded offline accrual: 24h. Fractional final minute remains in settled_at.
@@ -184,6 +185,8 @@ def snapshot(db, p):
         ],
         "first_victory": db.get(Reward, (p.id, "first-patrol")) is not None,
         **expeditions.state(db, p.id),
+        "mines": [{"q": m.q, "r": m.r, "resource": m.resource, "rate": m.rate} for m in objects.mines(db, p.id)],
+        "pending_chests": objects.pending_chests(db, p.id),
     }
 
 
@@ -275,6 +278,8 @@ def dispatch(db, p, op, data):
         )
         db.add(obj)
         return {"id": obj.id}
+    if op == "chest":
+        return objects.choose(db, p, data["q"], data["r"], data["choice"], change)
     if op == "upgrade":
         b = db.get(Building, data["building_id"])
         if not b or b.player_id != p.id:
@@ -356,7 +361,7 @@ def dispatch(db, p, op, data):
         if outcome != "active" and 'expedition' in state:
             captured=garrisons.finish(db,p,battle,outcome,now())
             if captured:
-                hero.xp += 50
+                hero.xp += battle.state.get('npc_tier', {}).get('xp', 50)
                 definition_id, roll = equipment.loot(battle.seed)
                 item=Item(id=uid(),owner_id=p.id,definition_id=definition_id,source_id=battle.id,equipped=False,created_at=now())
                 db.add(item);db.flush()

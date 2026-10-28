@@ -33,10 +33,13 @@ def begin(db, p, army, order):
     unit_id=db.scalar(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id))
     unit=db.get(Unit,unit_id)
     unit.status='battle'
+    from .objects import strength
+    tier=strength(order.q,order.r)
     db.add(Battle(id=str(uuid.uuid4()),player_id=p.id,unit_id=unit.id,status='active',
         seed=str(uuid.uuid4()),balance_version=VERSION,state={
             'turn':1,'player':{'pos':[2,4],'hp':unit.hp},
-            'npc':{'pos':[6,4],'hp':55},'cover':[[3,4],[4,2],[5,5]],
+            'npc':{'pos':[6,4],'hp':tier[1]},'cover':[[3,4],[4,2],[5,5]],
+            'npc_tier':{'name':tier[0],'hp':tier[1],'xp':tier[2]},
             'expedition':{'army_id':army.id,'order_id':order.id,'q':order.q,'r':order.r},
         }))
     order.status='complete';order.result='Гарнизон NPC: требуется победа в бою'

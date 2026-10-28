@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IRON FRONT",
-    "version": "0.5.0"
+    "version": "0.6.0"
   },
   "paths": {
     "/health": {
@@ -231,6 +231,76 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/Build"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/world/chest": {
+      "post": {
+        "summary": "Chest",
+        "operationId": "chest_api_v1_world_chest_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Chest"
               }
             }
           }
@@ -974,6 +1044,38 @@
           "r"
         ],
         "title": "Build"
+      },
+      "Chest": {
+        "properties": {
+          "q": {
+            "type": "integer",
+            "maximum": 127.0,
+            "minimum": 0.0,
+            "title": "Q"
+          },
+          "r": {
+            "type": "integer",
+            "maximum": 127.0,
+            "minimum": 0.0,
+            "title": "R"
+          },
+          "choice": {
+            "type": "string",
+            "enum": [
+              "resources",
+              "xp"
+            ],
+            "title": "Choice"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "q",
+          "r",
+          "choice"
+        ],
+        "title": "Chest"
       },
       "Choose": {
         "properties": {
