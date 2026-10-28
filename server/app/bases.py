@@ -55,20 +55,16 @@ def home(db, pid):
 
 
 def near(db, q, r, radius):
-    """Base sites (plus the legacy staging point) within a square window."""
+    """Base sites within a square window."""
     found = {(b.q, b.r): b.player_id for b in db.scalars(select(WorldBase).where(
         WorldBase.world_id == 1,
         WorldBase.q.between(q - radius, q + radius),
         WorldBase.r.between(r - radius, r + radius)))}
-    if abs(STAGING[0] - q) <= radius and abs(STAGING[1] - r) <= radius:
-        found.setdefault(STAGING, None)
     return found
 
 
 def at(db, q, r):
-    """(is_base, owner_id) for one hex. Staging is a base with no owner."""
-    if (q, r) == STAGING:
-        return True, None
+    """(is_base, owner_id) for one hex. The old staging hex is now the Capital, not a base."""
     base = db.scalar(select(WorldBase).where(
         WorldBase.world_id == 1, WorldBase.q == q, WorldBase.r == r))
     return (True, base.player_id) if base else (False, None)

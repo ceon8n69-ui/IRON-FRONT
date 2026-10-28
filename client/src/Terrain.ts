@@ -218,6 +218,16 @@ export function node(x:number,y:number,kind:string,owner:number|null){
     g.rect(x+12,y-38,7,26).fill(0x6c5a48).stroke({color:ink,width:1.4});
     g.circle(x+16,y-44,5).fill({color:0x9aa5a8,alpha:.8}); g.circle(x+21,y-51,4).fill({color:0x9aa5a8,alpha:.6});
     for(const dx of [-16,-6,4]) g.rect(x+dx,y-6,6,6).fill(0x3fb7a8).stroke({color:ink,width:1});
+  }else if(kind==="capital"){
+    // walled citadel with a central keep and a tall banner
+    g.poly([x-30,y+4,x-30,y-12,x+30,y-12,x+30,y+4,x,y+18]).fill(0xb8a888).stroke({color:ink,width:1.8});
+    for(const dx of [-30,-15,0,15]) g.rect(x+dx,y-17,8,6).fill(0xb8a888).stroke({color:ink,width:1});
+    g.rect(x-12,y-38,24,28).fill(0xcfc2a2).stroke({color:ink,width:1.8});
+    g.poly([x-15,y-38,x,y-52,x+15,y-38]).fill(0x8f3b33).stroke({color:ink,width:1.6});
+    g.rect(x-4,y-22,8,12).fill(0x3a2b22);
+    g.moveTo(x,y-52).lineTo(x,y-74).stroke({color:0xc3d0c6,width:2});
+    g.poly([x+1,y-74,x+22,y-68,x+1,y-62]).fill(owner??0xe5b65a).stroke({color:ink,width:1});
+    return g;
   }else{
     g.rect(x-3,y-24,6,30).fill(0x6f7a7f).stroke({color:ink,width:1.4});
     g.ellipse(x,y-30,18,9).fill(0xd8dfe2).stroke({color:ink,width:1.6});

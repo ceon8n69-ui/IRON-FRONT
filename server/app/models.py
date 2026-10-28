@@ -27,6 +27,8 @@ class Player(Base):
     revision = Column(Integer, nullable=False, default=0)
     shield_until = Column(BigInteger, nullable=False, default=0, server_default="0")
     upkeep_at = Column(BigInteger, nullable=False, default=0, server_default="0")
+    vp = Column(Integer, nullable=False, default=0, server_default="0")
+    tutorial_done = Column(Boolean, nullable=False, default=False, server_default="false")
 
 
 class Session(Base):
@@ -233,7 +235,6 @@ class TileOwnership(Base):
     acquired_at = Column(BigInteger, nullable=False)
     __table_args__ = (
         ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
-        CheckConstraint("NOT (q = 64 AND r = 64)"),
     )
 
 
@@ -350,3 +351,15 @@ class Season(Base):
     results = Column(JSON)
     __table_args__ = (CheckConstraint("status IN ('active', 'finished')", name="ck_seasons_status"),
                       CheckConstraint("ends_at > started_at", name="ck_seasons_span"))
+
+
+class SeasonResult(Base):
+    """A commander's final standing in a finished season; kept across resets."""
+    __tablename__ = "season_results"
+    season = Column(ForeignKey("seasons.number"), primary_key=True)
+    player_id = Column(ForeignKey("users.id"), primary_key=True)
+    rank = Column(Integer, nullable=False)
+    vp = Column(Integer, nullable=False)
+    title = Column(String)
+    hero = Column(String)
+    name = Column(String(100), nullable=False)

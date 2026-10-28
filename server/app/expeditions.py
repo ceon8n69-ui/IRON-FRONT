@@ -330,7 +330,8 @@ def _order_attack(db, p, army, tile, tgt, at):
 
 
 def dispatch(db, p, op, data, at, uid, change):
-    if not db.get(Reward,(p.id,'first-patrol')):
+    from .game import tutorial_done
+    if not tutorial_done(db, p):
         fail('Сначала завершите учебную PvE-операцию')
     if op == 'army_create':
         unit = db.get(Unit,data['unit_id'])
