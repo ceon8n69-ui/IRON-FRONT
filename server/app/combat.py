@@ -24,6 +24,15 @@ def roll(seed, turn, actor):
     return 90 + int(hashlib.sha256(f"{seed}:{turn}:{actor}".encode()).hexdigest()[:8], 16) % 21
 
 
+def chance(seed, turn, tag):
+    """Deterministic 0..99 roll for morale and luck."""
+    return int(hashlib.sha256(f"{seed}:{turn}:{tag}".encode()).hexdigest()[8:16], 16) % 100
+
+
+def _perks(s):
+    return s.get("perks") or {}
+
+
 def make_stack(sid, side, kind, count, pos, unit_id=None, hp_pct=100):
     each = UNITS[kind]["hp"]
     hp = max(1, (count - 1) * each + round(each * hp_pct / 100))
@@ -40,9 +49,11 @@ def alive(stack):
     return max(0, math.ceil(stack["hp"] / UNITS[stack["kind"]]["hp"]))
 
 
-def new_battle(player_stacks, npc_stacks, cover, seed, hero, bonus):
+def new_battle(player_stacks, npc_stacks, cover, seed, hero, bonus, perks=None):
     state = {"turn": 1, "round": 1, "stacks": player_stacks + npc_stacks, "cover": cover,
              "ability_used": False, "active": None, "order": []}
+    if perks is not None:
+        state["perks"] = perks
     _new_round(state)
     events = []
     outcome = _advance(state, seed, hero, bonus, events)
@@ -79,6 +90,11 @@ def resolve(state, command, seed, hero, bonus):
         s["ability_used"] = True
     else:
         raise ValueError("Неизвестный приказ")
+    if not extra and action not in ("wait", "defend") and alive(me) and not me.get("morale") \
+            and chance(seed, s["turn"], f"morale:{me['id']}") < 100 * _perks(s).get("morale", 0) and _living(s, "npc"):
+        me["morale"] = True          # once per round per stack
+        extra = True
+        events.append({"type": "morale", "actor": me["id"]})
     if not extra:
         me["acted"] = True
         _after_turn(s, me, events)
@@ -164,7 +180,7 @@ def _approach(s, me, target, hero):
     return min(spots, key=lambda p: (distance(me["pos"], p), p)) if spots else None
 
 
-def _damage(s, attacker, target, seed, hero, bonus, factor, tag):
+def _damage(s, attacker, target, seed, hero, bonus, factor, tag, fixed_roll=None):
     a, d = UNITS[attacker["kind"]], UNITS[target["kind"]]
     value = alive(attacker) * a["damage"]
     if a.get("trait") != "pierce":
@@ -179,18 +195,27 @@ def _damage(s, attacker, target, seed, hero, bonus, factor, tag):
         if hero == "raven" and a["infantry"]:
             value *= 1.05
         value *= 1 + min(max(bonus, 0), 0.10)
+        perks = _perks(s)
+        value *= 1 + perks.get("attack", 0) + (0 if a["melee"] else perks.get("ranged", 0))
     elif hero == "titan":
         value *= 0.95
+    if target["side"] == "player":
+        value *= 1 - _perks(s).get("defense", 0)
     if not a["melee"] and a.get("trait") != "marksman" and any(distance(attacker["pos"], e["pos"]) == 1
                               for e in _living(s, "npc" if attacker["side"] == "player" else "player")):
         value *= 0.5   # shooters fire badly with an enemy in their face
     value *= attacker.get("buff", 1) * attacker.get("weak", 1) * target.get("guard", 1)
-    value *= factor * roll(seed, s["turn"], f"{tag}:{attacker['id']}") / 100
+    value *= factor * (fixed_roll or roll(seed, s["turn"], f"{tag}:{attacker['id']}")) / 100
     return max(1, round(value))
 
 
 def _hit(s, attacker, target, seed, hero, bonus, events, factor, kind):
     before = alive(target)
+    lucky = attacker["side"] == "player" and kind != "retaliate" and \
+        chance(seed, s["turn"], f"luck:{kind}:{attacker['id']}") < 100 * _perks(s).get("luck", 0)
+    if lucky:
+        factor *= 1.5
+        events.append({"type": "luck", "actor": attacker["id"]})
     dmg = _damage(s, attacker, target, seed, hero, bonus, factor, kind)
     target["hp"] = max(0, target["hp"] - dmg)
     events.append({"type": kind, "actor": attacker["id"], "target": target["id"], "damage": dmg,
@@ -317,10 +342,12 @@ def _new_round(s):
     for x in s["stacks"]:
         x["acted"] = x["retaliated"] = False
         x["defending"] = False
-        for flag in ("buff", "weak", "guard", "mute"):
+        for flag in ("buff", "weak", "guard", "mute", "morale"):
             x.pop(flag, None)
+    bonus = _perks(s).get("initiative", 0)
     s["order"] = [x["id"] for x in sorted(_living(s), key=lambda x: (
-        -UNITS[x["kind"]]["initiative"], 0 if x["side"] == "player" else 1, x["id"]))]
+        -UNITS[x["kind"]]["initiative"] - (bonus if x["side"] == "player" else 0),
+        0 if x["side"] == "player" else 1, x["id"]))]
 
 
 def _next(s):
@@ -387,3 +414,76 @@ def _npc_turn(s, me, seed, hero, bonus, events):
     if best != me["pos"]:
         me["pos"] = best
         events.append({"type": "move", "actor": me["id"], "pos": best})
+
+
+# ---- previews and quick combat ---------------------------------------------
+
+def preview(state, seed, hero, bonus):
+    """For the active player stack: expected damage, kills and retaliation per enemy stack."""
+    s = copy.deepcopy(state)
+    me = _get(s, s.get("active"))
+    if not me or me["side"] != "player":
+        return {}
+    spec = UNITS[me["kind"]]
+    out = {}
+    for target in _living(s, "npc"):
+        sim = copy.deepcopy(s)
+        a, t = _get(sim, me["id"]), _get(sim, target["id"])
+        factor, reach = 1.0, True
+        if spec["melee"]:
+            spot = _approach(sim, a, t, hero)
+            if spot is None:
+                reach = False
+            else:
+                if spot != a["pos"] and spec.get("trait") == "charge":
+                    factor *= 1.3
+                a["pos"] = list(spot)
+        elif distance(a["pos"], t["pos"]) > spec["range"]:
+            reach = False
+        lo = _damage(sim, a, t, seed, hero, bonus, factor, "attack", 90)
+        hi = _damage(sim, a, t, seed, hero, bonus, factor, "attack", 110)
+        each = UNITS[t["kind"]]["hp"]
+        left = lambda d: max(0, math.ceil((t["hp"] - d) / each))
+        info = {"reach": reach, "damage": [lo, hi], "kills": [alive(t) - left(lo), alive(t) - left(hi)], "retaliation": None}
+        if reach and left(lo) and not t["retaliated"] and not t.get("mute") and distance(a["pos"], t["pos"]) == 1 \
+                and spec.get("trait") != "first_strike":
+            tt = UNITS[t["kind"]]
+            rf = 1.0 if tt["melee"] or tt.get("trait") == "bayonet" else 0.5
+            r_lo, r_hi = [], []
+            for d, bucket in ((hi, r_lo), (lo, r_hi)):
+                t2 = dict(t, hp=t["hp"] - d)
+                if alive(t2):
+                    bucket.append(_damage(sim, t2, a, seed, hero, bonus, rf, "retaliate", 90 if bucket is r_lo else 110))
+            if r_hi:
+                r_lo = r_lo or [0]
+                me_each = UNITS[a["kind"]]["hp"]
+                info["retaliation"] = {"damage": [r_lo[0], r_hi[0]],
+                                       "kills": [alive(a) - max(0, math.ceil((a["hp"] - r_lo[0]) / me_each)),
+                                                 alive(a) - max(0, math.ceil((a["hp"] - r_hi[0]) / me_each))]}
+        out[target["id"]] = info
+    return out
+
+
+def ai_command(state, hero):
+    """Quick combat: the server plays the active player stack like a sensible NPC."""
+    me = _get(state, state["active"])
+    spec = UNITS[me["kind"]]
+    enemies = _living(state, "npc")
+    target = min(enemies, key=lambda x: (distance(me["pos"], x["pos"]), x["hp"], x["id"]))
+    if spec["melee"]:
+        if _approach(state, me, target, hero) is not None:
+            return {"action": "attack", "target": target["id"]}
+    elif distance(me["pos"], target["pos"]) <= spec["range"]:
+        # Ranged: shoot the weakest enemy in range.
+        in_range = [x for x in enemies if distance(me["pos"], x["pos"]) <= spec["range"]]
+        return {"action": "attack", "target": min(in_range, key=lambda x: (x["hp"], x["id"]))["id"]}
+    best, reach = me["pos"], _speed(me, hero)
+    for q in range(SIZE):
+        for r in range(SIZE):
+            p = [q, r]
+            if distance(me["pos"], p) <= reach and not _occupied(state, p, me) and \
+                    (distance(p, target["pos"]), p) < (distance(best, target["pos"]), best):
+                best = p
+    if best != me["pos"]:
+        return {"action": "move", "q": best[0], "r": best[1]}
+    return {"action": "defend"}

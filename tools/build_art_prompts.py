@@ -7,6 +7,7 @@ tools/generate_art.py). Run from the repo root:
 import json
 from pathlib import Path
 from app.config import UNITS, FACTIONS, HEROES, BUILDINGS
+from app.equipment import DEFINITIONS as ITEMS
 
 ROOT = Path(__file__).resolve().parents[1]
 ACC = {"raven": "#c8433a crimson", "valkyrie": "#5f8fd0 steel blue", "titan": "#c9a04a brass gold",
@@ -56,6 +57,28 @@ PORTRAIT_PROMPT = ("Original chibi dieselpunk commander portrait for IRON FRONT,
                    "No text, no logos, no real insignia, no real person likeness.")
 TILE_PROMPT = ("Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil "
                "edge under the tile, transparent background. Subject: {subj}. No text.")
+ITEM_PROMPT = ("Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, "
+               "flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, "
+               "readable at 64px, soft {glow} rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: {subj}.")
+GLOW = {"uncommon": "green", "rare": "blue", "epic": "purple"}
+ITEM_ART = {
+    "field-module": "a compact olive field electronics module with brass dials and a small antenna",
+    "garrison-module-v1": "a battered captured tactical module with riveted steel casing and a red status lamp",
+    "precision-module-v1": "a precision targeting module with a round lens, crosshair glass and brass rings",
+    "vanguard-module-v1": "an ornate vanguard command module with gold trims and a glowing amber core",
+    "service-pistol": "an ornate award pistol with engraved steel and a polished wooden grip",
+    "marshal-sabre": "a curved officer sabre with a brass guard and a leather-wrapped hilt",
+    "field-baton": "a field marshal baton, dark lacquer with gold caps and small stars",
+    "plated-greatcoat": "a folded charcoal greatcoat with riveted armour plates on the shoulders",
+    "veteran-cuirass": "a dented steel chest cuirass with leather straps and brass buckles",
+    "bastion-armor": "a heavy ornate chest armour with layered plates and gold rims",
+    "valor-medal": "a round bronze valour medal on a striped ribbon (fictional design, no real order)",
+    "staff-badge": "a silver staff officer badge with a compass and crossed pencils",
+    "fortune-order": "a star-shaped golden order with a four-leaf clover in the centre",
+    "field-binoculars": "a pair of olive field binoculars with leather strap",
+    "quartermaster-bag": "a bulging leather quartermaster satchel with coins and papers sticking out",
+    "route-atlas": "a thick map atlas with brass corners and a compass on the cover",
+}
 TERRAIN = {"plain": "lush grass with tufts, small flowers and pebbles", "forest": "dense mix of round leafy trees and pines",
            "hills": "grassy hills with mossy grey boulders", "mountain": "two rocky peaks with snow caps",
            "desert": "sand with dune ridges and a dry shrub", "beach": "pale sand with a palm tree and small rocks",
@@ -83,6 +106,10 @@ def entries():
     for h, d in PORTRAITS.items():
         out.append({"key": f"portrait-{h}", "kind": "portrait", "group": "Портреты командиров", "title": HEROES[h]["name"],
                     "path": f"client/public/art/commanders/{h}-v2.webp", "prompt": PORTRAIT_PROMPT.format(d=d)})
+    for k, d in ITEMS.items():
+        out.append({"key": f"item-{k}", "kind": "item", "group": "Артефакты командира", "title": d["name"],
+                    "path": f"client/public/art/equipment/{k}.webp",
+                    "prompt": ITEM_PROMPT.format(glow=GLOW[d["rarity"]], subj=ITEM_ART[k])})
     for b, d in TERRAIN.items():
         out.append({"key": f"tile-{b}", "kind": "tile", "group": "Ландшафт (подключение позже)", "title": b,
                     "path": f"client/public/art/tiles/{b}.png", "prompt": TILE_PROMPT.format(subj=d)})
@@ -102,6 +129,7 @@ def main():
           "## Форматы", "",
           "- Юниты: PNG 256×224 с прозрачностью, фигура смотрит вправо, ноги на 82% высоты. Скрипт сам обрезает и центрирует.",
           "- Портреты: WebP 640×960 (2:3).",
+          "- Артефакты: WebP 256×256 с прозрачностью.",
           "- Тайлы и здания: PNG с прозрачностью; в игре пока рисуются кодом.", "",
           "Файл генерируется из конфига: `PYTHONPATH=server python tools/build_art_prompts.py`.", ""]
     group = None

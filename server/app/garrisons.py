@@ -88,9 +88,10 @@ def begin(db, p, army, order):
     tier=tier_definition(name)
     hero=db.get(Hero,p.id)
     led=bool(army.commander)
-    bonus=equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id))) if led else 0
+    from . import commander
     seed=str(uuid.uuid4())
-    state,_,outcome=combat.new_battle(stacks,npc_stacks(tier["stacks"]),[] if at_sea else [[3,4],[4,2],[5,5]],seed,hero.kind if led else None,bonus)
+    state,_,outcome=combat.new_battle(stacks,npc_stacks(tier["stacks"]),[] if at_sea else [[3,4],[4,2],[5,5]],seed,hero.kind if led else None,0,
+                                      commander.army_perks(db,p.id) if led else {})
     state['led']=led
     state['expedition']={'army_id':army.id,'order_id':order.id,'q':order.q,'r':order.r}
     state['npc_tier']={'name':name,'hp':hp,'xp':xp}
@@ -134,7 +135,9 @@ def _finish_sea(db, p, battle, outcome, at, ctx, army, order):
         won = db.execute(insert(ClearedSite).values(world_id=1, q=ctx['q'], r=ctx['r'], player_id=p.id, cleared_at=at)
                          .on_conflict_do_nothing().returning(ClearedSite.q)).scalar() is not None
     if won:
-        change(db, p, tier_definition(battle.state['npc_tier']['name'])['loot'], 'sea_raid')
+        from . import commander
+        bonus = commander.perk(db, p.id, 'plunder')
+        change(db, p, {k: round(v * (1 + bonus)) for k, v in tier_definition(battle.state['npc_tier']['name'])['loot'].items()}, 'sea_raid')
         army.q, army.r = ctx['q'], ctx['r']; discover(db, army, at)
         order.result = 'Пираты разбиты. Трофеи доставлены на базу'
     else:

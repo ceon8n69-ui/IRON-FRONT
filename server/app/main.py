@@ -19,7 +19,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
-from . import config, expeditions, garrisons, bases, objects, pvp
+from . import config, expeditions, garrisons, bases, objects, pvp, commander, equipment
 from .db import SessionLocal
 from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery, Army
 from .auth import validate_init_data, token_hash
@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.11.0")
+app = FastAPI(title="IRON FRONT", version="0.12.0")
 
 
 class Strict(BaseModel):
@@ -89,6 +89,14 @@ class Train(Strict):
 class Compose(Strict):
     unit_id: str = Field(max_length=40)
     army_id: str | None = Field(default=None, max_length=40)
+
+
+class SkillPick(Strict):
+    key: str = Field(max_length=40)
+
+
+class BattleRef(Strict):
+    battle_id: str = Field(max_length=40)
 
 
 class ArmyRef(Strict):
@@ -211,6 +219,9 @@ def definitions():
         "heroes": config.HEROES,
         "units": config.UNITS,
         "abilities": config.ABILITIES,
+        "skills": {k: {"name": v["name"], "icon": v["icon"]} for k, v in commander.SKILLS.items()},
+        "artifacts": equipment.DEFINITIONS,
+        "artifact_slots": equipment.SLOTS,
         "factions": config.FACTIONS,
         "traits": config.TRAITS,
         "army_stacks": config.ARMY_STACKS,
@@ -296,6 +307,18 @@ def army_assign(body: Compose, authorization: str | None = Header(default=None),
 def army_release(body: Compose, authorization: str | None = Header(default=None),
                  idempotency_key: str | None = Header(default=None)):
     return mutate("army_release", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/battles/auto")
+def battle_auto(body: BattleRef, authorization: str | None = Header(default=None),
+                idempotency_key: str | None = Header(default=None)):
+    return mutate("auto", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/commander/skill")
+def commander_skill(body: SkillPick, authorization: str | None = Header(default=None),
+                    idempotency_key: str | None = Header(default=None)):
+    return mutate("skill_pick", body.model_dump(), authorization, idempotency_key)
 
 
 @app.post("/api/v1/army/disband")
@@ -442,7 +465,7 @@ def tiles(
         from .combat import distance
         result=[]
         for t in ts:
-            in_view = distance(home,[t.q,t.r]) <= home_vision or any(distance([a["q"],a["r"]],[t.q,t.r]) <= config.EXPEDITIONS["army_vision"] for a in army_state)
+            in_view = distance(home,[t.q,t.r]) <= home_vision or any(distance([a["q"],a["r"]],[t.q,t.r]) <= a.get("vision", config.EXPEDITIONS["army_vision"]) for a in army_state)
             known = in_view or (t.q,t.r) in discovered
             owner = owners.get((t.q,t.r)) if in_view else None
             site = (t.q,t.r) in sites

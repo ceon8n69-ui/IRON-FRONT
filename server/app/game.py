@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS, UNITS, TUTORIAL_NPC, FACTIONS
-from . import expeditions, garrisons, equipment, bases, economy, objects, pvp
+from . import expeditions, garrisons, equipment, bases, economy, objects, pvp, commander
 from . import combat
 
 
@@ -129,6 +129,9 @@ def settle(db, p, at=None):
                 balances[k] += v
                 totals[k] += v
     if ticks:
+        supply = commander.perk(db, p.id, "supply")
+        if supply:
+            totals = {k: round(v * (1 + supply)) if v > 0 else v for k, v in totals.items()}
         change(db, p, totals, "production")
         p.settled_at = cursor + ticks * 60
     completed = False
@@ -183,9 +186,10 @@ def snapshot(db, p):
             for i in db.scalars(select(Item).where(Item.owner_id == p.id))
         ],
         "battles": [
-            serialize(b, "id status state balance_version")
+            {**serialize(b, "id status state balance_version"), **({"preview": battle_preview(db, p, b)} if b.status == "active" else {})}
             for b in rows(db, Battle, p.id)
         ],
+        "commander": commander.view(db, p.id),
         "first_victory": db.get(Reward, (p.id, "first-patrol")) is not None,
         **expeditions.state(db, p.id),
         "mines": [{"q": m.q, "r": m.r, "resource": m.resource, "rate": m.rate} for m in objects.mines(db, p.id)],
@@ -221,15 +225,36 @@ def battle_units(db, battle):
     return [db.get(Unit, i) for i in ids]
 
 
+def battle_preview(db, p, battle):
+    try:
+        hero = db.get(Hero, p.id)
+        led = battle.state.get("led", True)
+        return combat.preview(battle.state, battle.seed, hero.kind if hero and led else None, legacy_bonus(db, p, battle))
+    except Exception:
+        return {}
+
+
+def legacy_bonus(db, p, battle):
+    """Battles started before perks keep the old equipment bonus; new ones carry perks in their state."""
+    if "perks" in battle.state or not battle.state.get("led", True):
+        return 0
+    return equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id == p.id)))
+
+
 def apply_losses(db, battle, outcome, hero):
-    """Casualties persist. Defeat keeps at least half of each stack; Phoenix recovers 10% of the fallen."""
+    """Casualties persist. Defeat keeps at least half of each stack; Phoenix recovers 10% of the fallen,
+    Field medicine (commander skill) a further share."""
+    aid = (battle.state.get("perks") or {}).get("first_aid", 0)
     for unit_id, r in combat.summary(battle.state).items():
         unit = db.get(Unit, unit_id)
         survivors, hp = r["alive"], r["hp_pct"]
         if outcome != "victory" and survivors < math.ceil(r["start"] / 2):
             survivors, hp = math.ceil(r["start"] / 2), 50
-        if hero.kind == "phoenix" and survivors < r["start"]:
-            survivors = min(r["start"], survivors + max(1, math.ceil(0.1 * (r["start"] - survivors))))
+        fallen = r["start"] - survivors
+        if hero.kind == "phoenix" and fallen:
+            survivors = min(r["start"], survivors + max(1, math.ceil(0.1 * fallen)))
+        if aid and fallen:
+            survivors = min(r["start"], survivors + math.floor(aid * fallen))
         unit.count, unit.hp = max(1, survivors), max(1, min(100, hp or 50))
 
 
@@ -317,7 +342,7 @@ def dispatch(db, p, op, data):
             r=r,
             level=1,
             status="building",
-            ready_at=now() + spec["seconds"],
+            ready_at=now() + round(spec["seconds"] * (1 - commander.perk(db, p.id, "engineering"))),
         )
         db.add(obj)
         return {"id": obj.id}
@@ -335,7 +360,7 @@ def dispatch(db, p, op, data):
         if b.level >= limit:
             fail("Достигнут максимальный уровень" if b.level >= economy.MAX_LEVEL else "Сначала улучшите штаб")
         change(db, p, {k: -v for k, v in economy.upgrade_cost(b.kind, b.level).items()}, "upgrade")
-        b.upgrade_ready_at = now() + economy.upgrade_seconds(b.kind, b.level)
+        b.upgrade_ready_at = now() + max(1, round(economy.upgrade_seconds(b.kind, b.level) * (1 - commander.perk(db, p.id, "engineering"))))
         return {"id": b.id, "level": b.level + 1, "ready_at": b.upgrade_ready_at}
     if op == "train":
         kind = faction_unit(hero.kind, data.get("kind") or "rifles")
@@ -364,59 +389,50 @@ def dispatch(db, p, op, data):
             fail("Отряд недоступен")
         unit.status = "battle"
         seed = uid()
-        bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id == p.id)))
         state, _, _ = combat.new_battle(
             [combat.make_stack("p1", "player", unit.kind, unit.count, PLAYER_SPOTS[0], unit.id, unit.hp)],
-            npc_stacks(TUTORIAL_NPC), [[3, 4], [4, 2], [5, 5]], seed, hero.kind, bonus)
+            npc_stacks(TUTORIAL_NPC), [[3, 4], [4, 2], [5, 5]], seed, hero.kind, 0, commander.army_perks(db, p.id))
         battle = Battle(id=uid(), player_id=p.id, unit_id=unit.id, status="active", seed=seed,
                         balance_version=VERSION, state=state)
         db.add(battle)
         return {"id": battle.id}
-    if op == "turn":
+    if op in ("turn", "auto"):
         battle = db.get(Battle, data["battle_id"])
         if not battle or battle.player_id != p.id:
             raise HTTPException(404, "Бой не найден")
         if battle.status != "active":
             fail("Бой уже завершён")
-        if data["turn"] != battle.state["turn"]:
-            fail("Раунд устарел: обновите состояние")
         led = battle.state.get("led", True)
-        bonus = equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id))) if led else 0
+        kind = hero.kind if led else None
+        bonus = legacy_bonus(db, p, battle)
+        state, events, outcome = battle.state, [], "active"
         try:
-            state, events, outcome = combat.resolve(battle.state, data, battle.seed, hero.kind if led else None, bonus)
+            if op == "turn":
+                if data["turn"] != battle.state["turn"]:
+                    fail("Раунд устарел: обновите состояние")
+                state, events, outcome = combat.resolve(battle.state, data, battle.seed, kind, bonus)
+                db.add(BattleTurn(battle_id=battle.id, turn=data["turn"], command=data, events=events))
+            else:
+                # Quick combat: the server plays every remaining player turn.
+                while outcome == "active":
+                    cmd = {**combat.ai_command(state, kind), "battle_id": battle.id, "turn": state["turn"], "auto": True}
+                    turn = state["turn"]
+                    try:
+                        state, step, outcome = combat.resolve(state, cmd, battle.seed, kind, bonus)
+                    except ValueError:
+                        cmd = {"action": "defend", "battle_id": battle.id, "turn": turn, "auto": True}
+                        state, step, outcome = combat.resolve(state, cmd, battle.seed, kind, bonus)
+                    db.add(BattleTurn(battle_id=battle.id, turn=turn, command=cmd, events=step))
+                    events += step
         except ValueError as exc:
             fail(str(exc))
-        db.add(BattleTurn(battle_id=battle.id, turn=data["turn"], command=data, events=events))
         battle.state = state
         battle.status = outcome
         if outcome == "active":
             return {"events": events, "outcome": outcome}
-        apply_losses(db, battle, outcome, hero)
-        if 'pvp' in state:
-            won = pvp.finish(db, p, battle, outcome, now())
-            return {"events": events, "outcome": outcome, "captured": won}
-        if 'expedition' in state:
-            captured=garrisons.finish(db,p,battle,outcome,now())
-            if captured:
-                hero.xp += battle.state.get('npc_tier', {}).get('xp', 50)
-                definition_id, roll = equipment.loot(battle.seed)
-                item=Item(id=uid(),owner_id=p.id,definition_id=definition_id,source_id=battle.id,equipped=False,created_at=now())
-                db.add(item);db.flush()
-                db.add(Ownership(id=uid(),item_id=item.id,owner_id=p.id,reason='garrison-loot-v1',created_at=now()))
-                battle.state={**battle.state,'loot':{'item_id':item.id,'definition_id':definition_id,'table_version':'gar-loot-v1','roll':roll},'captured':True}
-            return {"events":events,"outcome":outcome,"captured":captured}
-        for unit in battle_units(db, battle):
-            unit.status = "reserve"
-        if outcome == "victory":
-            db.add(Reward(player_id=p.id, mission="first-patrol", battle_id=battle.id))
-            change(db, p, {"metal": 150, "food": 60}, "first-patrol")
-            hero.xp += 100
-            item = Item(id=uid(), owner_id=p.id, definition_id="field-module", source_id=battle.id,
-                        equipped=False, created_at=now())
-            db.add(item)
-            db.flush()
-            db.add(Ownership(id=uid(), item_id=item.id, owner_id=p.id, reason="first-patrol", created_at=now()))
-        return {"events": events, "outcome": outcome}
+        return conclude(db, p, battle, hero, events, outcome)
+    if op == "skill_pick":
+        return commander.choose(db, p, data["key"])
     if op == "equip":
         item = db.get(Item, data["item_id"])
         if not item or item.owner_id != p.id:
@@ -424,8 +440,45 @@ def dispatch(db, p, op, data):
         if any(b.status == "active" for b in rows(db, Battle, p.id)):
             fail("Нельзя менять экипировку во время боя")
         if data["equipped"]:
+            slot = equipment.DEFINITIONS.get(item.definition_id, {}).get("slot")
             for other in db.scalars(select(Item).where(Item.owner_id == p.id)):
-                other.equipped = False
+                if equipment.DEFINITIONS.get(other.definition_id, {}).get("slot") == slot:
+                    other.equipped = False
         item.equipped = data["equipped"]
         return {"id": item.id}
     raise HTTPException(404, "Неизвестная команда")
+
+
+def conclude(db, p, battle, hero, events, outcome):
+    """Shared end of a battle: losses, rewards and world effects."""
+    state = battle.state
+    apply_losses(db, battle, outcome, hero)
+    if 'pvp' in state:
+        won = pvp.finish(db, p, battle, outcome, now())
+        return {"events": events, "outcome": outcome, "captured": won}
+    if 'expedition' in state:
+        captured = garrisons.finish(db, p, battle, outcome, now())
+        if captured:
+            hero.xp += battle.state.get('npc_tier', {}).get('xp', 50)
+            from .config import NPC_TIERS
+            name = battle.state.get('npc_tier', {}).get('name')
+            tier = next((i for i, t in enumerate(NPC_TIERS) if t['name'] == name), 0)
+            definition_id, roll = equipment.loot(battle.seed, tier)
+            item = Item(id=uid(), owner_id=p.id, definition_id=definition_id, source_id=battle.id, equipped=False, created_at=now())
+            db.add(item); db.flush()
+            db.add(Ownership(id=uid(), item_id=item.id, owner_id=p.id, reason=equipment.LOOT_VERSION, created_at=now()))
+            battle.state = {**battle.state, 'loot': {'item_id': item.id, 'definition_id': definition_id,
+                                                     'table_version': equipment.LOOT_VERSION, 'roll': roll}, 'captured': True}
+        return {"events": events, "outcome": outcome, "captured": captured}
+    for unit in battle_units(db, battle):
+        unit.status = "reserve"
+    if outcome == "victory":
+        db.add(Reward(player_id=p.id, mission="first-patrol", battle_id=battle.id))
+        change(db, p, {"metal": 150, "food": 60}, "first-patrol")
+        hero.xp += 100
+        item = Item(id=uid(), owner_id=p.id, definition_id="field-module", source_id=battle.id,
+                    equipped=False, created_at=now())
+        db.add(item)
+        db.flush()
+        db.add(Ownership(id=uid(), item_id=item.id, owner_id=p.id, reason="first-patrol", created_at=now()))
+    return {"events": events, "outcome": outcome}

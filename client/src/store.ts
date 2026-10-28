@@ -14,10 +14,12 @@ export type Building = {
 };
 export type Effects = { output: Record<string, number>; input: Record<string, number>; power: number; storage: number; vision: number; repair: number };
 export type Stack = { id:string; side:"player"|"npc"; kind:string; count:number; start:number; hp:number; pos:number[]; acted:boolean; defending:boolean; unit_id?:string; each?:number; art?:string; trait?:string|null; faction?:string|null };
+export type Preview = { reach:boolean; damage:number[]; kills:number[]; retaliation:{damage:number[];kills:number[]}|null };
 export type Battle = {
   id: string;
   status: string;
   balance_version: string;
+  preview?: Record<string, Preview>;
   state: {
     loot?: {item_id:string;definition_id:string;table_version:string};
     captured?: boolean;
@@ -44,7 +46,8 @@ export type State = {
   jobs: { id: string; ready_at: number }[];
   units: { id: string; kind: string; count: number; hp: number; status: string }[];
   hero: { kind: string; xp: number } | null;
-  inventory: { id: string; definition_id: string; equipped: boolean; source:string; definition:{name:string;rarity:string;damage_bonus:number;image:string} }[];
+  inventory: { id: string; definition_id: string; equipped: boolean; source:string; definition:{name:string;rarity:string;damage_bonus:number;image:string;slot?:string;slot_name?:string;perks?:Record<string,number>} }[];
+  commander?: CommanderView | null;
   battles: Battle[];
   first_victory: boolean;
   base: {q:number;r:number} | null;
@@ -56,6 +59,8 @@ export type State = {
   territories: Territory[];
   pvp?: PvpState;
 };
+export type SkillView = { key:string; name:string; icon:string; rank:number; about:string };
+export type CommanderView = { level:number; xp:number; level_xp:number; next_xp:number|null; pending:number; offers:SkillView[]; skills:SkillView[]; perks:Record<string,number>; max_skills:number };
 export type PvpReport = { id:string; role:"attacker"|"defender"; enemy:string; target:"base"|"territory"|"mine"; q:number; r:number; outcome:"victory"|"defeat"; loot:Record<string,number>; losses:{attacker?:Record<string,number>;defender?:Record<string,number>}; created_at:number };
 export type PvpState = { shield_until:number; newbie:boolean; incoming:{q:number;r:number;target:string;attacker:string;arrive_at:number}[]; reports:PvpReport[] };
 export type TargetPreview = { kind:"base"|"territory"|"mine"; title:string; defender:string; hero:string|null; shield_until:number; allowed:boolean; reason:string|null; forces:{kind:string;name:string;count:number;approx:boolean;militia:boolean}[]; my_shield_until:number; loses_shield:boolean; attacks_left:number };

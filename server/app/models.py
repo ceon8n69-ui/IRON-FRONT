@@ -86,6 +86,7 @@ class Hero(Base):
     player_id = Column(ForeignKey("users.id"), primary_key=True)
     kind = Column(String, nullable=False)
     xp = Column(Integer, nullable=False, default=0)
+    skills = Column(JSON, nullable=False, default=dict, server_default="{}")
 
 
 class Item(Base):
