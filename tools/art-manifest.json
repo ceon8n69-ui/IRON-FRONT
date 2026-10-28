@@ -1,0 +1,522 @@
+[
+ {
+  "key": "raven_line",
+  "kind": "unit",
+  "group": "Генерал Рейвен — Железный легион",
+  "title": "Стрелки легиона · способность «Штыковая атака»",
+  "path": "client/public/art/units/raven_line.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c8433a crimson, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: three gas-masked riflemen in brodie helmets with long bayonet rifles, canister backpacks, accent armbands, faction accent #c8433a crimson."
+ },
+ {
+  "key": "raven_scouts",
+  "kind": "unit",
+  "group": "Генерал Рейвен — Железный легион",
+  "title": "Егеря · способность «Марш-бросок»",
+  "path": "client/public/art/units/raven_scouts.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c8433a crimson, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two light scouts in field caps, one with binoculars, one with a short rifle, light packs, faction accent #c8433a crimson."
+ },
+ {
+  "key": "raven_assault",
+  "kind": "unit",
+  "group": "Генерал Рейвен — Железный легион",
+  "title": "Ударники · способность «Гранаты»",
+  "path": "client/public/art/units/raven_assault.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c8433a crimson, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two gas-masked assault troopers, one with a trench cleaver, one with a stubby submachine gun, faction accent #c8433a crimson."
+ },
+ {
+  "key": "raven_artillery",
+  "kind": "unit",
+  "group": "Генерал Рейвен — Железный легион",
+  "title": "Траншейная мортира · способность «Огневой вал»",
+  "path": "client/public/art/units/raven_artillery.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c8433a crimson, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a stubby trench mortar on a baseplate with a masked loader and an officer with binoculars, faction accent #c8433a crimson."
+ },
+ {
+  "key": "raven_heavy",
+  "kind": "unit",
+  "group": "Генерал Рейвен — Железный легион",
+  "title": "Экзоброня «Таран» · способность «Таранный удар»",
+  "path": "client/public/art/units/raven_heavy.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c8433a crimson, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a bulky dieselpunk power-armour exosuit with two smoking exhaust stacks, slit visor helmet, giant drill arm, chest stripes, faction accent #c8433a crimson."
+ },
+ {
+  "key": "valkyrie_line",
+  "kind": "unit",
+  "group": "Командир Валькирия — Серый дозор",
+  "title": "Стрелки дозора · способность «Прицельный залп»",
+  "path": "client/public/art/units/valkyrie_line.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #5f8fd0 steel blue, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: three gas-masked riflemen in brodie helmets with long bayonet rifles, canister backpacks, accent armbands, faction accent #5f8fd0 steel blue."
+ },
+ {
+  "key": "valkyrie_walker",
+  "kind": "unit",
+  "group": "Командир Валькирия — Серый дозор",
+  "title": "Шагоход-разведчик · способность «Прожектор»",
+  "path": "client/public/art/units/valkyrie_walker.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #5f8fd0 steel blue, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a small four-legged scout walker with twin headlamps casting light beams and a masked gunner riding on top, faction accent #5f8fd0 steel blue."
+ },
+ {
+  "key": "valkyrie_raiders",
+  "kind": "unit",
+  "group": "Командир Валькирия — Серый дозор",
+  "title": "Диверсанты · способность «Засада»",
+  "path": "client/public/art/units/valkyrie_raiders.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #5f8fd0 steel blue, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two saboteurs, one in goggles with a knife, one hooded with a compact gun, no backpacks, faction accent #5f8fd0 steel blue."
+ },
+ {
+  "key": "valkyrie_snipers",
+  "kind": "unit",
+  "group": "Командир Валькирия — Серый дозор",
+  "title": "Снайперская пара · способность «Выстрел в офицера»",
+  "path": "client/public/art/units/valkyrie_snipers.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #5f8fd0 steel blue, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a hooded kneeling sniper with a very long rifle and a spotter in a cap with binoculars, faction accent #5f8fd0 steel blue."
+ },
+ {
+  "key": "valkyrie_heavy",
+  "kind": "unit",
+  "group": "Командир Валькирия — Серый дозор",
+  "title": "Шагоход «Гончая» · способность «Прыжок»",
+  "path": "client/public/art/units/valkyrie_heavy.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #5f8fd0 steel blue, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a heavy four-legged walker with an armored hull, side guns and headlamps, faction accent #5f8fd0 steel blue."
+ },
+ {
+  "key": "titan_line",
+  "kind": "unit",
+  "group": "Полковник Титан — Стальной заслон",
+  "title": "Стрелки заслона · способность «Окопаться»",
+  "path": "client/public/art/units/titan_line.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c9a04a brass gold, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: three gas-masked riflemen in brodie helmets with long bayonet rifles, canister backpacks, accent armbands, faction accent #c9a04a brass gold."
+ },
+ {
+  "key": "titan_mg",
+  "kind": "unit",
+  "group": "Полковник Титан — Стальной заслон",
+  "title": "Пулемётный расчёт · способность «Подавляющий огонь»",
+  "path": "client/public/art/units/titan_mg.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c9a04a brass gold, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two gas-masked soldiers crewing a wheeled heavy machine gun with a small gun shield, faction accent #c9a04a brass gold."
+ },
+ {
+  "key": "titan_shields",
+  "kind": "unit",
+  "group": "Полковник Титан — Стальной заслон",
+  "title": "Щитоносцы · способность «Стена щитов»",
+  "path": "client/public/art/units/titan_shields.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c9a04a brass gold, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two gas-masked soldiers carrying tall riveted steel shields with an accent stripe, faction accent #c9a04a brass gold."
+ },
+ {
+  "key": "titan_gun",
+  "kind": "unit",
+  "group": "Полковник Титан — Стальной заслон",
+  "title": "Полевая пушка · способность «Шрапнель»",
+  "path": "client/public/art/units/titan_gun.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c9a04a brass gold, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a big-wheeled field gun with a long barrel, an officer in a cap and a masked gunner, faction accent #c9a04a brass gold."
+ },
+ {
+  "key": "titan_heavy",
+  "kind": "unit",
+  "group": "Полковник Титан — Стальной заслон",
+  "title": "Экзоброня «Бастион» · способность «Несокрушимость»",
+  "path": "client/public/art/units/titan_heavy.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #c9a04a brass gold, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a bulky power-armour exosuit with smoking exhaust stacks and a heavy arm cannon, thick shoulder pauldrons, faction accent #c9a04a brass gold."
+ },
+ {
+  "key": "phoenix_line",
+  "kind": "unit",
+  "group": "Маршал Феникс — Тыловой корпус",
+  "title": "Стрелки снабжения · способность «Сухпаёк»",
+  "path": "client/public/art/units/phoenix_line.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #d9783a burnt orange, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: three gas-masked riflemen in brodie helmets with long bayonet rifles, canister backpacks, accent armbands, faction accent #d9783a burnt orange."
+ },
+ {
+  "key": "phoenix_medics",
+  "kind": "unit",
+  "group": "Маршал Феникс — Тыловой корпус",
+  "title": "Санитары · способность «Полевая операция»",
+  "path": "client/public/art/units/phoenix_medics.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #d9783a burnt orange, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two field medics in white caps marked with a green plus, carrying white satchels and glowing green vials, one wearing a gas mask, faction accent #d9783a burnt orange."
+ },
+ {
+  "key": "phoenix_sappers",
+  "kind": "unit",
+  "group": "Маршал Феникс — Тыловой корпус",
+  "title": "Сапёры · способность «Подрыв»",
+  "path": "client/public/art/units/phoenix_sappers.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #d9783a burnt orange, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two gas-masked sappers with big wrenches, one in a beret, faction accent #d9783a burnt orange."
+ },
+ {
+  "key": "phoenix_howitzer",
+  "kind": "unit",
+  "group": "Маршал Феникс — Тыловой корпус",
+  "title": "Гаубица · способность «Дымовая завеса»",
+  "path": "client/public/art/units/phoenix_howitzer.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #d9783a burnt orange, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a big-wheeled field gun with a long barrel, an officer in a cap and a masked gunner, faction accent #d9783a burnt orange."
+ },
+ {
+  "key": "phoenix_heavy",
+  "kind": "unit",
+  "group": "Маршал Феникс — Тыловой корпус",
+  "title": "Ремонтная экзоброня · способность «Ремонтный манипулятор»",
+  "path": "client/public/art/units/phoenix_heavy.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #d9783a burnt orange, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a bulky repair exosuit with a mechanical claw arm, a green repair lamp on the chest and smoking stacks, faction accent #d9783a burnt orange."
+ },
+ {
+  "key": "ghost_line",
+  "kind": "unit",
+  "group": "Инженер Призрак — Отдел «Призрак»",
+  "title": "Стрелки-техники · способность «Глушилка»",
+  "path": "client/public/art/units/ghost_line.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #3fb7a8 teal, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: three gas-masked riflemen in brodie helmets with long bayonet rifles, canister backpacks, accent armbands, faction accent #3fb7a8 teal."
+ },
+ {
+  "key": "ghost_drones",
+  "kind": "unit",
+  "group": "Инженер Призрак — Отдел «Призрак»",
+  "title": "Дроны-разведчики · способность «Целеуказание»",
+  "path": "client/public/art/units/ghost_drones.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #3fb7a8 teal, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two small hovering twin-rotor recon drones with a single amber lamp, faction accent #3fb7a8 teal."
+ },
+ {
+  "key": "ghost_automatons",
+  "kind": "unit",
+  "group": "Инженер Призрак — Отдел «Призрак»",
+  "title": "Автоматоны · способность «Перегрузка»",
+  "path": "client/public/art/units/ghost_automatons.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #3fb7a8 teal, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two boxy riveted combat automatons with one glowing cyan eye and piston arms, faction accent #3fb7a8 teal."
+ },
+ {
+  "key": "ghost_tesla",
+  "kind": "unit",
+  "group": "Инженер Призрак — Отдел «Призрак»",
+  "title": "Разрядная пушка · способность «Цепная молния»",
+  "path": "client/public/art/units/ghost_tesla.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #3fb7a8 teal, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a wheeled brass tesla coil cannon crackling with cyan sparks, operated by an engineer in goggles, faction accent #3fb7a8 teal."
+ },
+ {
+  "key": "ghost_heavy",
+  "kind": "unit",
+  "group": "Инженер Призрак — Отдел «Призрак»",
+  "title": "Шагоход «Призрак» · способность «Электромагнитный импульс»",
+  "path": "client/public/art/units/ghost_heavy.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #3fb7a8 teal, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a heavy four-legged walker with an armored hull, side guns and headlamps, faction accent #3fb7a8 teal."
+ },
+ {
+  "key": "storm_line",
+  "kind": "unit",
+  "group": "Генерал Шторм — Бронекорпус «Шторм»",
+  "title": "Мотострелки · способность «Десант с брони»",
+  "path": "client/public/art/units/storm_line.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #a3b34a olive-lime, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: three gas-masked riflemen in brodie helmets with long bayonet rifles, canister backpacks, accent armbands, faction accent #a3b34a olive-lime."
+ },
+ {
+  "key": "storm_cars",
+  "kind": "unit",
+  "group": "Генерал Шторм — Бронекорпус «Шторм»",
+  "title": "Бронеавтомобиль · способность «Пулемётная очередь»",
+  "path": "client/public/art/units/storm_cars.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #a3b34a olive-lime, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a boxy four-wheeled armored car with a small turret, faction accent #a3b34a olive-lime."
+ },
+ {
+  "key": "storm_tankers",
+  "kind": "unit",
+  "group": "Генерал Шторм — Бронекорпус «Шторм»",
+  "title": "Танковый десант · способность «Прорыв обороны»",
+  "path": "client/public/art/units/storm_tankers.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #a3b34a olive-lime, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two gas-masked assault troopers, one with a trench cleaver, one with a stubby submachine gun, faction accent #a3b34a olive-lime."
+ },
+ {
+  "key": "storm_spg",
+  "kind": "unit",
+  "group": "Генерал Шторм — Бронекорпус «Шторм»",
+  "title": "Самоходная мортира · способность «Беглый огонь»",
+  "path": "client/public/art/units/storm_spg.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #a3b34a olive-lime, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a tracked self-propelled mortar with a short thick barrel, faction accent #a3b34a olive-lime."
+ },
+ {
+  "key": "storm_heavy",
+  "kind": "unit",
+  "group": "Генерал Шторм — Бронекорпус «Шторм»",
+  "title": "Шагоход-танк «Шторм» · способность «Главный калибр»",
+  "path": "client/public/art/units/storm_heavy.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #a3b34a olive-lime, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a four-legged walking tank with a turret and long gun, faction accent #a3b34a olive-lime."
+ },
+ {
+  "key": "transport",
+  "kind": "unit",
+  "group": "Флот",
+  "title": "Десантный катер",
+  "path": "client/public/art/units/transport.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #4c9ce5 blue, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a small olive landing boat with a ramp and a masked soldier aboard, small waves under the hull."
+ },
+ {
+  "key": "gunboat",
+  "kind": "unit",
+  "group": "Флот",
+  "title": "Канонерка",
+  "path": "client/public/art/units/gunboat.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #4c9ce5 blue, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a riveted gunboat with a deckhouse, smoking funnel and a long deck gun, small waves under the hull."
+ },
+ {
+  "key": "ironclad",
+  "kind": "unit",
+  "group": "Флот",
+  "title": "Бронекатер",
+  "path": "client/public/art/units/ironclad.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #4c9ce5 blue, isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: an armored ram boat with a pointed steel prow, smoking funnel and short gun, small waves under the hull."
+ },
+ {
+  "key": "rifles",
+  "kind": "unit",
+  "group": "NPC",
+  "title": "Стрелки (NPC)",
+  "path": "client/public/art/units/rifles.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #8f4a44 dull red (neutral raiders), isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: three gas-masked riflemen in brodie helmets with long bayonet rifles, canister backpacks, accent armbands."
+ },
+ {
+  "key": "scouts",
+  "kind": "unit",
+  "group": "NPC",
+  "title": "Разведчики (NPC)",
+  "path": "client/public/art/units/scouts.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #8f4a44 dull red (neutral raiders), isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two light scouts in field caps, one with binoculars, one with a short rifle, light packs."
+ },
+ {
+  "key": "assault",
+  "kind": "unit",
+  "group": "NPC",
+  "title": "Штурмовики (NPC)",
+  "path": "client/public/art/units/assault.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #8f4a44 dull red (neutral raiders), isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: two gas-masked assault troopers, one with a trench cleaver, one with a stubby submachine gun."
+ },
+ {
+  "key": "artillery",
+  "kind": "unit",
+  "group": "NPC",
+  "title": "Артиллерия (NPC)",
+  "path": "client/public/art/units/artillery.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #8f4a44 dull red (neutral raiders), isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a stubby trench mortar on a baseplate with a masked loader and an officer with binoculars."
+ },
+ {
+  "key": "armor",
+  "kind": "unit",
+  "group": "NPC",
+  "title": "Бронетехника (NPC)",
+  "path": "client/public/art/units/armor.png",
+  "prompt": "Original game unit sprite for IRON FRONT, chibi dieselpunk 1920s-inspired military, oversized heads, thick dark ink outline, flat cel shading with soft highlight, muted olive and steel palette with one faction accent colour #8f4a44 dull red (neutral raiders), isometric 3/4 view facing right, transparent background, centered, feet near the bottom, full body visible, readable at 96px. No text, no logos, no real insignia, no red cross, no existing franchise characters. Subject: a bulky dieselpunk power-armour exosuit with two smoking exhaust stacks, slit visor helmet, giant drill arm, chest stripes."
+ },
+ {
+  "key": "portrait-raven",
+  "kind": "portrait",
+  "group": "Портреты командиров",
+  "title": "Генерал Рейвен",
+  "path": "client/public/art/commanders/raven-v2.webp",
+  "prompt": "Original chibi dieselpunk commander portrait for IRON FRONT, oversized head, thick dark ink outline, flat cel shading, head to mid-thigh, 2:3 vertical, dark navy hangar background #101923 with soft rim light. stern general with grey temples, charcoal coat, crimson armband, officer cap. No text, no logos, no real insignia, no real person likeness."
+ },
+ {
+  "key": "portrait-valkyrie",
+  "kind": "portrait",
+  "group": "Портреты командиров",
+  "title": "Командир Валькирия",
+  "path": "client/public/art/commanders/valkyrie-v2.webp",
+  "prompt": "Original chibi dieselpunk commander portrait for IRON FRONT, oversized head, thick dark ink outline, flat cel shading, head to mid-thigh, 2:3 vertical, dark navy hangar background #101923 with soft rim light. calm female scout commander with short ash-blonde hair, binoculars, steel-blue scarf. No text, no logos, no real insignia, no real person likeness."
+ },
+ {
+  "key": "portrait-titan",
+  "kind": "portrait",
+  "group": "Портреты командиров",
+  "title": "Полковник Титан",
+  "path": "client/public/art/commanders/titan-v2.webp",
+  "prompt": "Original chibi dieselpunk commander portrait for IRON FRONT, oversized head, thick dark ink outline, flat cel shading, head to mid-thigh, 2:3 vertical, dark navy hangar background #101923 with soft rim light. huge bald veteran colonel with grey beard in heavy plated armour, brass trims, arms folded. No text, no logos, no real insignia, no real person likeness."
+ },
+ {
+  "key": "portrait-phoenix",
+  "kind": "portrait",
+  "group": "Портреты командиров",
+  "title": "Маршал Феникс",
+  "path": "client/public/art/commanders/phoenix-v2.webp",
+  "prompt": "Original chibi dieselpunk commander portrait for IRON FRONT, oversized head, thick dark ink outline, flat cel shading, head to mid-thigh, 2:3 vertical, dark navy hangar background #101923 with soft rim light. confident female logistics marshal with dark skin, black hair bun, orange scarf, supply tablet. No text, no logos, no real insignia, no real person likeness."
+ },
+ {
+  "key": "portrait-ghost",
+  "kind": "portrait",
+  "group": "Портреты командиров",
+  "title": "Инженер Призрак",
+  "path": "client/public/art/commanders/ghost-v2.webp",
+  "prompt": "Original chibi dieselpunk commander portrait for IRON FRONT, oversized head, thick dark ink outline, flat cel shading, head to mid-thigh, 2:3 vertical, dark navy hangar background #101923 with soft rim light. young engineer with goggles on forehead, teal circuit module on chest, multitool. No text, no logos, no real insignia, no real person likeness."
+ },
+ {
+  "key": "portrait-storm",
+  "kind": "portrait",
+  "group": "Портреты командиров",
+  "title": "Генерал Шторм",
+  "path": "client/public/art/commanders/storm-v2.webp",
+  "prompt": "Original chibi dieselpunk commander portrait for IRON FRONT, oversized head, thick dark ink outline, flat cel shading, head to mid-thigh, 2:3 vertical, dark navy hangar background #101923 with soft rim light. energetic tank general with dark skin, tanker headset around neck, olive crew suit, lime accent patch. No text, no logos, no real insignia, no real person likeness."
+ },
+ {
+  "key": "tile-plain",
+  "kind": "tile",
+  "group": "Ландшафт (подключение позже)",
+  "title": "plain",
+  "path": "client/public/art/tiles/plain.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: lush grass with tufts, small flowers and pebbles. No text."
+ },
+ {
+  "key": "tile-forest",
+  "kind": "tile",
+  "group": "Ландшафт (подключение позже)",
+  "title": "forest",
+  "path": "client/public/art/tiles/forest.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dense mix of round leafy trees and pines. No text."
+ },
+ {
+  "key": "tile-hills",
+  "kind": "tile",
+  "group": "Ландшафт (подключение позже)",
+  "title": "hills",
+  "path": "client/public/art/tiles/hills.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: grassy hills with mossy grey boulders. No text."
+ },
+ {
+  "key": "tile-mountain",
+  "kind": "tile",
+  "group": "Ландшафт (подключение позже)",
+  "title": "mountain",
+  "path": "client/public/art/tiles/mountain.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: two rocky peaks with snow caps. No text."
+ },
+ {
+  "key": "tile-desert",
+  "kind": "tile",
+  "group": "Ландшафт (подключение позже)",
+  "title": "desert",
+  "path": "client/public/art/tiles/desert.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: sand with dune ridges and a dry shrub. No text."
+ },
+ {
+  "key": "tile-beach",
+  "kind": "tile",
+  "group": "Ландшафт (подключение позже)",
+  "title": "beach",
+  "path": "client/public/art/tiles/beach.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: pale sand with a palm tree and small rocks. No text."
+ },
+ {
+  "key": "tile-river",
+  "kind": "tile",
+  "group": "Ландшафт (подключение позже)",
+  "title": "river",
+  "path": "client/public/art/tiles/river.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: grass tile with a winding blue river. No text."
+ },
+ {
+  "key": "tile-lake",
+  "kind": "tile",
+  "group": "Ландшафт (подключение позже)",
+  "title": "lake",
+  "path": "client/public/art/tiles/lake.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: calm blue water with ripples. No text."
+ },
+ {
+  "key": "tile-sea",
+  "kind": "tile",
+  "group": "Ландшафт (подключение позже)",
+  "title": "sea",
+  "path": "client/public/art/tiles/sea.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: deep blue sea with white wave crests. No text."
+ },
+ {
+  "key": "building-hq",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Главный штаб",
+  "path": "client/public/art/buildings/hq.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Главный штаб building, warm tiled roof, plaster walls, (Командный центр. Уровень штаба ограничивает уровни остальных зданий и открывает новые постройки.). No text."
+ },
+ {
+  "key": "building-power",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Электростанция",
+  "path": "client/public/art/buildings/power.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Электростанция building, warm tiled roof, plaster walls, (Даёт энергию производственным зданиям.). No text."
+ },
+ {
+  "key": "building-quarry",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Металлургический карьер",
+  "path": "client/public/art/buildings/quarry.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Металлургический карьер building, warm tiled roof, plaster walls, (Добывает металл каждую минуту.). No text."
+ },
+ {
+  "key": "building-barracks",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Казармы",
+  "path": "client/public/art/buildings/barracks.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Казармы building, warm tiled roof, plaster walls, (Открывает подготовку стрелков в разделе «Армия».). No text."
+ },
+ {
+  "key": "building-refinery",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "НПЗ",
+  "path": "client/public/art/buildings/refinery.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military НПЗ building, warm tiled roof, plaster walls, (Перерабатывает нефть в топливо.). No text."
+ },
+ {
+  "key": "building-oil_well",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Нефтедобывающий комплекс",
+  "path": "client/public/art/buildings/oil_well.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Нефтедобывающий комплекс building, warm tiled roof, plaster walls, (Добывает сырую нефть для НПЗ.). No text."
+ },
+ {
+  "key": "building-farm",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Агрокомплекс",
+  "path": "client/public/art/buildings/farm.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Агрокомплекс building, warm tiled roof, plaster walls, (Производит провизию для подготовки войск.). No text."
+ },
+ {
+  "key": "building-warehouse",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Склад",
+  "path": "client/public/art/buildings/warehouse.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Склад building, warm tiled roof, plaster walls, (Увеличивает вместимость каждого ресурса.). No text."
+ },
+ {
+  "key": "building-watchtower",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Сторожевая башня",
+  "path": "client/public/art/buildings/watchtower.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Сторожевая башня building, warm tiled roof, plaster walls, (Расширяет обзор мировой карты вокруг базы.). No text."
+ },
+ {
+  "key": "building-electronics",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Электронный завод",
+  "path": "client/public/art/buildings/electronics.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Электронный завод building, warm tiled roof, plaster walls, (Превращает металл в электронику.). No text."
+ },
+ {
+  "key": "building-shipyard",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Верфь",
+  "path": "client/public/art/buildings/shipyard.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Верфь building, warm tiled roof, plaster walls, (Строит корабли. С флотом соединение ходит по морям, озёрам и рекам.). No text."
+ },
+ {
+  "key": "building-repair",
+  "kind": "building",
+  "group": "Здания (подключение позже)",
+  "title": "Ремонтный центр",
+  "path": "client/public/art/buildings/repair.png",
+  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Ремонтный центр building, warm tiled roof, plaster walls, (Восстанавливает здоровье отрядов вне боя.). No text."
+ }
+]
