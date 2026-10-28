@@ -118,10 +118,10 @@ def test_neutral_strength_is_visible_and_used_in_battle(client, monkeypatch):
     c = client; h, u = commander(c, monkeypatch); a = create(c, h, u); Q, R = home(c, h)
     tiles = c.get(f'/api/v1/world/tiles?q={Q}&r={R}&radius=2', headers=h).json()['tiles']
     tutorial = next(t for t in tiles if (t['q'], t['r']) == (Q, R+1))
-    assert tutorial['garrison_strength'] == {'name': 'Патруль', 'hp': 60, 'xp': 50}
+    assert tutorial['garrison_strength'] == {'name': 'Патруль', 'hp': 50, 'xp': 50}
     res = order(c, h, a, Q, R+1, 'capture'); assert res.status_code == 200
     at_time(monkeypatch, res.json()['state']['armies'][0]['orders'][0]['ready_at'] + 1)
     battle = next(b for b in me(c, h)['battles'] if b['status'] == 'active')
     npc = [x for x in battle['state']['stacks'] if x['side'] == 'npc']
-    assert [(x['kind'], x['count'], x['hp']) for x in npc] == [('rifles', 6, 60)]
+    assert [(x['kind'], x['count'], x['hp']) for x in npc] == [('rifles', 5, 50)]
     assert battle['state']['npc_tier']['name'] == 'Патруль'

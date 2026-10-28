@@ -62,7 +62,7 @@ UNITS = {
 }
 ARMY_STACKS = 5
 NPC_TIERS = [
-    {"name": "Патруль", "xp": 50, "stacks": [["rifles", 6]]},
+    {"name": "Патруль", "xp": 50, "stacks": [["rifles", 5]]},
     {"name": "Рота", "xp": 75, "stacks": [["rifles", 8], ["assault", 4]]},
     {"name": "Батальон", "xp": 110, "stacks": [["rifles", 8], ["assault", 6], ["armor", 1]]},
 ]

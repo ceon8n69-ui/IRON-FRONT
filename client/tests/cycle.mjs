@@ -123,7 +123,7 @@ await page.mouse.click(
 );
 await page.getByRole("button", { name: "Переместить", exact: true }).click();
 await waitFor(async () => (await state()).battles[0].state.turn === 2, 10000);
-for (let i = 0; i < 5; i++) {
+for (let i = 0; i < 12; i++) {
   if ((await state()).first_victory) break;
   const prev = (await state()).battles[0].state.turn;
   await page.getByRole("button", { name: "Атаковать", exact: true }).click();
@@ -212,7 +212,7 @@ await page.mouse.click(battleBox.x+battleBox.width/2-54*Math.sqrt(3)*.72,battleB
 await page.getByRole('button',{name:'Переместить',exact:true}).click();
 await waitFor(async()=>(await state()).battles.some(b=>b.status==='active'&&b.state.expedition&&b.state.turn===2),10000);
 await page.screenshot({path:'/tmp/iron-garrison-battle.png',fullPage:true});
-for(let i=0;i<5;i++){
+for(let i=0;i<12;i++){
  const current=(await state()).battles.find(b=>b.status==='active'&&b.state.expedition);
  if(!current)break;
  await page.getByRole('button',{name:'Атаковать',exact:true}).click();
