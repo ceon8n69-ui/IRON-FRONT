@@ -51,11 +51,11 @@ def test_march_capture_restart_income_and_idempotency(client,monkeypatch):
     assert post(c,'/army/create',{'unit_id':unit},h,'create-army-once').status_code==200
     assert post(c,'/army/create',{'unit_id':unit},h).status_code==409
     r=order(c,h,army,Q+1,R,key='same-march-key');assert r.status_code==200
-    assert r.json()['state']['resources']['fuel']==198
+    assert r.json()['state']['resources']['fuel']==199
     assert order(c,h,army,Q+1,R,key='same-march-key').json()==r.json()
     assert order(c,h,army,Q,R+1).status_code==409
     assert not r.json()['state']['territories']
-    advance(c,monkeypatch,29)
+    advance(c,monkeypatch,9)
     assert not c.get('/api/v1/player/me',headers=h).json()['territories']
     advance(c,monkeypatch,2)
     c.factory.kw['bind'].dispose()

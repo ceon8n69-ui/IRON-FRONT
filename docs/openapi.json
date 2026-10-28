@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IRON FRONT",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "paths": {
     "/health": {
@@ -749,6 +749,69 @@
             "schema": {
               "type": "string",
               "title": "Battle Id"
+            }
+          },
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/army/route": {
+      "get": {
+        "summary": "Army Route",
+        "description": "Read-only preview of the cheapest route for the player's army.",
+        "operationId": "army_route_api_v1_army_route_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Q"
+            }
+          },
+          {
+            "name": "r",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "R"
             }
           },
           {

@@ -10,7 +10,7 @@ if DATABASE_URL.startswith("postgresql://"):
 ENV = os.environ.get("APP_ENV", "production")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-VERSION = "slice-4"
+VERSION = "slice-5"
 RESOURCES = ["metal", "oil", "fuel", "electronics", "food"]
 INITIAL = {"metal": 1000, "oil": 300, "fuel": 200, "electronics": 200, "food": 300}
 # Fictional balance. Level effects come from app.economy; every value here is
@@ -83,8 +83,13 @@ HEROES = {
 
 EXPEDITIONS = {
     "staging": [64, 64],  # legacy shared point; each player now has a world base
-    "seconds": 30,
-    "fuel": 2,
+    # Heroes-style movement: points refill in real time, terrain sets the price.
+    "movement_max": 12,
+    "movement_regen_seconds": 2400,   # +1 point every 40 min -> full in 8 h
+    "terrain_cost": {"plain": 1, "desert": 2, "forest": 2, "hills": 3},
+    "step_seconds": 10,               # real seconds per movement point spent
+    "seconds": 30,                    # legacy single-hex duration (pre-0.5 orders)
+    "fuel": 1,                        # fuel per hex travelled
     "control_limit": 12,
     "army_vision": 2,
     "territory_yield": {

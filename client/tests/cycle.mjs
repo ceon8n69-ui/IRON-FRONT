@@ -195,7 +195,7 @@ assert.ok(captured.base);
 assert.equal(captured.armies[0].q,captured.base.q+1);
 assert.equal(captured.armies[0].r,captured.base.r);
 assert.equal(captured.armies[0].status,"idle");
-assert.equal(captured.resources.fuel,198);
+assert.equal(captured.resources.fuel,199);
 await page.getByRole("button",{name:"К соединению",exact:true}).click();
 await page.screenshot({path:"/tmp/iron-world-capture.png",fullPage:true});
 assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);

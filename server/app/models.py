@@ -175,9 +175,12 @@ class Army(Base):
     q = Column(Integer, nullable=False)
     r = Column(Integer, nullable=False)
     status = Column(String, nullable=False, default="idle")
+    movement = Column(Integer, nullable=False, server_default="12")
+    movement_at = Column(BigInteger, nullable=False, server_default="0")
     __table_args__ = (
         ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
         CheckConstraint("status IN ('idle', 'moving')"),
+        CheckConstraint("movement >= 0", name="ck_armies_movement"),
     )
 
 
@@ -202,6 +205,7 @@ class ArmyOrder(Base):
     ready_at = Column(BigInteger, nullable=False, index=True)
     finished_at = Column(BigInteger)
     result = Column(String)
+    path = Column(JSON)          # [[q, r, arrive_at], ...] excluding the start hex
     __table_args__ = (
         ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
         CheckConstraint("action IN ('move', 'capture')"),
