@@ -10,7 +10,7 @@ if DATABASE_URL.startswith("postgresql://"):
 ENV = os.environ.get("APP_ENV", "production")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-VERSION = "slice-6"
+VERSION = "slice-7"
 RESOURCES = ["metal", "oil", "fuel", "electronics", "food"]
 INITIAL = {"metal": 1000, "oil": 300, "fuel": 200, "electronics": 200, "food": 300}
 # Fictional balance. Level effects come from app.economy; every value here is
@@ -42,6 +42,39 @@ BUILDINGS = {
 MAX_LEVEL = 10
 BASE_STORAGE = 5000
 GROWTH = {"cost": 1.6, "time": 1.45, "output": 0.25, "power_use": 0.15, "power_gen": 0.3}
+# Fictional stack balance (no real-world weapon data). hp is per member.
+UNITS = {
+    "rifles": {"name": "Стрелки", "hp": 10, "damage": 3, "defense": 1, "speed": 2, "initiative": 5,
+               "range": 4, "melee": False, "infantry": True, "count": 10, "seconds": 45,
+               "cost": {"metal": 60, "food": 40}, "requires": {"barracks": 1}},
+    "scouts": {"name": "Разведчики", "hp": 8, "damage": 2, "defense": 1, "speed": 4, "initiative": 8,
+               "range": 3, "melee": False, "infantry": True, "count": 6, "seconds": 40,
+               "cost": {"metal": 40, "food": 30}, "requires": {"barracks": 1}},
+    "assault": {"name": "Штурмовики", "hp": 14, "damage": 5, "defense": 2, "speed": 3, "initiative": 6,
+                "range": 1, "melee": True, "infantry": True, "count": 8, "seconds": 60,
+                "cost": {"metal": 90, "food": 50}, "requires": {"barracks": 2}},
+    "artillery": {"name": "Артиллерия", "hp": 12, "damage": 7, "defense": 0, "speed": 1, "initiative": 3,
+                  "range": 7, "melee": False, "infantry": False, "count": 4, "seconds": 90,
+                  "cost": {"metal": 140, "fuel": 30, "electronics": 20}, "requires": {"barracks": 3}},
+    "armor": {"name": "Бронетехника", "hp": 40, "damage": 9, "defense": 5, "speed": 3, "initiative": 4,
+              "range": 1, "melee": True, "infantry": False, "count": 3, "seconds": 120,
+              "cost": {"metal": 220, "fuel": 60, "electronics": 40}, "requires": {"barracks": 4, "electronics": 1}},
+}
+ARMY_STACKS = 5
+NPC_TIERS = [
+    {"name": "Патруль", "xp": 50, "stacks": [["rifles", 5]]},
+    {"name": "Рота", "xp": 75, "stacks": [["rifles", 8], ["assault", 4]]},
+    {"name": "Батальон", "xp": 110, "stacks": [["rifles", 8], ["assault", 6], ["armor", 1]]},
+]
+TUTORIAL_NPC = [["rifles", 7]]
+ABILITIES = {
+    "raven": {"name": "Штурм", "about": "Атака активного стека с уроном ×1.5"},
+    "valkyrie": {"name": "Корректировка огня", "about": "Выстрел по любой цели без учёта дальности"},
+    "titan": {"name": "Стальная стена", "about": "Все ваши стеки встают в оборону до конца раунда"},
+    "phoenix": {"name": "Полевой госпиталь", "about": "Активный стек восстанавливает 30% здоровья"},
+    "ghost": {"name": "РЭБ", "about": "Выбранный вражеский стек пропускает ход в этом раунде"},
+    "storm": {"name": "Прорыв", "about": "Активный стек получает дополнительное действие"},
+}
 HEROES = {
     "raven": {
         "name": "Генерал Рейвен",
@@ -65,7 +98,7 @@ HEROES = {
         "name": "Маршал Феникс",
         "role": "Логистика",
         "bio": "Возвращает бойцов в строй и сохраняет снабжение.",
-        "effect": "Восстановление после боя +10 HP",
+        "effect": "После боя возвращается 10% павших",
     },
     "ghost": {
         "name": "Инженер Призрак",
@@ -77,7 +110,7 @@ HEROES = {
         "name": "Генерал Шторм",
         "role": "Бронетехника",
         "bio": "Предпочитает скорость и инициативу.",
-        "effect": "Перемещение в учебном бою до 2 гексов",
+        "effect": "Скорость ваших стеков в бою +1",
     },
 }
 

@@ -41,6 +41,9 @@ type Definitions = {
     string,
     { name: string; role: string; bio: string; effect: string }
   >;
+  units: Record<string, { name: string; hp: number; damage: number; defense: number; speed: number; initiative: number; range: number; melee: boolean; count: number; seconds: number; cost: Record<string, number>; requires: Record<string, number> }>;
+  abilities: Record<string, { name: string; about: string }>;
+  army_stacks: number;
 };
 const resourceNames: Record<string, string> = {
   metal: "Металл",
@@ -150,6 +153,12 @@ function App() {
     return () => clearInterval(t);
   }, [state?.server_time]);
   const battle = state?.battles.find((b) => b.status === "active");
+  const activeStack = battle?.state.stacks?.find((x) => x.id === battle.state.active);
+  const targetStack = battle && selected ? battle.state.stacks?.find((x) => x.side === "npc" && x.hp > 0 && x.pos[0] === selected[0] && x.pos[1] === selected[1]) : undefined;
+  const battleCommand = (extra: Record<string, unknown>) => battle && run(async () => {
+    await command("/battles/commands", { battle_id: battle.id, turn: battle.state.turn, ...extra });
+    setSelected(null);
+  });
   const lastBattle = state?.battles.at(-1);
   const step = !state?.hero
     ? 0
@@ -186,14 +195,22 @@ function App() {
     "Карьер приносит металл для строительства и армии. Производство идёт автоматически при наличии энергии.",
     "Казармы открывают подготовку первого отряда. Постройте их на свободном участке.",
     "В разделе «Армия» подготовьте стрелков: 60 металла и 40 провизии. Обучение занимает 45 секунд.",
-    "Отправьте стрелков против патруля. Приблизьтесь на дальность 3 гекса и атакуйте; укрытия уменьшают урон.",
+    "Отправьте стрелков против патруля. Стеки ходят по инициативе; стрелки бьют на 4 гекса, укрытия уменьшают урон.",
     "В разделе «Армия» снарядите полученный полевой модуль. Его бонус применяется сервером в бою.",
     "База снабжает армию, а победы развивают командира. Прогресс сохранён: можно вернуться позже.",
   ];
-  const trainReason = !state?.buildings.some(b => b.kind === "barracks" && b.status === "ready")
-    ? "Сначала завершите строительство казарм"
-    : state.jobs.length ? "Дождитесь завершения текущей подготовки"
-    : state.resources.metal < 60 || state.resources.food < 40 ? "Нужно 60 металла и 40 провизии" : "";
+  const genitive: Record<string, string> = { rifles: "стрелков", scouts: "разведчиков", assault: "штурмовиков", artillery: "артиллерию", armor: "бронетехнику" };
+  const army = state?.armies?.[0];
+  const atBase = !!army && !!state?.base && army.status === "idle" && army.q === state.base.q && army.r === state.base.r;
+  const unitReason = (kind: string) => {
+    const unit = defs?.units[kind]; if (!unit || !state) return "Недоступно";
+    const ready = (k: string) => state.buildings.find((b) => b.kind === k && b.status === "ready")?.level ?? 0;
+    if (!ready("barracks")) return "Сначала завершите строительство казарм";
+    for (const [need, level] of Object.entries(unit.requires)) if (ready(need) < level) return `Нужно: ${defs?.buildings[need]?.name} ${level} уровня`;
+    if (state.jobs.length) return "Дождитесь завершения текущей подготовки";
+    if (Object.entries(unit.cost).some(([k, v]) => state.resources[k] < v)) return "Недостаточно ресурсов";
+    return "";
+  };
   const goToObjective = () => {
     setGuideOpen(false);
     if (step >= 4 && step <= 6) { changeTab("Армия"); setArmyView(step === 6 ? "commander" : "units"); return; }
@@ -334,62 +351,42 @@ function App() {
                 onSelect={chooseTile}
               />
               <div className="combat">
-                {battle.state.expedition && <h2>Гарнизон NPC · {battle.state.expedition.q}:{battle.state.expedition.r}</h2>}
-                <div>
-                  <b>Ваш отряд · {battle.state.player.hp} HP</b>
-                  <span>NPC · {battle.state.npc.hp} HP</span>
+                {battle.state.expedition && <h2>{battle.state.npc_tier?.name ?? "Гарнизон"} NPC · {battle.state.expedition.q}:{battle.state.expedition.r}</h2>}
+                <div className="initiative" aria-label="Очередь ходов">
+                  {(battle.state.order ?? []).map((id) => {
+                    const st = battle.state.stacks?.find((x) => x.id === id);
+                    if (!st || st.hp <= 0) return null;
+                    return <span key={id} className={`init ${st.side}${id === battle.state.active ? " now" : ""}${st.acted ? " done" : ""}`}>
+                      {defs?.units[st.kind]?.name ?? st.kind} · {Math.ceil(st.hp / (defs?.units[st.kind]?.hp ?? 10))}
+                    </span>;
+                  })}
                 </div>
-                <p>
-                  Выберите соседний гекс для движения. Дальность атаки: 3.
-                  Укрытие снижает входящий урон.
-                </p>
+                {activeStack && <p>
+                  Ходит: <b>{defs?.units[activeStack.kind]?.name}</b> ({Math.ceil(activeStack.hp / (defs?.units[activeStack.kind]?.hp ?? 10))} из {activeStack.start}) ·
+                  скорость {defs?.units[activeStack.kind]?.speed}{state.hero?.kind === "storm" ? "+1" : ""} · {defs?.units[activeStack.kind]?.melee ? "ближний бой" : `дальность ${defs?.units[activeStack.kind]?.range}`}.
+                  {targetStack ? ` Цель: ${defs?.units[targetStack.kind]?.name} противника.` : " Выберите гекс для движения или вражеский стек как цель."}
+                </p>}
                 <div className="actions">
-                  <button
-                    disabled={busy || !selected}
-                    onClick={() =>
-                      run(() =>
-                        command("/battles/commands", {
-                          battle_id: battle.id,
-                          turn: battle.state.turn,
-                          action: "move",
-                          q: selected![0],
-                          r: selected![1],
-                        }),
-                      )
-                    }
-                  >
+                  <button disabled={busy || !selected || !!targetStack}
+                    onClick={() => battleCommand({ action: "move", q: selected![0], r: selected![1] })}>
                     Переместить
                   </button>
-                  <button
-                    className="primary"
-                    disabled={busy}
-                    onClick={() =>
-                      run(() =>
-                        command("/battles/commands", {
-                          battle_id: battle.id,
-                          turn: battle.state.turn,
-                          action: "attack",
-                        }),
-                      )
-                    }
-                  >
+                  <button className="primary" disabled={busy}
+                    onClick={() => battleCommand({ action: "attack", ...(targetStack ? { target: targetStack.id } : {}) })}>
                     Атаковать
                   </button>
-                  <button
-                    disabled={busy}
-                    onClick={() =>
-                      run(() =>
-                        command("/battles/commands", {
-                          battle_id: battle.id,
-                          turn: battle.state.turn,
-                          action: "defend",
-                        }),
-                      )
-                    }
-                  >
+                  <button disabled={busy} onClick={() => battleCommand({ action: "defend" })}>
                     Защита
                   </button>
                 </div>
+                <div className="actions">
+                  <button disabled={busy} onClick={() => battleCommand({ action: "wait" })}>Ждать</button>
+                  {state.hero && defs?.abilities[state.hero.kind] && <button disabled={busy || !!battle.state.ability_used} title={defs.abilities[state.hero.kind].about}
+                    onClick={() => battleCommand({ action: "ability", ...(targetStack ? { target: targetStack.id } : {}) })}>
+                    ★ {defs.abilities[state.hero.kind].name}{battle.state.ability_used ? " · использовано" : ""}
+                  </button>}
+                </div>
+                {state.hero && defs?.abilities[state.hero.kind] && !battle.state.ability_used && <small>{defs.abilities[state.hero.kind].about}. Один раз за бой.</small>}
               </div>
             </>
           ) : tab === "База" ? (
@@ -439,9 +436,11 @@ function App() {
                 <article className="card" key={u.id}>
                   <div className="unit-icon"><Icon name="army"/></div>
                   <div>
-                    <h3>Стрелковое отделение</h3>
+                    <h3>{defs?.units[u.kind]?.name ?? "Стрелки"} · {u.count}</h3>
                     <p>Здоровье {u.hp}/100 · {u.status === "army" ? "В составе соединения" : u.status === "battle" ? "В бою" : "В резерве"}</p>
                   </div>
+                  {atBase && u.status === "reserve" && army && <button disabled={busy || army.unit_ids.length >= (defs?.army_stacks ?? 5)} onClick={()=>run(()=>command("/army/assign",{unit_id:u.id}))}>В соединение</button>}
+                  {atBase && u.status === "army" && army && army.unit_ids.length > 1 && <button disabled={busy} onClick={()=>run(()=>command("/army/release",{unit_id:u.id}))}>В резерв</button>}
                   {state.first_victory && u.status === "reserve" && !(state.armies || []).length && <button disabled={busy} className="primary" onClick={()=>run(async()=>{await command("/army/create",{unit_id:u.id});changeTab("Карта");})}>Сформировать</button>}
                   {!state.first_victory && (
                     <button
@@ -461,17 +460,21 @@ function App() {
               )}
               {state.jobs.map((j) => (
                 <div className="notice" key={j.id}>
-                  Подготовка стрелков · {Math.max(0, j.ready_at - clock)} сек.
+                  Подготовка: {defs?.units[(j as {kind?:string}).kind ?? "rifles"]?.name ?? "отряд"} · {Math.max(0, j.ready_at - clock)} сек.
                 </div>
               ))}
-              <button
-                disabled={busy || !!trainReason}
-                aria-describedby="train-reason"
-                onClick={() => run(() => command("/army/train", {}))}
-              >
-                Подготовить стрелков · 60 металла + 40 провизии · 45 сек.
-              </button>
-              {trainReason && <p id="train-reason" className="action-reason">{trainReason}</p>}
+              {army && !atBase && <p className="action-reason">Состав соединения меняется только на базе.</p>}
+              <div className="section-label">НАЙМ В КАЗАРМАХ</div>
+              {defs && Object.entries(defs.units).map(([kind, unit]) => {
+                const reason = unitReason(kind);
+                return <div key={kind} className="train-option">
+                  <button disabled={busy || !!reason} aria-describedby={`train-${kind}`} onClick={() => run(() => command("/army/train", { kind }))}>
+                    Подготовить {genitive[kind] ?? unit.name} · {unit.count} · {cost(unit.cost)} · {unit.seconds} сек.
+                  </button>
+                  <small>HP {unit.hp} · урон {unit.damage} · защита {unit.defense} · скорость {unit.speed} · инициатива {unit.initiative} · {unit.melee ? "ближний бой" : `дальность ${unit.range}`}</small>
+                  {reason && <p id={`train-${kind}`} className="action-reason">{reason}</p>}
+                </div>;
+              })}
               </> : state.hero && defs && <Commander state={state} definition={defs.heroes[state.hero.kind]} busy={busy} equip={(item_id,equipped)=>run(()=>command("/equipment/equip",{item_id,equipped}))}/>}
             </section>
           ) : tab === "Альянс" ? (
@@ -498,8 +501,8 @@ function App() {
                     </h2>
                     <p>
                       {lastBattle.status === "victory"
-                        ? lastBattle.state.expedition ? lastBattle.state.loot ? "Территория захвачена. +50 XP и трофейный модуль в инвентаре командира." : "Бой завершён. Результат захвата указан в приказе армии." : "Награда: 150 металла, 60 провизии, 100 XP и полевой модуль."
-                        : "После поражения сохраняется минимум 50 HP. Подготовьте новую попытку."}
+                        ? lastBattle.state.expedition ? lastBattle.state.loot ? `Территория захвачена. +${lastBattle.state.npc_tier?.xp ?? 50} XP и трофейный модуль в инвентаре командира.` : "Бой завершён. Результат захвата указан в приказе армии." : "Награда: 150 металла, 60 провизии, 100 XP и полевой модуль."
+                        : "Потери сохраняются, но после поражения каждый стек сохраняет минимум половину бойцов."}
                     </p>
                     <small>
                       Баланс {lastBattle.balance_version} ·{" "}

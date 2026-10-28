@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "IRON FRONT",
-    "version": "0.6.0"
+    "version": "0.7.0"
   },
   "paths": {
     "/health": {
@@ -435,6 +435,163 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Train"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/army/assign": {
+      "post": {
+        "summary": "Army Assign",
+        "operationId": "army_assign_api_v1_army_assign_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Compose"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/army/release": {
+      "post": {
+        "summary": "Army Release",
+        "operationId": "army_release_api_v1_army_release_post",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Idempotency-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Compose"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1092,6 +1249,21 @@
         ],
         "title": "Choose"
       },
+      "Compose": {
+        "properties": {
+          "unit_id": {
+            "type": "string",
+            "maxLength": 40,
+            "title": "Unit Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "unit_id"
+        ],
+        "title": "Compose"
+      },
       "Equip": {
         "properties": {
           "item_id": {
@@ -1193,6 +1365,19 @@
         ],
         "title": "StartBattle"
       },
+      "Train": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "maxLength": 20,
+            "title": "Kind",
+            "default": "rifles"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "Train"
+      },
       "Turn": {
         "properties": {
           "battle_id": {
@@ -1211,7 +1396,9 @@
             "enum": [
               "move",
               "attack",
-              "defend"
+              "defend",
+              "wait",
+              "ability"
             ],
             "title": "Action"
           },
@@ -1228,6 +1415,18 @@
             "minimum": 0.0,
             "title": "R",
             "default": 0
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
           }
         },
         "additionalProperties": false,

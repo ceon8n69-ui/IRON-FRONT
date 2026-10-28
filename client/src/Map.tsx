@@ -1,4 +1,4 @@
-import {surface, environment, bunker, squad, pile, chest, mine} from "./Terrain";
+import {surface, environment, bunker, squad, pile, chest, mine, vehicle} from "./Terrain";
 import {Icon} from "./Icon";
 import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Text } from "pixi.js";
@@ -24,6 +24,7 @@ const colors: Record<string, number> = {
   desert: 0x8a7c55,
   unknown: 0x1e2c37,
 };
+export const BATTLE_SCALE = 0.72, BATTLE_SHIFT = -70;
 function hex(g: Graphics, x: number, y: number, size: number, color: number) {
   const p: number[] = [];
   for (let i = 0; i < 6; i++) {
@@ -69,7 +70,9 @@ export function MapView(props: Props) {
   const animations = useRef<BuildingVisual[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
-  const camera = useRef({ scale: 1, x: 0, y: 0 });
+  // Tactical field starts zoomed out so all 9 columns fit a phone above the command panel.
+  const home = props.battle ? { scale: BATTLE_SCALE, x: 0, y: BATTLE_SHIFT } : { scale: 1, x: 0, y: 0 };
+  const camera = useRef({ ...home });
   useEffect(() => {
     let alive = true;
     let cleanup = () => {};
@@ -324,16 +327,22 @@ export function MapView(props: Props) {
       }
     }
     if (props.battle) {
-      for (const [key, color] of [
-        ["player", 0x4c9ce5],
-        ["npc", 0xd95a52],
-      ] as const) {
-        const unit = props.battle.state[key];
-        const q = unit.pos[0] - 4,
-          r = unit.pos[1] - 4,
-          x = 54 * Math.sqrt(3) * (q + r / 2),
-          y = 54 * 0.975 * r;
-        s.addChild(squad(x,y,color,unit.hp));
+      const per: Record<string, number> = {rifles:10,scouts:8,assault:14,artillery:12,armor:40};
+      for (const st of props.battle.state.stacks ?? []) {
+        if (st.hp <= 0) continue;
+        const q = st.pos[0] - 4, r = st.pos[1] - 4;
+        const x = 54 * Math.sqrt(3) * (q + r / 2), y = 54 * 0.975 * r;
+        const color = st.side === "player" ? 0x4c9ce5 : 0xd95a52;
+        const ratio = st.hp / (st.start * (per[st.kind] ?? 10));
+        if (st.id === props.battle.state.active) {
+          const ring = new Graphics(); hex(ring,x,y,46,0xe5b65a); ring.alpha=.35; ground.addChild(ring);
+        }
+        s.addChild(st.kind === "armor" || st.kind === "artillery" ? vehicle(x,y,color,st.kind,ratio) : squad(x,y,color,ratio*100));
+        const alive = Math.ceil(st.hp / (per[st.kind] ?? 10));
+        const badge = new Text({text:String(alive),style:{fontSize:13,fill:0xf0f3f5,fontFamily:"sans-serif",fontWeight:"bold"}});
+        badge.anchor.set(.5); badge.position.set(x+24,y-20);
+        labels.addChild(new Graphics().roundRect(x+12,y-30,24,20,6).fill(st.side === "player" ? 0x1d4f7a : 0x6b2a27));
+        labels.addChild(badge);
       }
     }
     if (props.army && props.world) {
@@ -396,11 +405,11 @@ export function MapView(props: Props) {
         <button
           aria-label="Центрировать карту"
           onClick={() => {
-            camera.current = { scale: 1, x: 0, y: 0 };
+            camera.current = { ...home };
             if (app.current) {
               scene.current.position.set(
-                app.current.screen.width / 2,
-                app.current.screen.height * 0.5,
+                app.current.screen.width / 2 + home.x,
+                app.current.screen.height * 0.5 + home.y,
               );
               scene.current.scale.set(1);
             }

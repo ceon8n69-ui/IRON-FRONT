@@ -30,19 +30,28 @@ def active(db, pid):
 
 
 def begin(db, p, army, order):
-    unit_id=db.scalar(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id))
-    unit=db.get(Unit,unit_id)
-    unit.status='battle'
     from .objects import strength
-    tier=strength(order.q,order.r)
-    db.add(Battle(id=str(uuid.uuid4()),player_id=p.id,unit_id=unit.id,status='active',
-        seed=str(uuid.uuid4()),balance_version=VERSION,state={
-            'turn':1,'player':{'pos':[2,4],'hp':unit.hp},
-            'npc':{'pos':[6,4],'hp':tier[1]},'cover':[[3,4],[4,2],[5,5]],
-            'npc_tier':{'name':tier[0],'hp':tier[1],'xp':tier[2]},
-            'expedition':{'army_id':army.id,'order_id':order.id,'q':order.q,'r':order.r},
-        }))
-    order.status='complete';order.result='Гарнизон NPC: требуется победа в бою'
+    from .models import Hero, Item
+    from . import combat, equipment
+    from .game import PLAYER_SPOTS, npc_stacks
+    from .config import NPC_TIERS
+    units=[db.get(Unit,i) for i in db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id).order_by(ArmyUnit.unit_id))]
+    units=[u for u in units if u and u.status=='army'][:len(PLAYER_SPOTS)]
+    stacks=[]
+    for i,u in enumerate(units):
+        u.status='battle'
+        stacks.append(combat.make_stack(f"p{i+1}","player",u.kind,u.count,PLAYER_SPOTS[i],u.id,u.hp))
+    name,hp,xp=strength(order.q,order.r)
+    tier=next(t for t in NPC_TIERS if t["name"]==name)
+    hero=db.get(Hero,p.id)
+    bonus=equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id)))
+    seed=str(uuid.uuid4())
+    state,_,outcome=combat.new_battle(stacks,npc_stacks(tier["stacks"]),[[3,4],[4,2],[5,5]],seed,hero.kind,bonus)
+    state['expedition']={'army_id':army.id,'order_id':order.id,'q':order.q,'r':order.r}
+    state['npc_tier']={'name':name,'hp':hp,'xp':xp}
+    db.add(Battle(id=str(uuid.uuid4()),player_id=p.id,unit_id=units[0].id,status='active',
+        seed=seed,balance_version=VERSION,state=state))
+    order.status='complete';order.result=f'{name} NPC: требуется победа в бою'
     army.status='idle'
 
 
@@ -59,5 +68,7 @@ def finish(db, p, battle, outcome, at):
         order.result='Гарнизон побеждён. Территория захвачена'
     else:
         order.result='Территория уже занята или недоступна' if outcome=='victory' else 'Поражение. Соединение осталось на исходной позиции'
-    unit=db.get(Unit,battle.unit_id);unit.status='army';unit.hp=max(50,battle.state['player']['hp'])
+    from .game import battle_units
+    for unit in battle_units(db,battle):
+        unit.status='army'
     return captured

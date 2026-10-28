@@ -109,3 +109,27 @@ export function mine(x:number,y:number,resource:string,owner:number|null){
   g.poly([x+19,y-30,x+33,y-25,x+19,y-20]).fill(owner??0xa7aeb5);
   return g;
 }
+
+// Vehicle stacks for the tactical field (original code-drawn shapes).
+export function vehicle(x:number,y:number,color:number,kind:string,ratio:number){
+  const g=new Graphics();
+  g.ellipse(x,y+3,30,15).fill({color,alpha:.18}).stroke({color,alpha:.7,width:1});
+  if(kind==="armor"){
+    g.ellipse(x+2,y+6,24,8).fill({color:0x08141a,alpha:.45});
+    g.poly([x-24,y,x-4,y-11,x+24,y-2,x+4,y+9]).fill(0x5f6e55);
+    g.poly([x-24,y,x+4,y+9,x+4,y+15,x-24,y+6]).fill(0x3b4637);
+    g.poly([x+4,y+9,x+24,y-2,x+24,y+4,x+4,y+15]).fill(0x2e372b);
+    g.poly([x-10,y-6,x,y-12,x+12,y-6,x+2,y]).fill(0x75846a);
+    g.moveTo(x+4,y-7).lineTo(x+26,y-16).stroke({color:0x2a332a,width:4});
+    g.rect(x-9,y-8,4,4).fill(color);
+  } else {
+    g.ellipse(x,y+8,22,6).fill({color:0x08141a,alpha:.45});
+    g.circle(x-12,y+6,6).fill(0x2c3430);g.circle(x+8,y+8,6).fill(0x2c3430);
+    g.poly([x-16,y+2,x+12,y+4,x+14,y-2,x-14,y-4]).fill(0x66745f);
+    g.moveTo(x-2,y-2).lineTo(x+24,y-20).stroke({color:0x2a332a,width:5});
+    g.rect(x-14,y-6,5,4).fill(color);
+  }
+  g.roundRect(x-21,y+21,42,5,2).fill(0x101923);
+  g.roundRect(x-20,y+22,40*Math.max(.01,ratio),3,1).fill(color);
+  return g;
+}
