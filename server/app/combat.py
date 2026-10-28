@@ -196,11 +196,13 @@ def _damage(s, attacker, target, seed, hero, bonus, factor, tag, fixed_roll=None
             value *= 1.05
         value *= 1 + min(max(bonus, 0), 0.10)
         perks = _perks(s)
-        value *= 1 + perks.get("attack", 0) + (0 if a["melee"] else perks.get("ranged", 0))
+        value *= 1 + perks.get("attack", 0) + (0 if a["melee"] else perks.get("ranged", 0)) \
+            + perks.get("inf_attack" if a["infantry"] else "veh_attack", 0) \
+            + (perks.get("gun_attack", 0) if not a["infantry"] and not a["melee"] else 0)
     elif hero == "titan":
         value *= 0.95
     if target["side"] == "player":
-        value *= 1 - _perks(s).get("defense", 0)
+        value *= max(0.4, 1 - _perks(s).get("defense", 0) - _perks(s).get("inf_defense" if d["infantry"] else "veh_defense", 0))
     if not a["melee"] and a.get("trait") != "marksman" and any(distance(attacker["pos"], e["pos"]) == 1
                               for e in _living(s, "npc" if attacker["side"] == "player" else "player")):
         value *= 0.5   # shooters fire badly with an enemy in their face

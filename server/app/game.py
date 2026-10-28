@@ -18,7 +18,7 @@ from .models import (
     Event,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS, UNITS, TUTORIAL_NPC, FACTIONS
-from . import expeditions, garrisons, equipment, bases, economy, objects, pvp, commander, logistics, seasons, nodes
+from . import expeditions, garrisons, equipment, bases, economy, objects, pvp, commander, logistics, seasons, nodes, doctrines
 from . import combat
 
 
@@ -60,7 +60,9 @@ def levels(buildings, at):
 
 
 def storage_cap(db, p, at=None):
-    return economy.storage(levels(rows(db, Building, p.id), now() if at is None else at))
+    from . import doctrines
+    at = now() if at is None else at
+    return round(economy.storage(levels(rows(db, Building, p.id), at)) * doctrines.effect(db, p.id, "storage", at))
 
 
 def change(db, p, delta, operation):
@@ -138,7 +140,8 @@ def settle(db, p, at=None):
                 balances[k] += v
                 totals[k] += v
     if ticks:
-        boost = (1 + commander.perk(db, p.id, "supply")) * seasons.effect(db, "production", at)
+        from . import doctrines
+        boost = (1 + commander.perk(db, p.id, "supply")) * seasons.effect(db, "production", at) * doctrines.effect(db, p.id, "production", at)
         if boost != 1:
             totals = {k: round(v * boost) if v > 0 else v for k, v in totals.items()}
         change(db, p, totals, "production")
@@ -200,6 +203,7 @@ def snapshot(db, p):
             for b in rows(db, Battle, p.id)
         ],
         "commander": commander.view(db, p.id),
+        "doctrines": doctrines.view(db, p.id, now()),
         "first_victory": tutorial_done(db, p),
         "vp": p.vp,
         **expeditions.state(db, p.id),
@@ -393,8 +397,10 @@ def dispatch(db, p, op, data):
             fail("Недостаточно энергии")
         if any(j.status == "queued" for j in rows(db, Job, p.id)):
             fail("Очередь подготовки занята")
-        cost_factor = seasons.effect(db, "infantry_cost", now()) if spec.get("infantry") else 1
-        time_factor = seasons.effect(db, "vehicle_time", now()) if not spec.get("infantry") and not spec.get("naval") else 1
+        from . import doctrines
+        cost_factor = seasons.effect(db, "infantry_cost", now()) * doctrines.effect(db, p.id, "inf_cost", now()) if spec.get("infantry") else 1
+        time_factor = seasons.effect(db, "vehicle_time", now()) * doctrines.effect(db, p.id, "veh_time", now()) \
+            if not spec.get("infantry") and not spec.get("naval") else 1
         change(db, p, {k: -max(1, round(v * cost_factor)) for k, v in spec["cost"].items()}, "training")
         job = Job(id=uid(), player_id=p.id, kind=kind, ready_at=now() + max(1, round(spec["seconds"] * time_factor)), status="queued")
         db.add(job)
@@ -411,7 +417,7 @@ def dispatch(db, p, op, data):
         seed = uid()
         state, _, _ = combat.new_battle(
             [combat.make_stack("p1", "player", unit.kind, unit.count, PLAYER_SPOTS[0], unit.id, unit.hp)],
-            npc_stacks(TUTORIAL_NPC), [[3, 4], [4, 2], [5, 5]], seed, hero.kind, 0, commander.army_perks(db, p.id))
+            npc_stacks(TUTORIAL_NPC), [[3, 4], [4, 2], [5, 5]], seed, hero.kind, 0, commander.battle_perks(db, p.id, True))
         battle = Battle(id=uid(), player_id=p.id, unit_id=unit.id, status="active", seed=seed,
                         balance_version=VERSION, state=state)
         db.add(battle)
@@ -451,6 +457,11 @@ def dispatch(db, p, op, data):
         if outcome == "active":
             return {"events": events, "outcome": outcome}
         return conclude(db, p, battle, hero, events, outcome)
+    if op == "doctrine":
+        from . import doctrines
+        return doctrines.start(db, p, data["key"], now(), change)
+    if op == "hire":
+        return objects.hire(db, p, data["army_id"], now(), change)
     if op == "skill_pick":
         return commander.choose(db, p, data["key"])
     if op == "equip":

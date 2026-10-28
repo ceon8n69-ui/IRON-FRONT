@@ -8,6 +8,7 @@ import { Commander, Portrait } from "./Commander";
 import { World } from "./World";
 import { Armies } from "./Armies";
 import { Season } from "./Season";
+import { Doctrines } from "./Doctrines";
 import { Gallery } from "./Gallery";
 import { SpriteStage } from "./SpriteStage";
 import { Roster } from "./Roster";
@@ -515,6 +516,7 @@ function App() {
             <Season clock={clock} revision={state.revision} heroes={defs?.heroes ?? {}} />
           ) : (
             <section className="content">
+              <Doctrines state={state} clock={clock} busy={busy} run={run} />
               <div className="section-label">БОЕВОЙ ОТЧЁТ</div>
               {lastBattle ? (
                 <article className="card">
@@ -550,8 +552,8 @@ function App() {
               </p>
               <div className="section-label">СТАТУС СРЕЗА</div>
               <p>
-                Строительство, подготовка войск, PvE, экипировка, походы и нейтральные территории. PvP,
-                рынок, Stars и расширенная RPG-система ещё не включены.
+                Сезоны на 2 недели, несколько соединений, рост командира, доктрины, снабжение, узлы и Столица,
+                асинхронный PvP, руины и наёмники. В работе: альянсы и набеги. Рынок и Stars ещё не включены.
               </p>
             </section>
           )}

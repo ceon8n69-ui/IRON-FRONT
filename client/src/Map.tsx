@@ -1,4 +1,4 @@
-import {surface, environment, bunker, squad, pile, chest, mine, node} from "./Terrain";
+import {surface, environment, bunker, squad, pile, chest, mine, node, ruin, camp} from "./Terrain";
 import { unitSprite, pirateShip } from "./Units";
 import {Icon} from "./Icon";
 import { useEffect, useRef, useState } from "react";
@@ -307,6 +307,8 @@ export function MapView(props: Props) {
         if (o.kind === "pile") s.addChild(pile(x,y-6,o.resource ?? ""));
         else if (o.kind === "chest") s.addChild(chest(x,y-8));
         else if (o.kind === "mine") s.addChild(mine(x,y-6,o.resource ?? "",o.owner === "self" ? 0x4c9ce5 : o.owner === "other" ? 0xd95a52 : null));
+        else if (o.kind === "ruin") s.addChild(ruin(x,y-6));
+        else if (o.kind === "camp") s.addChild(camp(x,y-6,(o as {available?:boolean}).available !== false));
       }
       const b = props.buildings.find((b) => b.q === t.q && b.r === t.r);
       if (b && !props.battle && !props.world) {

@@ -178,7 +178,7 @@ def begin(db, p, army, order, tgt, at):
     seed = str(uuid.uuid4())
     cover = BASE_COVER if tgt["kind"] == "base" else FIELD_COVER
     state, _, _ = combat.new_battle(stacks, enemy, cover, seed, hero.kind if led else None, 0,
-                                    commander.army_perks(db, p.id) if led else {})
+                                    commander.battle_perks(db, p.id, led))
     state["led"] = led
     tile = db.get(Tile, (1, order.q, order.r))
     state["expedition"] = {"army_id": army.id, "order_id": order.id, "q": order.q, "r": order.r}

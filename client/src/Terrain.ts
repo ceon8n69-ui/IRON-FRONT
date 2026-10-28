@@ -237,3 +237,27 @@ export function node(x:number,y:number,kind:string,owner:number|null){
   if(owner!==null){g.moveTo(x-22,y+2).lineTo(x-22,y-26).stroke({color:0xc3d0c6,width:2});g.poly([x-21,y-26,x-7,y-21,x-21,y-16]).fill(owner);}
   return g;
 }
+
+// Ancient ruin: broken columns and a fallen arch (original code art).
+export function ruin(x:number,y:number){
+  const g=new Graphics(); const ink=0x1b201e;
+  g.ellipse(x,y+10,28,9).fill({color:0x071319,alpha:.35});
+  g.poly([x-24,y+6,x,y-4,x+24,y+6,x,y+16]).fill(0x9a927f).stroke({color:ink,width:1.4});
+  g.rect(x-16,y-22,7,26).fill(0xd8cfb8).stroke({color:ink,width:1.4});
+  g.rect(x+8,y-12,7,16).fill(0xd8cfb8).stroke({color:ink,width:1.4});
+  g.poly([x-18,y-24,x-7,y-24,x-7,y-28,x-18,y-28]).fill(0xc2b89f).stroke({color:ink,width:1});
+  g.poly([x-4,y+2,x+6,y-2,x+10,y+4,x,y+8]).fill(0xb7ad94).stroke({color:ink,width:1});
+  g.circle(x+18,y-18,4).fill({color:0xe5b65a,alpha:.9});
+  return g;
+}
+// Mercenary camp: two tents and a banner.
+export function camp(x:number,y:number,available:boolean){
+  const g=new Graphics(); const ink=0x1b201e;
+  g.ellipse(x,y+10,30,10).fill({color:0x071319,alpha:.35});
+  g.poly([x-26,y+6,x-14,y-16,x-2,y+6]).fill(0x8a7a52).stroke({color:ink,width:1.5});
+  g.poly([x-2,y+8,x+12,y-20,x+26,y+8]).fill(0x6f6a45).stroke({color:ink,width:1.5});
+  g.poly([x+8,y+8,x+12,y-4,x+16,y+8]).fill(0x2a2418);
+  g.moveTo(x-6,y+6).lineTo(x-6,y-30).stroke({color:0xc3d0c6,width:2});
+  g.poly([x-5,y-30,x+9,y-25,x-5,y-20]).fill(available?0x64b87b:0x7a7f80).stroke({color:ink,width:1});
+  return g;
+}

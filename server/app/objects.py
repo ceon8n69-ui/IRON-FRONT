@@ -16,7 +16,11 @@ from . import bases, garrisons
 PILES = {"metal": 180, "oil": 120, "fuel": 60, "food": 150}
 CHEST = {"resources": {"metal": 250, "electronics": 60}, "xp": 120}
 MINES = {"metal": 6, "oil": 4}          # per minute, like territory yield
-from .config import NPC_TIERS, NPC_SEA_TIERS, UNITS
+from .config import NPC_TIERS, NPC_SEA_TIERS, UNITS, FACTIONS
+# Mercenaries: any faction's line, scout or assault unit (one stack per camp per in-game week).
+CAMP_UNITS = sorted(v["key"] for f in FACTIONS.values() for v in f["units"] if v["role"] in ("rifles", "scouts", "assault"))
+CAMP_PREMIUM = 1.25
+RUIN_OUTCOMES = ["cache", "xp", "artifact", "recruits", "maps"]
 TIERS = [(t["name"], sum(UNITS[k]["hp"] * n for k, n in t["stacks"]), t["xp"]) for t in NPC_TIERS]
 SEA_TIERS = [(t["name"], sum(UNITS[k]["hp"] * n for k, n in t["stacks"]), t["xp"]) for t in NPC_SEA_TIERS]
 
@@ -48,6 +52,10 @@ def placed(q, r, sites, biome="plain"):
     if n < 10:
         kind = list(MINES)[_roll(q, r, "mine") % len(MINES)]
         return {"kind": "mine", "resource": kind, "rate": MINES[kind]}
+    if n < 11:
+        return {"kind": "ruin"}
+    if n < 12:
+        return {"kind": "camp", "unit": CAMP_UNITS[_roll(q, r, "camp") % len(CAMP_UNITS)]}
     return None
 
 
@@ -81,9 +89,9 @@ def _is_tutorial(q, r):
 
 
 def blocks_path(db, c, pid, sites, biome="plain"):
-    """Untaken pickups and unowned/foreign mines can only be a destination."""
+    """Untaken pickups and ruins, unowned/foreign mines can only be a destination; camps never block."""
     obj = placed(c[0], c[1], sites, biome)
-    if not obj:
+    if not obj or obj["kind"] == "camp":
         return False
     if obj["kind"] == "mine":
         mine = db.get(MapMine, (1, c[0], c[1]))
@@ -99,6 +107,8 @@ def view(db, pid, q, r, sites, biome="plain"):
         mine = db.get(MapMine, (1, q, r))
         owner = None if not mine else "self" if mine.player_id == pid else "other"
         return {**obj, "owner": owner}
+    if obj["kind"] == "camp":
+        return camp_view(db, q, r, obj)
     taken = db.get(MapPickup, (1, q, r))
     if taken and not (obj["kind"] == "chest" and taken.player_id == pid and taken.choice is None):
         return None
@@ -111,10 +121,13 @@ def arrive(db, p, q, r, at_time, change):
     if not obj:
         return None
     db.scalar(select(Tile).where(Tile.world_id == 1, Tile.q == q, Tile.r == r).with_for_update())
+    if obj["kind"] == "camp":
+        view = camp_view(db, q, r, obj)
+        return f"Лагерь наёмников: {view['name']} · {view['count']}" + ("" if view["available"] else " (на этой неделе уже наняты)")
     if obj["kind"] == "mine":
         mine = db.get(MapMine, (1, q, r))
         if mine and mine.player_id != p.id:
-            return "Шахта принадлежит другому командиру. PvP пока не включён."
+            return "Шахта принадлежит другому командиру."
         if not mine:
             db.add(MapMine(world_id=1, q=q, r=r, player_id=p.id, resource=obj["resource"], rate=obj["rate"], acquired_at=at_time))
             return f"Шахта захвачена: +{obj['rate']} в минуту"
@@ -124,6 +137,8 @@ def arrive(db, p, q, r, at_time, change):
         .on_conflict_do_nothing().returning(MapPickup.q)).scalar()
     if won is None:
         return "Здесь уже побывал другой отряд."
+    if obj["kind"] == "ruin":
+        return explore_ruin(db, p, q, r, at_time, change)
     if obj["kind"] == "pile":
         from . import commander
         from . import seasons
@@ -155,3 +170,85 @@ def pending_chests(db, pid):
 
 def mines(db, pid):
     return list(db.scalars(select(MapMine).where(MapMine.player_id == pid)))
+
+
+# ---- ruins and camps --------------------------------------------------------
+
+def explore_ruin(db, p, q, r, at_time, change):
+    """One-time Polytopia-style ruin: a fixed outcome per hex for whoever arrives first."""
+    import uuid
+    from .models import Unit, Item, Ownership, Army, ArmyUnit
+    from . import equipment
+    outcome = RUIN_OUTCOMES[_roll(q, r, "ruin-outcome") % len(RUIN_OUTCOMES)]
+    if outcome == "cache":
+        change(db, p, {"metal": 400, "electronics": 100, "fuel": 100}, "ruin_cache")
+        return "Руины: тайник со снабжением (+400 металла, +100 электроники, +100 топлива)"
+    if outcome == "xp":
+        db.get(Hero, p.id).xp += 150
+        return "Руины: архив штаба. Командир получает 150 опыта"
+    if outcome == "artifact":
+        key, roll = equipment.loot(f"ruin:{q}:{r}", 1)
+        item = Item(id=str(uuid.uuid4()), owner_id=p.id, definition_id=key, source_id=f"ruin:{q}:{r}", equipped=False, created_at=at_time)
+        db.add(item); db.flush()
+        db.add(Ownership(id=str(uuid.uuid4()), item_id=item.id, owner_id=p.id, reason="ruin", created_at=at_time))
+        return f"Руины: найден артефакт «{equipment.DEFINITIONS[key]['name']}»"
+    if outcome == "recruits":
+        hero = db.get(Hero, p.id)
+        key = next(v["key"] for v in FACTIONS[hero.kind]["units"] if v["role"] == "rifles")
+        db.add(Unit(id=str(uuid.uuid4()), player_id=p.id, kind=key, hp=100, count=6, status="reserve"))
+        return f"Руины: уцелевшие бойцы присоединяются ({UNITS[key]['name']} · 6, в резерве на базе)"
+    from .models import Tile, Discovery
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    tiles = db.scalars(select(Tile).where(Tile.world_id == 1, Tile.q.between(q - 6, q + 6), Tile.r.between(r - 6, r + 6)))
+    values = [dict(player_id=p.id, world_id=1, q=t.q, r=t.r, discovered_at=at_time) for t in tiles
+              if max(abs(t.q - q), abs(t.r - r), abs(t.q + t.r - q - r)) <= 6]
+    if values:
+        db.execute(pg_insert(Discovery).values(values).on_conflict_do_nothing())
+    return "Руины: старые карты. Открыта местность на 6 гексов вокруг"
+
+
+def camp_view(db, q, r, obj=None):
+    import time
+    from .models import CampHire
+    from . import seasons
+    obj = obj or at(db, q, r)
+    kind = obj["unit"]
+    cal = seasons.calendar(seasons.current(db), int(time.time()))
+    week, season = (cal["week"], cal["season"]) if cal else (0, 0)
+    hired = db.get(CampHire, (1, q, r, season, week))
+    spec = UNITS[kind]
+    return {"kind": "camp", "unit": kind, "name": spec["name"], "count": spec["count"], "faction": spec.get("faction"),
+            "cost": {k: round(v * CAMP_PREMIUM) for k, v in spec["cost"].items()}, "available": hired is None,
+            "week": week}
+
+
+def hire(db, p, army_id, at_time, change):
+    """Hire the camp's weekly stack with an army standing on the camp."""
+    import uuid
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    from .models import Army, ArmyUnit, Unit, CampHire
+    from .config import ARMY_STACKS
+    army = db.get(Army, army_id)
+    if not army or army.player_id != p.id:
+        raise HTTPException(404, "Соединение не найдено")
+    if army.status != "idle":
+        raise HTTPException(409, "Соединение в пути")
+    obj = at(db, army.q, army.r)
+    if not obj or obj["kind"] != "camp":
+        raise HTTPException(409, "Здесь нет лагеря наёмников")
+    view = camp_view(db, army.q, army.r, obj)
+    db.scalar(select(Tile).where(Tile.world_id == 1, Tile.q == army.q, Tile.r == army.r).with_for_update())
+    from . import seasons
+    season = seasons.current(db)
+    won = db.execute(pg_insert(CampHire).values(world_id=1, q=army.q, r=army.r, season=season.number if season else 0,
+                     week=view["week"], player_id=p.id, kind=view["unit"], hired_at=at_time)
+                     .on_conflict_do_nothing().returning(CampHire.q)).scalar()
+    if won is None:
+        raise HTTPException(409, "На этой неделе наёмников уже наняли. Новые придут через игровую неделю")
+    change(db, p, {k: -v for k, v in view["cost"].items()}, "mercenaries")
+    unit = Unit(id=str(uuid.uuid4()), player_id=p.id, kind=view["unit"], hp=100, count=view["count"], status="reserve")
+    db.add(unit); db.flush()
+    stacks = db.scalars(select(ArmyUnit).where(ArmyUnit.army_id == army.id)).all()
+    if len(stacks) < ARMY_STACKS:
+        db.add(ArmyUnit(army_id=army.id, unit_id=unit.id)); unit.status = "army"
+    return {"unit_id": unit.id, "kind": unit.kind, "joined": unit.status == "army"}

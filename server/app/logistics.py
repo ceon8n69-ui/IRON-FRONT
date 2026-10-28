@@ -70,11 +70,15 @@ def unit_upkeep(kind, count):
 
 
 def per_hour(db, pid, factor=1.0):
+    import time
+    from . import doctrines
     total = {"food": 0, "fuel": 0}
     for u in db.scalars(select(Unit).where(Unit.player_id == pid)):
         for k, v in unit_upkeep(u.kind, u.count).items():
             total[k] += v
-    return {k: math.ceil(v * factor) for k, v in total.items()}
+    eff = doctrines.effects(db, pid, int(time.time()))
+    scale = {"food": eff.get("food_upkeep", 1), "fuel": eff.get("fuel_upkeep", 1)}
+    return {k: math.ceil(v * factor * scale[k]) for k, v in total.items()}
 
 
 def charge(db, p, at, change, factor=1.0):
