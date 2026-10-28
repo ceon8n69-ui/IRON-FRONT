@@ -1,4 +1,5 @@
-import {surface, environment, bunker, squad, pile, chest, mine, vehicle} from "./Terrain";
+import {surface, environment, bunker, squad, pile, chest, mine} from "./Terrain";
+import { unitSprite } from "./Units";
 import {Icon} from "./Icon";
 import { useEffect, useRef, useState } from "react";
 import { Application, Container, Graphics, Text } from "pixi.js";
@@ -17,13 +18,15 @@ type Props = {
   selected: number[] | null;
   onSelect: (q: number, r: number) => void;
 };
+// Bright diorama palette: lit top, darker soil side, ink rim.
 const colors: Record<string, number> = {
-  plain: 0x465c4a,
-  forest: 0x304f43,
-  hills: 0x6b7165,
-  desert: 0x8a7c55,
+  plain: 0x6fae4c,
+  forest: 0x4f9440,
+  hills: 0x8fa36a,
+  desert: 0xd9b46c,
   unknown: 0x1e2c37,
 };
+const sides: Record<string, number> = { plain: 0x6b4a2e, forest: 0x5c3f27, hills: 0x6c5a48, desert: 0x9c7442, unknown: 0x141e27 };
 export const BATTLE_SCALE = 0.72, BATTLE_SHIFT = -70;
 function hex(g: Graphics, x: number, y: number, size: number, color: number) {
   const p: number[] = [];
@@ -252,8 +255,14 @@ export function MapView(props: Props) {
       const x = 54 * Math.sqrt(3) * (t.q + t.r / 2),
         y = 54 * 0.975 * t.r;
       const g = new Graphics();
-      hex(g, x, y + 7, 53, 0x263a36);
+      hex(g, x, y + 9, 52, sides[t.biome] ?? 0x263a36);
       hex(g, x, y, 52, colors[t.biome]);
+      if (t.biome !== "unknown") {
+        const rim: number[] = [];
+        for (let i = 0; i < 6; i++) { const a = ((i * 60 + 30) * Math.PI) / 180; rim.push(x + Math.cos(a) * 52, y + Math.sin(a) * 52 * 0.65); }
+        g.poly(rim).stroke({ color: 0x1b201e, width: 1.4, alpha: 0.55 });
+        hex(g, x, y - 1, 44, colors[t.biome] + 0x0a0a06);
+      }
       if (t.visibility === "explored") g.alpha = .55;
       ground.addChild(g);
       if(t.visibility!=="unknown")ground.addChild(surface(x,y,t.biome,t.q+(props.center?.[0]??0),t.r+(props.center?.[1]??0)));
@@ -310,7 +319,7 @@ export function MapView(props: Props) {
         const plate = new Graphics().roundRect(x-label.width/2-6,y+21,label.width+12,17,3).fill({color:0x101923,alpha:.9});
         labels.addChild(plate);
         labels.addChild(label);
-      } else if (!props.battle && !t.garrison && t.biome!=="unknown") {
+      } else if (!props.battle && !t.garrison && !(t as {object?:unknown}).object && t.biome!=="unknown") {
         const detail=environment(x,y,t.biome,t.q+(props.center?.[0]??0),t.r+(props.center?.[1]??0));
         if(t.visibility==="explored")detail.alpha=.55;
         s.addChild(detail);
@@ -328,17 +337,20 @@ export function MapView(props: Props) {
     }
     if (props.battle) {
       const per: Record<string, number> = {rifles:10,scouts:8,assault:14,artillery:12,armor:40};
+      const legacyArt: Record<string, string> = {rifles:"rifleman",scouts:"scout",assault:"stormtrooper",artillery:"mortar",armor:"exosuit_drill"};
       for (const st of props.battle.state.stacks ?? []) {
         if (st.hp <= 0) continue;
         const q = st.pos[0] - 4, r = st.pos[1] - 4;
         const x = 54 * Math.sqrt(3) * (q + r / 2), y = 54 * 0.975 * r;
-        const color = st.side === "player" ? 0x4c9ce5 : 0xd95a52;
-        const ratio = st.hp / (st.start * (per[st.kind] ?? 10));
+        const each = st.each ?? per[st.kind] ?? 10;
         if (st.id === props.battle.state.active) {
-          const ring = new Graphics(); hex(ring,x,y,46,0xe5b65a); ring.alpha=.35; ground.addChild(ring);
+          const ring = new Graphics(); hex(ring,x,y,46,0xe5b65a); ring.alpha=.4; ground.addChild(ring);
         }
-        s.addChild(st.kind === "armor" || st.kind === "artillery" ? vehicle(x,y,color,st.kind,ratio) : squad(x,y,color,ratio*100));
-        const alive = Math.ceil(st.hp / (per[st.kind] ?? 10));
+        const sprite = unitSprite(st.art ?? legacyArt[st.kind], st.faction ?? undefined, st.side, st.hp / (st.start * each));
+        sprite.scale.set(1.35);
+        sprite.position.set(x, y + 8);
+        s.addChild(sprite);
+        const alive = Math.ceil(st.hp / each);
         const badge = new Text({text:String(alive),style:{fontSize:13,fill:0xf0f3f5,fontFamily:"sans-serif",fontWeight:"bold"}});
         badge.anchor.set(.5); badge.position.set(x+24,y-20);
         labels.addChild(new Graphics().roundRect(x+12,y-30,24,20,6).fill(st.side === "player" ? 0x1d4f7a : 0x6b2a27));

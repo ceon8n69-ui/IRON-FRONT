@@ -5,43 +5,82 @@ export function noise(q:number,r:number,i:number) {
  let n=Math.imul(q+113,374761393)^Math.imul(r+71,668265263)^Math.imul(i+1,1274126177);
  n=Math.imul(n^(n>>>13),1274126177);return ((n^(n>>>16))>>>0)/4294967296;
 }
+const INK = 0x1b201e;
+const ink = { color: INK, width: 1.4, alignment: 0.5 } as const;
 export function surface(x:number,y:number,biome:string,q:number,r:number) {
  const g=new Graphics();if(biome==='unknown')return g;
- for(let i=0;i<25;i++){
-  const px=x+(noise(q,r,i*3)-.5)*72,py=y+(noise(q,r,i*3+1)-.5)*36;
-  const dry=biome==='desert';
-  g.ellipse(px,py,1+noise(q,r,i*3+2)*3,.7).fill({color:dry?0xc4ae78:0x90a276,alpha:.15});
-  if(i%4===0&&!dry)g.moveTo(px,py).lineTo(px-1,py-3).moveTo(px,py).lineTo(px+2,py-2).stroke({color:0xa0ad7c,alpha:.23,width:1});
+ const dry=biome==='desert';
+ // Grass tufts, pebbles and the odd flower, seeded by world coordinates.
+ for(let i=0;i<16;i++){
+  const px=x+(noise(q,r,i*3)-.5)*70,py=y+(noise(q,r,i*3+1)-.5)*34,n=noise(q,r,i*3+2);
+  if(dry){ g.ellipse(px,py,2+n*3,1).fill({color:0xb9934f,alpha:.45}); continue; }
+  if(n<.55) g.moveTo(px-2,py).lineTo(px-1,py-4).moveTo(px,py).lineTo(px+1,py-5).moveTo(px+2,py).lineTo(px+3,py-3).stroke({color:0x3f7a30,width:1.4});
+  else if(n<.75) g.ellipse(px,py,2.4,1.4).fill(0x9aa092).stroke({color:INK,width:.8});
+  else if(biome==='plain') g.circle(px,py-1,1.6).fill([0xf2e9a5,0xa9b7f0,0xf3b0c6][i%3]);
  }
  return g;
 }
 function rock(g:Graphics,x:number,y:number,w:number,h:number){
- g.ellipse(x+5,y+4,w,5).fill({color:0x0b181c,alpha:.3});
- g.poly([x-w,y,x-w*.5,y-h*.8,x+w*.12,y-h,x+w,y-4,x+w*.45,y+5]).fill(0x66736b);
- g.poly([x-w,y,x-w*.5,y-h*.8,x+w*.12,y-h,x-2,y-2]).fill(0x94a08b);
- g.poly([x+w*.12,y-h,x+w,y-4,x+w*.45,y+5,x-2,y-2]).fill(0x4b5b55);
- g.moveTo(x-w*.5,y-h*.8).lineTo(x+w*.12,y-h).stroke({color:0xb2b8a1,width:1,alpha:.6});
+ g.ellipse(x+3,y+3,w,w*.35).fill({color:0x0b181c,alpha:.28});
+ g.poly([x-w,y,x-w*.6,y-h*.75,x+w*.1,y-h,x+w*.8,y-h*.55,x+w,y,x+w*.2,y+w*.3]).fill(0x8d948a).stroke(ink);
+ g.poly([x+w*.1,y-h,x+w*.8,y-h*.55,x+w,y,x+w*.2,y+w*.3,x,y-h*.4]).fill(0x6b7268);
+ g.poly([x-w*.6,y-h*.75,x+w*.1,y-h,x,y-h*.4]).fill(0xb4b8ab);
+ g.ellipse(x-w*.4,y-2,w*.35,2.2).fill(0x5a9a3c);
+}
+function roundTree(g:Graphics,x:number,y:number,h:number,tone:number){
+ const leaf=[0x4f9a3a,0x3e8a3f,0x7fb247,0xd8a23a][tone%4];
+ const dark=[0x3b7a2e,0x2f6c33,0x5f9236,0xb07b26][tone%4];
+ g.ellipse(x+5,y+2,h*.45,h*.16).fill({color:0x0b181c,alpha:.28});
+ g.roundRect(x-2.5,y-h*.45,5,h*.45,1.5).fill(0x7a5434).stroke(ink);
+ for(const [dx,dy,rr] of [[-h*.2,-h*.62,h*.27],[h*.2,-h*.62,h*.27],[0,-h*.82,h*.3],[0,-h*.55,h*.3]] as const)
+  g.circle(x+dx,y+dy,rr).fill(leaf).stroke(ink);
+ g.circle(x+h*.12,y-h*.62,h*.2).fill(dark);
+ g.circle(x-h*.08,y-h*.9,h*.1).fill({color:0xffffff,alpha:.18});
+}
+function pine(g:Graphics,x:number,y:number,h:number){
+ g.ellipse(x+5,y+2,h*.32,h*.12).fill({color:0x0b181c,alpha:.28});
+ g.rect(x-2,y-h*.2,4,h*.2).fill(0x6e4b2f).stroke(ink);
+ for(let k=0;k<3;k++){
+  const by=y-h*.15-k*h*.24,w=h*(.34-k*.08),top=by-h*.36;
+  g.poly([x,top,x-w,by,x+w,by]).fill(k===2?0x5d9a43:0x3f7f3b).stroke(ink);
+  g.poly([x,top,x,by,x+w,by]).fill(0x2f6633);
+ }
+}
+function bush(g:Graphics,x:number,y:number,flower:number|null){
+ g.ellipse(x+2,y+1,9,3).fill({color:0x0b181c,alpha:.25});
+ g.circle(x-4,y-4,5).fill(0x4f9a3a).stroke(ink);g.circle(x+4,y-4,5).fill(0x4f9a3a).stroke(ink);g.circle(x,y-7,5.5).fill(0x5fab45).stroke(ink);
+ if(flower!==null) for(const [dx,dy] of [[-4,-6],[3,-8],[1,-3]]) g.circle(x+dx,y+dy,1.4).fill(flower);
+}
+function stump(g:Graphics,x:number,y:number){
+ g.roundRect(x-5,y-6,10,7,2).fill(0x7a5434).stroke(ink);g.ellipse(x,y-6,5,2).fill(0xc49a64).stroke({color:INK,width:1});
+}
+function mushroom(g:Graphics,x:number,y:number){
+ g.rect(x-.8,y-3,1.6,3).fill(0xeadfc8);g.ellipse(x,y-3.5,3,2).fill(0xd2453a).stroke({color:INK,width:.8});
 }
 export function environment(x:number,y:number,biome:string,q:number,r:number){
  const g=new Graphics();
+ const n=(i:number)=>noise(q,r,i);
  if(biome==='forest'){
-  for(let i=0;i<7;i++){
-   const tx=x+(noise(q,r,i*2)-.5)*65,ty=y-12+i*4,h=24+noise(q,r,i*2+1)*22;
-   g.ellipse(tx+7,ty+4,11,4).fill({color:0x071917,alpha:.25});
-   g.rect(tx-1.5,ty-11,3,15).fill(0x665a40);
-   for(let k=0;k<3;k++){
-    const by=ty-6-k*h*.22,w=13-k*3,top=by-h*.48;
-    g.poly([tx,top,tx-w,by,tx,by+3,tx+w,by]).fill(k===2?0x49694b:0x35573e);
-    g.poly([tx,top,tx,by+3,tx+w,by]).fill(0x263e32);
-    g.moveTo(tx,top).lineTo(tx-w,by).stroke({color:0x7d9161,alpha:.45,width:1});
-   }
-  }
+  const items=Array.from({length:5},(_,i)=>({tx:x+(n(i*2)-.5)*62,ty:y-14+i*6+(n(i*2+7)-.5)*6,h:26+n(i*2+1)*14,i}));
+  items.sort((a,b)=>a.ty-b.ty);
+  for(const t of items) (n(t.i+40)<.5?pine(g,t.tx,t.ty,t.h+6):roundTree(g,t.tx,t.ty,t.h,Math.floor(n(t.i+50)*5)));
+  if(n(60)<.5) mushroom(g,x+(n(61)-.5)*40,y+12);
  } else if(biome==='hills'){
-  rock(g,x-17,y-5,17,20);rock(g,x+10,y-5,24,36);rock(g,x+25,y+10,12,15);
+  rock(g,x-18,y-2,15,18);rock(g,x+10,y-4,21,30);rock(g,x+24,y+10,9,10);
+  if(n(70)<.6) bush(g,x-26,y+12,null);
  } else if(biome==='desert'){
-  g.poly([x-35,y+6,x-10,y-8,x+23,y-4,x+37,y+10,x+5,y+15]).fill({color:0xb7a273,alpha:.3});
-  g.moveTo(x-35,y+6).quadraticCurveTo(x-5,y-15,x+23,y-4).stroke({color:0xd5be89,width:1,alpha:.4});
+  g.moveTo(x-34,y+6).quadraticCurveTo(x-6,y-12,x+24,y-2).stroke({color:0xb98d4a,width:1.6});
+  g.moveTo(x-18,y+14).quadraticCurveTo(x+6,y+2,x+32,y+10).stroke({color:0xc79b55,width:1.2});
   rock(g,x-22,y+10,6,6);
+  if(n(80)<.5){ // dry shrub
+   g.moveTo(x+14,y+4).lineTo(x+10,y-6).moveTo(x+14,y+4).lineTo(x+18,y-5).moveTo(x+14,y+4).lineTo(x+14,y-8).stroke({color:0x8a6a3a,width:1.4});
+  }
+ } else if(biome==='plain'){
+  const k=n(90);
+  if(k<.35) bush(g,x+(n(91)-.5)*44,y+(n(92)-.5)*16,[0xf2e9a5,0xf3b0c6,0xa9b7f0][Math.floor(n(93)*3)]);
+  else if(k<.5) roundTree(g,x+(n(94)-.5)*36,y+4,24,Math.floor(n(95)*5));
+  else if(k<.58) stump(g,x+(n(96)-.5)*40,y+6);
+  else if(k<.66) rock(g,x+(n(97)-.5)*40,y+8,7,7);
  }
  return g;
 }

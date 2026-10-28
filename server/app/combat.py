@@ -27,7 +27,9 @@ def roll(seed, turn, actor):
 def make_stack(sid, side, kind, count, pos, unit_id=None, hp_pct=100):
     each = UNITS[kind]["hp"]
     hp = max(1, (count - 1) * each + round(each * hp_pct / 100))
+    spec = UNITS[kind]
     stack = {"id": sid, "side": side, "kind": kind, "count": count, "start": count, "hp": hp,
+             "each": each, "art": spec.get("art"), "trait": spec.get("trait"), "faction": spec.get("faction"),
              "pos": list(pos), "acted": False, "retaliated": False, "defending": False, "skip": False}
     if unit_id:
         stack["unit_id"] = unit_id
@@ -75,6 +77,7 @@ def resolve(state, command, seed, hero, bonus):
         raise ValueError("Неизвестный приказ")
     if not extra:
         me["acted"] = True
+        _after_turn(s, me, events)
     s["turn"] += 1
     outcome = _advance(s, seed, hero, bonus, events)
     if outcome == "active" and s["turn"] > MAX_TURNS:
@@ -160,10 +163,13 @@ def _approach(s, me, target, hero):
 def _damage(s, attacker, target, seed, hero, bonus, factor, tag):
     a, d = UNITS[attacker["kind"]], UNITS[target["kind"]]
     value = alive(attacker) * a["damage"]
-    value *= max(0.6, 1 - 0.05 * d["defense"])
+    if a.get("trait") != "pierce":
+        value *= max(0.6, 1 - 0.05 * d["defense"])
+    if d.get("trait") == "shield" and not a["melee"]:
+        value *= 0.6
     if target["defending"]:
         value *= 0.6
-    if d["infantry"] and target["pos"] in s["cover"]:
+    if d["infantry"] and target["pos"] in s["cover"] and a.get("trait") != "marksman":
         value *= 0.8
     if attacker["side"] == "player":
         if hero == "raven" and a["infantry"]:
@@ -171,7 +177,7 @@ def _damage(s, attacker, target, seed, hero, bonus, factor, tag):
         value *= 1 + min(max(bonus, 0), 0.10)
     elif hero == "titan":
         value *= 0.95
-    if not a["melee"] and any(distance(attacker["pos"], e["pos"]) == 1
+    if not a["melee"] and a.get("trait") != "marksman" and any(distance(attacker["pos"], e["pos"]) == 1
                               for e in _living(s, "npc" if attacker["side"] == "player" else "player")):
         value *= 0.5   # shooters fire badly with an enemy in their face
     value *= factor * roll(seed, s["turn"], f"{tag}:{attacker['id']}") / 100
@@ -197,13 +203,34 @@ def _attack(s, me, target, seed, hero, bonus, events, ranged_any, factor):
         if spot != me["pos"]:
             me["pos"] = list(spot)
             events.append({"type": "move", "actor": me["id"], "pos": me["pos"]})
+            if spec.get("trait") == "charge":
+                factor *= 1.3
     elif not ranged_any and distance(me["pos"], target["pos"]) > spec["range"]:
         raise ValueError("Цель вне дальности: подойдите ближе")
     _hit(s, me, target, seed, hero, bonus, events, factor, "attack")
     # One retaliation per round when struck at close quarters.
-    if alive(target) and not target["retaliated"] and distance(me["pos"], target["pos"]) == 1:
+    if alive(target) and not target["retaliated"] and distance(me["pos"], target["pos"]) == 1 \
+            and spec.get("trait") != "first_strike":
         target["retaliated"] = True
-        _hit(s, target, me, seed, hero, bonus, events, 1.0 if UNITS[target["kind"]]["melee"] else 0.5, "retaliate")
+        t = UNITS[target["kind"]]
+        _hit(s, target, me, seed, hero, bonus, events,
+             1.0 if t["melee"] or t.get("trait") == "bayonet" else 0.5, "retaliate")
+
+
+def _after_turn(s, me, events):
+    """Passive traits that trigger once the stack has acted."""
+    trait = UNITS[me["kind"]].get("trait")
+    if not alive(me) or trait not in ("medic", "self_repair"):
+        return
+    targets = [me] if trait == "self_repair" else [x for x in _living(s, me["side"])
+                                                   if x is not me and distance(x["pos"], me["pos"]) == 1]
+    share = 0.10 if trait == "self_repair" else 0.15
+    for x in targets:
+        top = x["start"] * UNITS[x["kind"]]["hp"]
+        healed = min(top, x["hp"] + math.ceil(share * top)) - x["hp"]
+        if healed > 0:
+            x["hp"] += healed
+            events.append({"type": "heal", "actor": me["id"], "target": x["id"], "amount": healed})
 
 
 def _ability(s, me, command, seed, hero, bonus, events):
@@ -269,6 +296,7 @@ def _advance(s, seed, hero, bonus, events):
             events.append({"type": "jammed", "actor": sid})
             continue
         _npc_turn(s, stack, seed, hero, bonus, events)
+        _after_turn(s, stack, events)
         guard += 1
         if guard > 200:
             raise RuntimeError("combat loop guard")

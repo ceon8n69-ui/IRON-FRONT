@@ -17,7 +17,7 @@ from .models import (
     Command,
     Event,
 )
-from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS, UNITS, TUTORIAL_NPC
+from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS, UNITS, TUTORIAL_NPC, FACTIONS
 from . import expeditions, garrisons, equipment, bases, economy, objects
 from . import combat
 
@@ -193,6 +193,19 @@ def snapshot(db, p):
     }
 
 
+def faction_unit(hero_kind, requested):
+    """Resolve a hire request to this commander's own unit (role names map to the faction variant)."""
+    roster = {v["key"]: v for v in FACTIONS[hero_kind]["units"]}
+    if requested in roster:
+        return requested
+    by_role = {v["role"]: v["key"] for v in roster.values()}
+    if requested in by_role:
+        return by_role[requested]
+    if requested in UNITS and UNITS[requested].get("faction"):
+        fail("Этот отряд нанимает другой командир")
+    fail("Неизвестный тип войск")
+
+
 PLAYER_SPOTS = [[2, 4], [1, 3], [1, 5], [2, 2], [2, 6]]
 NPC_SPOTS = [[6, 4], [7, 3], [7, 5], [6, 2], [6, 6]]
 
@@ -324,9 +337,7 @@ def dispatch(db, p, op, data):
         b.upgrade_ready_at = now() + economy.upgrade_seconds(b.kind, b.level)
         return {"id": b.id, "level": b.level + 1, "ready_at": b.upgrade_ready_at}
     if op == "train":
-        kind = data.get("kind") or "rifles"
-        if kind not in UNITS:
-            fail("Неизвестный тип войск")
+        kind = faction_unit(hero.kind, data.get("kind") or "rifles")
         spec = UNITS[kind]
         lv = levels(buildings, now())
         if not lv.get("barracks"):

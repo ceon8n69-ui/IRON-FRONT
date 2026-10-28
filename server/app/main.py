@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.7.0")
+app = FastAPI(title="IRON FRONT", version="0.8.0")
 
 
 class Strict(BaseModel):
@@ -205,6 +205,8 @@ def definitions():
         "heroes": config.HEROES,
         "units": config.UNITS,
         "abilities": config.ABILITIES,
+        "factions": config.FACTIONS,
+        "traits": config.TRAITS,
         "army_stacks": config.ARMY_STACKS,
         "expeditions": config.EXPEDITIONS,
         "balance_version": config.VERSION,
