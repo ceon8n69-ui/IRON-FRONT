@@ -112,6 +112,20 @@ def army_perks(db, pid):
     return {k: v for k, v in perks(db, pid).items() if k in ARMY_PERKS}
 
 
+DOCTRINE_COMBAT = {"inf_attack", "inf_defense", "veh_attack", "veh_defense", "gun_attack"}
+
+
+def battle_perks(db, pid, led, at=None):
+    """Perks snapshotted into a battle: the commander's (only if he leads) plus combat doctrines (always)."""
+    import time
+    from . import doctrines
+    out = dict(army_perks(db, pid)) if led else {}
+    for k, v in doctrines.effects(db, pid, at or int(time.time())).items():
+        if k in DOCTRINE_COMBAT:
+            out[k] = round(out.get(k, 0) + v, 4)
+    return out
+
+
 def perk(db, pid, key):
     return perks(db, pid).get(key, 0)
 

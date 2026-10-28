@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.14.0")
+app = FastAPI(title="IRON FRONT", version="0.15.0")
 
 
 class Strict(BaseModel):
@@ -314,6 +314,22 @@ def army_release(body: Compose, authorization: str | None = Header(default=None)
 def battle_auto(body: BattleRef, authorization: str | None = Header(default=None),
                 idempotency_key: str | None = Header(default=None)):
     return mutate("auto", body.model_dump(), authorization, idempotency_key)
+
+
+class DoctrineRef(Strict):
+    key: str = Field(max_length=40)
+
+
+@app.post("/api/v1/doctrines/research")
+def doctrine_research(body: DoctrineRef, authorization: str | None = Header(default=None),
+                      idempotency_key: str | None = Header(default=None)):
+    return mutate("doctrine", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/world/hire")
+def world_hire(body: ArmyRef, authorization: str | None = Header(default=None),
+               idempotency_key: str | None = Header(default=None)):
+    return mutate("hire", body.model_dump(), authorization, idempotency_key)
 
 
 @app.post("/api/v1/commander/skill")

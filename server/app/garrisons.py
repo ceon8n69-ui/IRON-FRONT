@@ -94,7 +94,7 @@ def begin(db, p, army, order):
     from . import commander
     seed=str(uuid.uuid4())
     state,_,outcome=combat.new_battle(stacks,npc_stacks(tier["stacks"]),[] if at_sea else [[3,4],[4,2],[5,5]],seed,hero.kind if led else None,0,
-                                      commander.army_perks(db,p.id) if led else {})
+                                      commander.battle_perks(db,p.id,led))
     state['led']=led
     state['expedition']={'army_id':army.id,'order_id':order.id,'q':order.q,'r':order.r}
     state['npc_tier']={'name':name,'hp':hp,'xp':xp}

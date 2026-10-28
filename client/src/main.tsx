@@ -8,6 +8,7 @@ import { Commander, Portrait } from "./Commander";
 import { World } from "./World";
 import { Armies } from "./Armies";
 import { Season } from "./Season";
+import { Doctrines } from "./Doctrines";
 import { Gallery } from "./Gallery";
 import { SpriteStage } from "./SpriteStage";
 import { Roster } from "./Roster";
@@ -515,6 +516,7 @@ function App() {
             <Season clock={clock} revision={state.revision} heroes={defs?.heroes ?? {}} />
           ) : (
             <section className="content">
+              <Doctrines state={state} clock={clock} busy={busy} run={run} />
               <div className="section-label">БОЕВОЙ ОТЧЁТ</div>
               {lastBattle ? (
                 <article className="card">

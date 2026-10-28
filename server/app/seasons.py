@@ -162,7 +162,7 @@ def rollover(db, at, seed=None):
     from sqlalchemy import text, delete, update
     from .models import (Player, Hero, SeasonResult, Resource, Ledger, Building, Unit, Reward, Battle, BattleTurn,
                          PvpReport, Army, ArmyUnit, ArmyOrder, Item, Ownership, Job, MapPickup, MapMine,
-                         ClearedSite, TileOwnership, Discovery, WorldBase, Command, Tile, Event)
+                         ClearedSite, TileOwnership, Discovery, WorldBase, Command, Tile, Event, Doctrine)
     from .config import INITIAL, FACTIONS, UNITS
     from . import worldgen, nodes
     db.execute(text("SELECT pg_advisory_xact_lock(:a, :b)"), {"a": LOCK[0], "b": LOCK[1]})
@@ -191,7 +191,8 @@ def rollover(db, at, seed=None):
     for model in (ArmyOrder, ArmyUnit):
         db.execute(delete(model))
     db.execute(delete(Army))
-    for model in (Item, Job, Unit, Building, MapPickup, MapMine, ClearedSite, TileOwnership, Discovery, WorldBase, Command):
+    for model in (Item, Job, Unit, Building, MapPickup, MapMine, ClearedSite, TileOwnership, Discovery, WorldBase, Command,
+                  Doctrine):
         db.execute(delete(model))
     # New map.
     new_seed = seed or f"season-{season.number + 1}-{secrets.token_hex(4)}"

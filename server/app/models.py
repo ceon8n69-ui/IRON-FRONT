@@ -276,7 +276,7 @@ class MapPickup(Base):
     choice = Column(String)
     __table_args__ = (
         ForeignKeyConstraint(["world_id", "q", "r"], ["hex_tiles.world_id", "hex_tiles.q", "hex_tiles.r"]),
-        CheckConstraint("kind IN ('pile', 'chest')", name="ck_map_pickups_kind"),
+        CheckConstraint("kind IN ('pile', 'chest', 'ruin')", name="ck_map_pickups_kind"),
         CheckConstraint("choice IS NULL OR choice IN ('resources', 'xp')", name="ck_map_pickups_choice"),
     )
 
@@ -363,3 +363,25 @@ class SeasonResult(Base):
     title = Column(String)
     hero = Column(String)
     name = Column(String(100), nullable=False)
+
+
+class Doctrine(Base):
+    """A researched (or researching) doctrine; season-scoped."""
+    __tablename__ = "player_doctrines"
+    player_id = Column(ForeignKey("users.id"), primary_key=True)
+    key = Column(String, primary_key=True)
+    started_at = Column(BigInteger, nullable=False)
+    ready_at = Column(BigInteger, nullable=False)
+
+
+class CampHire(Base):
+    """One mercenary stack per camp per in-game week; first hire wins."""
+    __tablename__ = "camp_hires"
+    world_id = Column(Integer, primary_key=True)
+    q = Column(Integer, primary_key=True)
+    r = Column(Integer, primary_key=True)
+    season = Column(Integer, primary_key=True)
+    week = Column(Integer, primary_key=True)
+    player_id = Column(ForeignKey("users.id"), nullable=False)
+    kind = Column(String, nullable=False)
+    hired_at = Column(BigInteger, nullable=False)

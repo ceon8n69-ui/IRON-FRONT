@@ -36,14 +36,18 @@ def has_land(db, army):
 def movement_max(db, pid, army=None):
     from . import commander
     hero = db.get(Hero, pid)
+    from . import doctrines
     extra = commander.perk(db, pid, 'movement') if army is not None and army.commander else 0
-    return RULES['movement_max'] + (2 if hero and hero.kind == 'storm' else 0) + int(extra)
+    roads = doctrines.effect(db, pid, 'movement', _now())
+    return RULES['movement_max'] + (2 if hero and hero.kind == 'storm' else 0) + int(extra) + int(roads)
 
 
 def army_vision(db, army):
     from . import commander, seasons
     fog = int(seasons.effect(db, 'army_vision', _now(), 0))
-    return max(1, RULES['army_vision'] + fog + (int(commander.perk(db, army.player_id, 'vision')) if army.commander else 0))
+    from . import doctrines
+    recon = int(doctrines.effect(db, army.player_id, 'vision', _now()))
+    return max(1, RULES['army_vision'] + fog + recon + (int(commander.perk(db, army.player_id, 'vision')) if army.commander else 0))
 
 
 def _now():
@@ -55,7 +59,9 @@ def control_limit(db, pid):
     from .models import Building
     hq = db.scalar(select(Building).where(Building.player_id == pid, Building.kind == 'hq'))
     level = hq.level if hq else 1
-    return min(RULES['control_cap'], RULES['control_limit'] + RULES['control_per_hq'] * (level - 1))
+    from . import doctrines
+    return min(RULES['control_cap'], RULES['control_limit'] + RULES['control_per_hq'] * (level - 1)) \
+        + int(doctrines.effect(db, pid, 'control', _now()))
 
 
 def refresh_movement(db, army, at):
@@ -204,7 +210,9 @@ def armies(db, pid):
 def armies_max(db, pid):
     from .models import Building
     hq = db.scalar(select(Building).where(Building.player_id == pid, Building.kind == 'hq'))
-    return min(RULES['armies_cap'], RULES['armies_base'] + ((hq.level if hq else 1) - 1) // 2)
+    from . import doctrines
+    return min(RULES['armies_cap'] + 1, min(RULES['armies_cap'], RULES['armies_base'] + ((hq.level if hq else 1) - 1) // 2)
+               + int(doctrines.effect(db, pid, 'armies', _now())))
 
 
 def in_battle(db, pid):
