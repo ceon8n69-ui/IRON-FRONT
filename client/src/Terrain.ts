@@ -9,7 +9,19 @@ const INK = 0x1b201e;
 const ink = { color: INK, width: 1.4, alignment: 0.5 } as const;
 export function surface(x:number,y:number,biome:string,q:number,r:number) {
  const g=new Graphics();if(biome==='unknown')return g;
- const dry=biome==='desert';
+ const dry=biome==='desert'||biome==='beach';
+ if(biome==='sea'||biome==='lake'){
+  // Wave crests, seeded so they stay put when the chunk refocuses.
+  for(let i=0;i<5;i++){const px=x+(noise(q,r,i*5)-.5)*60,py=y+(noise(q,r,i*5+1)-.5)*28;
+   g.moveTo(px-6,py).quadraticCurveTo(px-3,py-3,px,py).quadraticCurveTo(px+3,py-3,px+6,py).stroke({color:0xd6efff,width:1.4,alpha:.7});}
+  return g;
+ }
+ if(biome==='river'){
+  g.moveTo(x-44,y+2).bezierCurveTo(x-18,y-14,x+12,y+14,x+44,y-4).stroke({color:0x2f6fa8,width:16,alpha:.55});
+  g.moveTo(x-44,y+2).bezierCurveTo(x-18,y-14,x+12,y+14,x+44,y-4).stroke({color:0x7cc1ea,width:9});
+  g.moveTo(x-20,y-3).lineTo(x-12,y-5).moveTo(x+10,y+4).lineTo(x+18,y+2).stroke({color:0xe6f6ff,width:1.2});
+  return g;
+ }
  // Grass tufts, pebbles and the odd flower, seeded by world coordinates.
  for(let i=0;i<16;i++){
   const px=x+(noise(q,r,i*3)-.5)*70,py=y+(noise(q,r,i*3+1)-.5)*34,n=noise(q,r,i*3+2);
@@ -68,6 +80,21 @@ export function environment(x:number,y:number,biome:string,q:number,r:number){
  } else if(biome==='hills'){
   rock(g,x-18,y-2,15,18);rock(g,x+10,y-4,21,30);rock(g,x+24,y+10,9,10);
   if(n(70)<.6) bush(g,x-26,y+12,null);
+ } else if(biome==='mountain'){
+  const peak=(px:number,py:number,w:number,h:number)=>{
+   g.ellipse(px+4,py+3,w,w*.3).fill({color:0x0b181c,alpha:.28});
+   g.poly([px-w,py,px-w*.15,py-h,px+w,py]).fill(0x7d827b).stroke(ink);
+   g.poly([px-w*.15,py-h,px+w,py,px+w*.1,py]).fill(0x5f645e);
+   g.poly([px-w*.15,py-h,px-w*.45,py-h*.55,px-w*.2,py-h*.62,px+w*.05,py-h*.5,px+w*.3,py-h*.6]).fill(0xf2f5f2).stroke({color:INK,width:1});
+  };
+  peak(x-14,y+6,22,44);peak(x+16,y+10,18,32);
+ } else if(biome==='beach'){
+  if(n(110)<.35){ // palm
+   const px=x+(n(111)-.5)*30,py=y+4;
+   g.moveTo(px,py).quadraticCurveTo(px+4,py-14,px+2,py-26).stroke({color:INK,width:4});
+   g.moveTo(px,py).quadraticCurveTo(px+4,py-14,px+2,py-26).stroke({color:0x8a6a3a,width:2.4});
+   for(const a of [-2.6,-1.9,-1.1,-.4]) g.moveTo(px+2,py-26).quadraticCurveTo(px+2+Math.cos(a)*10,py-30+Math.sin(a)*6,px+2+Math.cos(a)*16,py-22+Math.sin(a)*4).stroke({color:0x3f8a35,width:3.2});
+  } else if(n(112)<.5) rock(g,x+(n(113)-.5)*36,y+8,6,5);
  } else if(biome==='desert'){
   g.moveTo(x-34,y+6).quadraticCurveTo(x-6,y-12,x+24,y-2).stroke({color:0xb98d4a,width:1.6});
   g.moveTo(x-18,y+14).quadraticCurveTo(x+6,y+2,x+32,y+10).stroke({color:0xc79b55,width:1.2});

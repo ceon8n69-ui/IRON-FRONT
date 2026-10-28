@@ -17,6 +17,20 @@ def fail(reason):
 
 
 DIRECTIONS = [(1, 0), (-1, 0), (0, 1), (0, -1), (1, -1), (-1, 1)]
+TERRAIN_BLOCKED = {"sea": "нужен флот", "lake": "нужен флот", "mountain": "горы непроходимы"}
+WATER = {"sea", "lake", "river"}
+
+
+def has_fleet(db, army):
+    from .config import UNITS
+    kinds = [db.get(Unit, i).kind for i in db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id == army.id))]
+    return any(UNITS.get(k, {}).get("naval") for k in kinds)
+
+
+def has_land(db, army):
+    from .config import UNITS
+    kinds = [db.get(Unit, i).kind for i in db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id == army.id))]
+    return any(not UNITS.get(k, {}).get("naval") for k in kinds)
 
 
 def movement_max(db, pid):
@@ -53,11 +67,15 @@ def route(db, p, army, target, at):
     tiles = {(t.q, t.r): t.biome for t in db.scalars(select(Tile).where(*box(Tile)))}
     found = {(d.q, d.r) for d in db.scalars(select(Discovery).where(Discovery.player_id == p.id, *box(Discovery)))}
     owners = {(o.q, o.r): o.player_id for o in db.scalars(select(TileOwnership).where(*box(TileOwnership)))}
-    sites = bases.near(db, q0, r0, radius + bases.SAFE_RADIUS)
+    sites = bases.near(db, q0, r0, radius + bases.SAFE_RADIUS + 2)
     home, vision = bases.home(db, p.id), home_vision(db, p.id)
+    fleet = has_fleet(db, army)
+    cleared = garrisons.cleared_in(db, q0, r0, radius)
 
     def known(c):
         return c in found or distance(home, c) <= vision or distance((q0, r0), c) <= RULES['army_vision']
+
+    water_wall = []
 
     def blocked(c, final):
         if c not in tiles or not known(c):
@@ -66,9 +84,14 @@ def route(db, p, army, target, at):
             return 'Это база другого командира. PvP пока не включён'
         if c in owners and owners[c] != p.id:
             return 'Вход на чужую территорию пока недоступен: PvP не включён'
-        if not final and c not in owners and c not in sites and garrisons.guarded(c[0], c[1], sites):
+        terrain = tiles[c]
+        if terrain in TERRAIN_BLOCKED and not (fleet and terrain in WATER):
+            if terrain in WATER:
+                water_wall.append(c)
+            return 'Туда не пройти: ' + TERRAIN_BLOCKED[terrain]
+        if not final and c not in owners and c not in sites and c not in cleared and garrisons.guarded(c[0], c[1], sites, terrain):
             return 'Путь перекрыт гарнизоном NPC'
-        if not final and objects.blocks_path(db, c, p.id, sites):
+        if not final and objects.blocks_path(db, c, p.id, sites, terrain):
             return 'Путь перекрыт объектом карты: выберите его целью'
         return None
 
@@ -77,6 +100,15 @@ def route(db, p, army, target, at):
     if reason:
         fail(reason)
     costs = RULES['terrain_cost']
+
+    def step_cost(here, there):
+        if fleet and there in WATER:
+            cost = RULES['naval_cost']
+        else:
+            cost = costs.get(there, 1)
+        if fleet and (here in ("sea", "lake")) != (there in ("sea", "lake")):
+            cost += RULES['landing_cost']   # embarking or going ashore
+        return cost
     best, prev, heap = {(q0, r0): 0}, {}, [(0, q0, r0)]
     while heap:
         spent, q, r = heapq.heappop(heap)
@@ -88,15 +120,15 @@ def route(db, p, army, target, at):
             c = (q + dq, r + dr)
             if abs(c[0]-q0) > radius or abs(c[1]-r0) > radius or blocked(c, c == target):
                 continue
-            total = spent + costs.get(tiles[c], 1)
+            total = spent + step_cost(tiles[(q, r)] if (q, r) in tiles else "plain", tiles[c])
             if total < best.get(c, 1 << 30):
                 best[c], prev[c] = total, (q, r)
                 heapq.heappush(heap, (total, c[0], c[1]))
     if target not in best:
-        fail('Нет проходимого маршрута к этому гексу')
+        fail('Нет маршрута по суше: нужен флот' if water_wall else 'Нет проходимого маршрута к этому гексу')
     steps, c = [], target
     while c != (q0, r0):
-        steps.append((c[0], c[1], costs.get(tiles[c], 1)))
+        steps.append((c[0], c[1], step_cost(tiles[prev[c]], tiles[c])))
         c = prev[c]
     steps.reverse()
     return steps, best[target]
@@ -239,7 +271,15 @@ def dispatch(db, p, op, data, at, uid, change):
     if owner and owner.player_id != p.id:
         fail('Вход на чужую территорию пока недоступен: PvP не включён')
     steps, cost = route(db, p, army, (q, r), at)
-    if data['action'] == 'capture' or (not owner and not is_base and garrisons.guarded_at(db,q,r)):
+    at_water = tile.biome in WATER
+    if data['action'] == 'capture' and at_water:
+        fail('Водные гексы нельзя захватить: выберите «Переместить»')
+    if not owner and not is_base and garrisons.guarded_at(db, q, r):
+        if at_water and tile.biome == 'sea' and not has_fleet(db, army):
+            fail('Для морского боя нужны корабли')
+        if not at_water and not has_land(db, army):
+            fail('Нет сухопутных отрядов для боя')
+    if not at_water and (data['action'] == 'capture' or (not owner and not is_base and garrisons.guarded_at(db,q,r))):
         if is_base:
             fail('Базу нельзя захватить как территорию')
         if owner:

@@ -1,8 +1,8 @@
 import {surface, environment, bunker, squad, pile, chest, mine} from "./Terrain";
-import { unitSprite } from "./Units";
+import { unitSprite, pirateShip } from "./Units";
 import {Icon} from "./Icon";
 import { useEffect, useRef, useState } from "react";
-import { Application, Container, Graphics, Text } from "pixi.js";
+import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle, Army } from "./store";
 type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean; garrison_strength?: {name:string;hp:number} | null; object?: {kind:string;resource?:string;amount?:number;owner?:string|null;pending?:boolean} | null };
@@ -24,10 +24,21 @@ const colors: Record<string, number> = {
   forest: 0x4f9440,
   hills: 0x8fa36a,
   desert: 0xd9b46c,
+  beach: 0xe8d39a,
+  mountain: 0x8f948c,
+  river: 0x5aa7d8,
+  lake: 0x4a96cf,
+  sea: 0x3a7fc0,
   unknown: 0x1e2c37,
 };
-const sides: Record<string, number> = { plain: 0x6b4a2e, forest: 0x5c3f27, hills: 0x6c5a48, desert: 0x9c7442, unknown: 0x141e27 };
+const sides: Record<string, number> = { plain: 0x6b4a2e, forest: 0x5c3f27, hills: 0x6c5a48, desert: 0x9c7442, beach: 0xb08d55,
+  mountain: 0x5d5f5a, river: 0x6b4a2e, lake: 0x2d6aa6, sea: 0x26609e, unknown: 0x141e27 };
+const WATER = new Set(["sea", "lake"]);
 export const BATTLE_SCALE = 0.72, BATTLE_SHIFT = -70;
+// Raster unit sprites: 256x224 px (2x of the 128x112 render frame), feet at 82% height.
+// Displayed at the same size as the code-drawn figure, which is scaled 1.45 in that frame.
+const RASTER_FEET = 92 / 112, RASTER_SCALE = 0.5 / 1.45;
+const failed = new Set<string>();
 function hex(g: Graphics, x: number, y: number, size: number, color: number) {
   const p: number[] = [];
   for (let i = 0; i < 6; i++) {
@@ -72,6 +83,7 @@ export function MapView(props: Props) {
   const selection = useRef(new Graphics());
   const animations = useRef<BuildingVisual[]>([]);
   const [ready, setReady] = useState(false);
+  const [textures, setTextures] = useState(0);
   const [error, setError] = useState("");
   // Tactical field starts zoomed out so all 9 columns fit a phone above the command panel.
   const home = props.battle ? { scale: BATTLE_SCALE, x: 0, y: BATTLE_SHIFT } : { scale: 1, x: 0, y: 0 };
@@ -225,7 +237,7 @@ export function MapView(props: Props) {
     };
   }, []);
   // Snapshots arrive frequently; rebuild geometry only when renderable state changes.
-  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.army, props.center, props.route]);
+  const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.army, props.center, props.route, textures]);
   useEffect(() => {
     if (!ready || !app.current) return;
     const s = scene.current;
@@ -248,14 +260,14 @@ export function MapView(props: Props) {
             tiles.push({
               q,
               r,
-              biome: (q * 7 + r * 3) % 7 === 0 ? "forest" : "plain",
+              biome: props.battle?.state.terrain === "sea" ? "sea" : (q * 7 + r * 3) % 7 === 0 ? "forest" : "plain",
             });
     tiles.sort((a, b) => a.r - b.r || a.q - b.q);
     for (const t of tiles) {
       const x = 54 * Math.sqrt(3) * (t.q + t.r / 2),
         y = 54 * 0.975 * t.r;
       const g = new Graphics();
-      hex(g, x, y + 9, 52, sides[t.biome] ?? 0x263a36);
+      hex(g, x, WATER.has(t.biome) ? y + 4 : y + 9, 52, sides[t.biome] ?? 0x263a36);
       hex(g, x, y, 52, colors[t.biome]);
       if (t.biome !== "unknown") {
         const rim: number[] = [];
@@ -272,7 +284,8 @@ export function MapView(props: Props) {
         border.alpha=.3;ground.addChild(border);
       }
       if (t.garrison) {
-        s.addChild(bunker(x,y-7));
+        if (t.biome === "sea") { const p = pirateShip(); p.position.set(x, y + 6); s.addChild(p); }
+        else s.addChild(bunker(x,y-7));
         const tag = t.garrison_strength ? `⚑ ${t.garrison_strength.name} ${t.garrison_strength.hp}` : "⚑ NPC";
         const badge = new Text({text:tag,style:{fontSize:13,fill:0xffb4a0,fontFamily:"sans-serif",fontWeight:"bold"}});
         badge.anchor.set(.5);badge.position.set(x,y+20);
@@ -305,6 +318,7 @@ export function MapView(props: Props) {
               watchtower: "БАШНЯ",
               electronics: "ЭЛЕКТРОНИКА",
               repair: "РЕМОНТ",
+              shipyard: "ВЕРФЬ",
             } as Record<string, string>
           )[b.kind],
           style: {
@@ -346,7 +360,20 @@ export function MapView(props: Props) {
         if (st.id === props.battle.state.active) {
           const ring = new Graphics(); hex(ring,x,y,46,0xe5b65a); ring.alpha=.4; ground.addChild(ring);
         }
-        const sprite = unitSprite(st.art ?? legacyArt[st.kind], st.faction ?? undefined, st.side, st.hp / (st.start * each));
+        // Raster sprite from /art/units/<kind>.png when loaded (owner art drops in here); code art otherwise.
+        const url = `/art/units/${st.kind}.png`;
+        const ratio = st.hp / (st.start * each);
+        const sprite = unitSprite(st.art ?? legacyArt[st.kind], st.faction ?? undefined, st.side, ratio);
+        const tex = Assets.cache.has(url) ? (Assets.cache.get(url) as Texture) : null;
+        if (tex) {
+          sprite.removeChildren(0, sprite.children.length - 1);   // keep only the health bar
+          const img = new Sprite(tex);
+          img.anchor.set(0.5, RASTER_FEET);
+          img.scale.set(RASTER_SCALE * (st.side === "npc" ? -1 : 1), RASTER_SCALE);
+          sprite.addChildAt(img, 0);
+        } else if (!failed.has(url)) {
+          Assets.load(url).then(() => setTextures((n) => n + 1)).catch(() => failed.add(url));
+        }
         sprite.scale.set(1.35);
         sprite.position.set(x, y + 8);
         s.addChild(sprite);
@@ -363,7 +390,8 @@ export function MapView(props: Props) {
       const project = (q:number,r:number) => [54*Math.sqrt(3)*(q-(props.center?.[0]??64)+(r-(props.center?.[1]??64))/2),54*.975*(r-(props.center?.[1]??64))];
       const [x,y]=project(army.q,army.r);
       const marker = new Container();marker.label="march";marker.position.set(x,y);
-      const flag = squad(0,0,0x4c9ce5);
+      const afloat = (props.world ?? []).some((t) => t.q === army.q && t.r === army.r && (t.biome === "sea" || t.biome === "lake"));
+      const flag = afloat ? unitSprite("boat_transport", undefined, "player", 1) : squad(0,0,0x4c9ce5);
       marker.addChild(flag);s.addChild(marker);
       if (order) {
         // Walk the server path hex by hex: [[q, r, arrive_at], ...] after the start hex.

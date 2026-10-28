@@ -16,17 +16,24 @@ from . import bases, garrisons
 PILES = {"metal": 180, "oil": 120, "fuel": 60, "food": 150}
 CHEST = {"resources": {"metal": 250, "electronics": 60}, "xp": 120}
 MINES = {"metal": 6, "oil": 4}          # per minute, like territory yield
-from .config import NPC_TIERS, UNITS
+from .config import NPC_TIERS, NPC_SEA_TIERS, UNITS
 TIERS = [(t["name"], sum(UNITS[k]["hp"] * n for k, n in t["stacks"]), t["xp"]) for t in NPC_TIERS]
+SEA_TIERS = [(t["name"], sum(UNITS[k]["hp"] * n for k, n in t["stacks"]), t["xp"]) for t in NPC_SEA_TIERS]
 
 
 def _roll(q, r, salt):
     return int(hashlib.sha256(f"iron-obj-1:{salt}:{q}:{r}".encode()).hexdigest()[:8], 16)
 
 
-def placed(q, r, sites):
-    """Static object at a hex, or None. `sites` = nearby base sites."""
-    if garrisons.guarded(q, r, sites):
+def placed(q, r, sites, biome="plain"):
+    """Static object at a hex, or None. `sites` = nearby base sites, `biome` = the tile's terrain."""
+    if garrisons.guarded(q, r, sites, biome) or biome in ("mountain", "river", "lake"):
+        return None
+    if biome == "sea":
+        # Shipwrecks: salvage for fleets.
+        if _roll(q, r, "wreck") % 100 < 3 and not any(abs(q - b[0]) + abs(r - b[1]) <= 2 for b in sites):
+            kind = ("metal", "fuel", "electronics")[_roll(q, r, "wres") % 3]
+            return {"kind": "pile", "resource": kind, "amount": 200 if kind != "electronics" else 80, "wreck": True}
         return None
     # The base and its first ring stay clear, so the opening moves are clean.
     if any(max(abs(q - b[0]), abs(r - b[1]), abs(q + r - b[0] - b[1])) <= 1 for b in sites):
@@ -45,14 +52,21 @@ def placed(q, r, sites):
 
 
 def at(db, q, r):
-    return placed(q, r, bases.near(db, q, r, bases.SAFE_RADIUS))
+    tile = db.get(Tile, (1, q, r))
+    return placed(q, r, bases.near(db, q, r, bases.SAFE_RADIUS + 2), tile.biome if tile else "plain")
 
 
-def strength(q, r):
+def strength(q, r, biome="plain", sites=()):
     """Visible neutral stack strength: (label, hp, xp)."""
-    if _is_tutorial(q, r):
+    if biome == "sea":
+        return SEA_TIERS[_roll(q, r, "sea-tier") % 3]
+    if (q, r - 1) in set(sites) or _is_tutorial(q, r):
         return TIERS[0]
     return TIERS[_roll(q, r, "tier") % 3]
+
+
+def tier_definition(name):
+    return next(t for t in NPC_TIERS + NPC_SEA_TIERS if t["name"] == name)
 
 
 def _is_tutorial(q, r):
@@ -60,9 +74,9 @@ def _is_tutorial(q, r):
     return (q, r - 1) in set(bases.candidates()) or (q, r - 1) == bases.STAGING
 
 
-def blocks_path(db, c, pid, sites):
+def blocks_path(db, c, pid, sites, biome="plain"):
     """Untaken pickups and unowned/foreign mines can only be a destination."""
-    obj = placed(c[0], c[1], sites)
+    obj = placed(c[0], c[1], sites, biome)
     if not obj:
         return False
     if obj["kind"] == "mine":
@@ -71,8 +85,8 @@ def blocks_path(db, c, pid, sites):
     return db.get(MapPickup, (1, c[0], c[1])) is None
 
 
-def view(db, pid, q, r, sites):
-    obj = placed(q, r, sites)
+def view(db, pid, q, r, sites, biome="plain"):
+    obj = placed(q, r, sites, biome)
     if not obj:
         return None
     if obj["kind"] == "mine":

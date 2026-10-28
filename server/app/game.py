@@ -196,7 +196,7 @@ def snapshot(db, p):
 def faction_unit(hero_kind, requested):
     """Resolve a hire request to this commander's own unit (role names map to the faction variant)."""
     roster = {v["key"]: v for v in FACTIONS[hero_kind]["units"]}
-    if requested in roster:
+    if requested in roster or UNITS.get(requested, {}).get("naval"):
         return requested
     by_role = {v["role"]: v["key"] for v in roster.values()}
     if requested in by_role:
@@ -340,7 +340,7 @@ def dispatch(db, p, op, data):
         kind = faction_unit(hero.kind, data.get("kind") or "rifles")
         spec = UNITS[kind]
         lv = levels(buildings, now())
-        if not lv.get("barracks"):
+        if not spec.get("naval") and not lv.get("barracks"):
             fail("Необходимы готовые казармы")
         for need, level in spec["requires"].items():
             if lv.get(need, 0) < level:

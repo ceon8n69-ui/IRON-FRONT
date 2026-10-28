@@ -30,6 +30,7 @@ export type Battle = {
     ability_used?: boolean;
     npc_tier?: {name:string;hp:number;xp:number};
     cover: number[][];
+    terrain?: string;
   };
 };
 export type State = {

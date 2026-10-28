@@ -6,7 +6,10 @@ from .config import VERSION
 from . import bases
 
 
-def guarded(q, r, sites):
+LAND_BLOCKED = {"sea", "lake", "river", "mountain"}
+
+
+def guarded(q, r, sites, biome="plain"):
     """Neutral NPC garrison rule relative to nearby base sites.
 
     Each base has a tutorial garrison directly south (q, r+1); the rest of its
@@ -14,6 +17,10 @@ def guarded(q, r, sites):
     always free. Outside every safe zone a fixed coordinate pattern applies.
     """
     sites = list(sites)
+    if biome == "sea":
+        return pirates(q, r, sites)
+    if biome in LAND_BLOCKED:
+        return False
     if (q, r - 1) in sites:
         return True
     if any(abs(q - b[0]) + abs(r - b[1]) <= bases.SAFE_RADIUS for b in sites):
@@ -21,37 +28,74 @@ def guarded(q, r, sites):
     return (q*7 + r*11) % 13 == 0
 
 
+def pirates(q, r, sites):
+    """Sea raiders: open water away from every base."""
+    if any(abs(q - b[0]) + abs(r - b[1]) <= bases.SAFE_RADIUS + 2 for b in sites):
+        return False
+    return (q * 5 + r * 13) % 29 == 0
+
+
+def cleared_in(db, q, r, radius):
+    from .models import ClearedSite
+    return {(c.q, c.r) for c in db.scalars(select(ClearedSite).where(ClearedSite.world_id == 1,
+        ClearedSite.q.between(q - radius, q + radius), ClearedSite.r.between(r - radius, r + radius)))}
+
+
 def guarded_at(db, q, r):
-    return guarded(q, r, bases.near(db, q, r, bases.SAFE_RADIUS))
+    from .models import ClearedSite
+    if db.get(ClearedSite, (1, q, r)):
+        return False
+    tile = db.get(Tile, (1, q, r))
+    return guarded(q, r, bases.near(db, q, r, bases.SAFE_RADIUS + 2), tile.biome if tile else "plain")
+
+
+WATER = {"sea", "lake", "river"}
+
+
+def is_water(db, q, r):
+    tile = db.get(Tile, (1, q, r))
+    return bool(tile and tile.biome in WATER)
 
 
 def active(db, pid):
     return db.scalar(select(Battle).where(Battle.player_id==pid, Battle.status=='active'))
 
 
+def fighting_units(db, army, at_sea):
+    """Ships fight at sea, everyone else on land."""
+    from .config import UNITS
+    units=[db.get(Unit,i) for i in db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id).order_by(ArmyUnit.unit_id))]
+    return [u for u in units if u and u.status=='army' and bool(UNITS.get(u.kind,{}).get('naval'))==at_sea]
+
+
 def begin(db, p, army, order):
-    from .objects import strength
+    from .objects import strength, tier_definition
     from .models import Hero, Item
     from . import combat, equipment
     from .game import PLAYER_SPOTS, npc_stacks
-    from .config import NPC_TIERS
-    units=[db.get(Unit,i) for i in db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id).order_by(ArmyUnit.unit_id))]
-    units=[u for u in units if u and u.status=='army'][:len(PLAYER_SPOTS)]
+    at_sea = is_water(db, order.q, order.r)
+    units = fighting_units(db, army, at_sea)[:len(PLAYER_SPOTS)]
+    if not units:
+        order.status, order.result = 'blocked', ('Для морского боя нужны корабли' if at_sea else 'Нет сухопутных отрядов для боя')
+        army.status = 'idle'
+        return
     stacks=[]
     for i,u in enumerate(units):
         u.status='battle'
         stacks.append(combat.make_stack(f"p{i+1}","player",u.kind,u.count,PLAYER_SPOTS[i],u.id,u.hp))
-    name,hp,xp=strength(order.q,order.r)
-    tier=next(t for t in NPC_TIERS if t["name"]==name)
+    tile = db.get(Tile, (1, order.q, order.r))
+    name,hp,xp=strength(order.q,order.r,tile.biome,bases.near(db,order.q,order.r,1))
+    tier=tier_definition(name)
     hero=db.get(Hero,p.id)
     bonus=equipment.damage_bonus(db.scalars(select(Item).where(Item.owner_id==p.id)))
     seed=str(uuid.uuid4())
-    state,_,outcome=combat.new_battle(stacks,npc_stacks(tier["stacks"]),[[3,4],[4,2],[5,5]],seed,hero.kind,bonus)
+    state,_,outcome=combat.new_battle(stacks,npc_stacks(tier["stacks"]),[] if at_sea else [[3,4],[4,2],[5,5]],seed,hero.kind,bonus)
     state['expedition']={'army_id':army.id,'order_id':order.id,'q':order.q,'r':order.r}
     state['npc_tier']={'name':name,'hp':hp,'xp':xp}
+    state['terrain']='sea' if at_sea else tile.biome
     db.add(Battle(id=str(uuid.uuid4()),player_id=p.id,unit_id=units[0].id,status='active',
         seed=seed,balance_version=VERSION,state=state))
-    order.status='complete';order.result=f'{name} NPC: требуется победа в бою'
+    order.status='complete';order.result=f'{name}: требуется победа в бою'
     army.status='idle'
 
 
@@ -61,6 +105,8 @@ def finish(db, p, battle, outcome, at):
     ctx=battle.state['expedition'];army=db.get(Army,ctx['army_id']);order=db.get(ArmyOrder,ctx['order_id'])
     db.scalar(select(Tile).where(Tile.world_id==1,Tile.q==ctx['q'],Tile.r==ctx['r']).with_for_update())
     owner=db.get(TileOwnership,(1,ctx['q'],ctx['r']))
+    if battle.state.get('terrain') == 'sea':
+        return _finish_sea(db, p, battle, outcome, at, ctx, army, order)
     captured=outcome=='victory' and owner is None and len(owned(db,p.id))<EXPEDITIONS['control_limit'] and linked(db,p.id,ctx['q'],ctx['r'])
     if captured:
         db.add(TileOwnership(world_id=1,q=ctx['q'],r=ctx['r'],player_id=p.id,acquired_at=at))
@@ -72,3 +118,25 @@ def finish(db, p, battle, outcome, at):
     for unit in battle_units(db,battle):
         unit.status='army'
     return captured
+
+
+def _finish_sea(db, p, battle, outcome, at, ctx, army, order):
+    """Sea raiders: victory clears the site for everyone and pays salvage; water is never owned."""
+    from sqlalchemy.dialects.postgresql import insert
+    from .models import ClearedSite
+    from .objects import tier_definition
+    from .game import battle_units, change
+    from .expeditions import discover
+    won = False
+    if outcome == 'victory':
+        won = db.execute(insert(ClearedSite).values(world_id=1, q=ctx['q'], r=ctx['r'], player_id=p.id, cleared_at=at)
+                         .on_conflict_do_nothing().returning(ClearedSite.q)).scalar() is not None
+    if won:
+        change(db, p, tier_definition(battle.state['npc_tier']['name'])['loot'], 'sea_raid')
+        army.q, army.r = ctx['q'], ctx['r']; discover(db, army, at)
+        order.result = 'Пираты разбиты. Трофеи доставлены на базу'
+    else:
+        order.result = 'Пиратов уже разбил другой флот' if outcome == 'victory' else 'Поражение. Флот отступил'
+    for unit in battle_units(db, battle):
+        unit.status = 'army'
+    return won
