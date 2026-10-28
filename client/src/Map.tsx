@@ -279,9 +279,9 @@ export function MapView(props: Props) {
       if (t.visibility === "explored") g.alpha = .55;
       ground.addChild(g);
       if(t.visibility!=="unknown")ground.addChild(surface(x,y,t.biome,t.q+(props.center?.[0]??0),t.r+(props.center?.[1]??0)));
-      if (t.control === "self" || t.control === "other" || t.home || t.base) {
+      if (t.control === "self" || t.control === "other" || t.control === "ally" || t.home || t.base) {
         const border = new Graphics();
-        hex(border,x,y,48,t.home ? 0xe5b65a : t.base === "other" ? 0xd95a52 : t.base === "staging" ? 0xa7aeb5 : t.control === "self" ? 0x4c9ce5 : 0xd95a52);
+        hex(border,x,y,48,t.home ? 0xe5b65a : t.base === "ally" || t.control === "ally" ? 0x64b87b : t.base === "other" ? 0xd95a52 : t.base === "staging" ? 0xa7aeb5 : t.control === "self" ? 0x4c9ce5 : 0xd95a52);
         border.alpha=.3;ground.addChild(border);
         if (t.control === "self" && t.supplied === false) {
           // Cut off from the base: red rim and a broken-chain mark.

@@ -513,7 +513,7 @@ function App() {
               </> : state.hero && defs && <Commander state={state} definition={defs.heroes[state.hero.kind]} busy={busy} equip={(item_id,equipped)=>run(()=>command("/equipment/equip",{item_id,equipped}))} pick={(key)=>run(()=>command("/commander/skill",{key}))}/>}
             </section>
           ) : tab === "Сезон" ? (
-            <Season clock={clock} revision={state.revision} heroes={defs?.heroes ?? {}} />
+            <Season clock={clock} revision={state.revision} heroes={defs?.heroes ?? {}} alliance={state.alliance} busy={busy} run={run} />
           ) : (
             <section className="content">
               <Doctrines state={state} clock={clock} busy={busy} run={run} />
@@ -553,7 +553,7 @@ function App() {
               <div className="section-label">СТАТУС СРЕЗА</div>
               <p>
                 Сезоны на 2 недели, несколько соединений, рост командира, доктрины, снабжение, узлы и Столица,
-                асинхронный PvP, руины и наёмники. В работе: альянсы и набеги. Рынок и Stars ещё не включены.
+                асинхронный PvP, руины и наёмники. альянсы и набеги мародёров. Рынок и Stars ещё не включены.
               </p>
             </section>
           )}

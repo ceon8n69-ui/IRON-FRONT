@@ -32,7 +32,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.15.0")
+app = FastAPI(title="IRON FRONT", version="0.16.0")
 
 
 class Strict(BaseModel):
@@ -320,6 +320,47 @@ class DoctrineRef(Strict):
     key: str = Field(max_length=40)
 
 
+class AllianceCreate(Strict):
+    name: str = Field(min_length=3, max_length=24)
+    tag: str = Field(min_length=2, max_length=5)
+
+
+class AllianceJoin(Strict):
+    code: str = Field(min_length=4, max_length=12)
+
+
+class AllianceKick(Strict):
+    player_id: str = Field(max_length=40)
+
+
+class Empty(Strict):
+    pass
+
+
+@app.post("/api/v1/alliance/create")
+def alliance_create(body: AllianceCreate, authorization: str | None = Header(default=None),
+                    idempotency_key: str | None = Header(default=None)):
+    return mutate("alliance_create", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/alliance/join")
+def alliance_join(body: AllianceJoin, authorization: str | None = Header(default=None),
+                  idempotency_key: str | None = Header(default=None)):
+    return mutate("alliance_join", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/alliance/leave")
+def alliance_leave(body: Empty, authorization: str | None = Header(default=None),
+                   idempotency_key: str | None = Header(default=None)):
+    return mutate("alliance_leave", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/alliance/kick")
+def alliance_kick(body: AllianceKick, authorization: str | None = Header(default=None),
+                  idempotency_key: str | None = Header(default=None)):
+    return mutate("alliance_kick", body.model_dump(), authorization, idempotency_key)
+
+
 @app.post("/api/v1/doctrines/research")
 def doctrine_research(body: DoctrineRef, authorization: str | None = Header(default=None),
                       idempotency_key: str | None = Header(default=None)):
@@ -494,6 +535,9 @@ def tiles(
         from .combat import distance
         from . import logistics, nodes
         radar = logistics.radars(db,pid)
+        from . import raids as raid_mod, alliances
+        raid_hexes = raid_mod.active_in(db,q,r,radius)
+        friends = alliances.ally_ids(db,pid)
         supply = logistics.supplied(db,pid)
         result=[]
         for t in ts:
@@ -502,18 +546,22 @@ def tiles(
             known = in_view or (t.q,t.r) in discovered
             owner = owners.get((t.q,t.r)) if in_view else None
             site = (t.q,t.r) in sites
-            guarded = bool(in_view and not owner and not site and (t.q,t.r) not in cleared and garrisons.guarded(t.q,t.r,sites,t.biome))
-            tier = objects.strength(t.q,t.r,t.biome,sites) if guarded else None
+            raid = raid_hexes.get((t.q,t.r))
+            if raid and not in_view and raid.player_id != pid:
+                raid = None   # the threatened commander always sees the band; others need sight
+            guarded = bool(raid) or bool(in_view and not owner and not site and (t.q,t.r) not in cleared and garrisons.guarded(t.q,t.r,sites,t.biome))
+            tier = raid_mod.strength(raid) if raid else objects.strength(t.q,t.r,t.biome,sites) if guarded else None
             base = None
             if site and in_view:
-                base = "self" if sites[(t.q,t.r)] == pid else "other"
+                base = "self" if sites[(t.q,t.r)] == pid else "ally" if sites[(t.q,t.r)] in friends else "other"
             result.append({"id":f"1:{t.q}:{t.r}","q":t.q,"r":t.r,
                 "biome":t.biome if known else "unknown",
                 "garrison":guarded,
                 "garrison_strength":{"name":tier[0],"hp":tier[1],"xp":tier[2]} if tier else None,
                 "object":objects.view(db,pid,t.q,t.r,sites,t.biome) if in_view and not site else None,
                 "visibility":"visible" if in_view else "explored" if known else "unknown",
-                "control":("self" if owner == pid else "other" if owner else "neutral") if in_view else None,
+                "control":("self" if owner == pid else "ally" if owner in friends else "other" if owner else "neutral") if in_view else None,
+                "raid":{"strikes_at":raid.strikes_at,"target":[raid.target_q,raid.target_r],"mine":raid.player_id == pid} if raid else None,
                 "home":[t.q,t.r] == home,
                 "node":nodes.view(nodes.at(t.q,t.r,t.biome,sites)) if known else None,
                 "supplied":((t.q,t.r) in supply) if owner == pid else None,

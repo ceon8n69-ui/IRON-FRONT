@@ -110,6 +110,7 @@ def title_for(rank):
 
 def leaderboard(db, pid, limit=20):
     from sqlalchemy import func
+    from . import alliances
     from .models import Player, Hero, SeasonResult
     season = current(db)
     rows = list(db.execute(select(Player.id, Player.name, Player.vp, Hero.kind)
@@ -131,6 +132,8 @@ def leaderboard(db, pid, limit=20):
         "rules": {"node_vp_per_hour": 60, "capital_vp_per_hour": 300, **VP_EVENTS},
         "last": last,
         "medals": medals,
+        "alliances": alliances.ranking(db),
+        "alliance": alliances.view(db, pid),
     }
 
 
@@ -162,7 +165,7 @@ def rollover(db, at, seed=None):
     from sqlalchemy import text, delete, update
     from .models import (Player, Hero, SeasonResult, Resource, Ledger, Building, Unit, Reward, Battle, BattleTurn,
                          PvpReport, Army, ArmyUnit, ArmyOrder, Item, Ownership, Job, MapPickup, MapMine,
-                         ClearedSite, TileOwnership, Discovery, WorldBase, Command, Tile, Event, Doctrine)
+                         ClearedSite, TileOwnership, Discovery, WorldBase, Command, Tile, Event, Doctrine, Raid)
     from .config import INITIAL, FACTIONS, UNITS
     from . import worldgen, nodes
     db.execute(text("SELECT pg_advisory_xact_lock(:a, :b)"), {"a": LOCK[0], "b": LOCK[1]})
@@ -192,7 +195,7 @@ def rollover(db, at, seed=None):
         db.execute(delete(model))
     db.execute(delete(Army))
     for model in (Item, Job, Unit, Building, MapPickup, MapMine, ClearedSite, TileOwnership, Discovery, WorldBase, Command,
-                  Doctrine):
+                  Doctrine, Raid):
         db.execute(delete(model))
     # New map.
     new_seed = seed or f"season-{season.number + 1}-{secrets.token_hex(4)}"

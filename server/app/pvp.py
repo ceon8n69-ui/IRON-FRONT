@@ -34,7 +34,13 @@ FIELD_COVER = [[3, 4], [4, 2], [5, 5]]
 # ---- targets ---------------------------------------------------------------
 
 def target(db, pid, q, r):
-    """Hostile holding at a hex: {'kind', 'defender_id'} or None."""
+    """Hostile holding at a hex: {'kind', 'defender_id'} or None. Allies' holdings are never targets."""
+    from . import alliances
+    found = _target(db, pid, q, r)
+    return None if found and alliances.allied(db, pid, found["defender_id"]) else found
+
+
+def _target(db, pid, q, r):
     is_base, owner = bases.at(db, q, r)
     if is_base:
         return {"kind": "base", "defender_id": owner} if owner and owner != pid else None

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { request, type Calendar } from "./store";
+import { request, type Calendar, type AllianceView } from "./store";
+import { Alliance } from "./Alliance";
 
 type Row = { rank: number; name: string; vp: number; hero: string; me?: boolean; title?: string };
 type Board = {
@@ -9,6 +10,7 @@ type Board = {
   rules: Record<string, number>;
   last: { season: number; top: Row[] } | null;
   medals: { season: number; rank: number; title: string; vp: number }[];
+  alliances: { rank: number; name: string; tag: string; vp: number; members: number }[];
 };
 const left = (s: number) => {
   const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
@@ -17,7 +19,8 @@ const left = (s: number) => {
 const medal = (rank: number) => rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `${rank}`;
 
 /** Season standings: time left, the week's event, victory points and the leaderboard. */
-export function Season({ clock, revision, heroes }: { clock: number; revision: number; heroes: Record<string, { name: string }> }) {
+export function Season({ clock, revision, heroes, alliance, busy, run }: { clock: number; revision: number; heroes: Record<string, { name: string }>;
+  alliance?: AllianceView | null; busy: boolean; run: (f: () => Promise<unknown>) => void }) {
   const [board, setBoard] = useState<Board | null>(null);
   const [error, setError] = useState("");
   useEffect(() => {
@@ -34,6 +37,7 @@ export function Season({ clock, revision, heroes }: { clock: number; revision: n
       <p>Неделя {cal.week}, день {cal.day} · <b>{cal.event.name}</b>: {cal.event.about}</p>
       <div className="season-me"><span>Ваше место</span><b>{medal(board.me.rank)}</b><span>Очки победы</span><b>{board.me.vp}</b></div>
     </article>}
+    <Alliance alliance={alliance} busy={busy} run={run} />
     <div className="section-label">КАК ПОБЕЖДАТЬ</div>
     <ul className="season-rules">
       <li><b>Столица</b> в центре карты: {board.rules.capital_vp_per_hour} очков в час, пока она связана с вашей базой цепочкой своих гексов. Охраняет её «Гвардия Столицы».</li>
@@ -48,6 +52,11 @@ export function Season({ clock, revision, heroes }: { clock: number; revision: n
       </li>)}
       {!board.top.length && <li>Пока никто не набрал очков.</li>}
     </ol>
+    {!!board.alliances.length && <>
+      <div className="section-label">АЛЬЯНСЫ</div>
+      <ol className="season-board">{board.alliances.map((a) => <li key={a.tag} className={alliance?.tag === a.tag ? "me" : ""}>
+        <span className="pos">{medal(a.rank)}</span><span className="who">[{a.tag}] {a.name}<small>{a.members} команд.</small></span><b>{a.vp}</b></li>)}</ol>
+    </>}
     {board.last && <>
       <div className="section-label">ПОБЕДИТЕЛИ СЕЗОНА {board.last.season}</div>
       <ol className="season-board">{board.last.top.map((r) => <li key={r.rank}><span className="pos">{medal(r.rank)}</span><span className="who">{r.name}<small>{r.title}</small></span><b>{r.vp}</b></li>)}</ol>
@@ -56,6 +65,5 @@ export function Season({ clock, revision, heroes }: { clock: number; revision: n
       <div className="section-label">ВАШИ МЕДАЛИ</div>
       <div className="medals">{board.medals.map((m) => <span key={m.season}>🎖 Сезон {m.season}: {m.title} · {m.rank} место · {m.vp} очков</span>)}</div>
     </>}
-    <p className="commander-note">Альянсы появятся в этой вкладке в следующем обновлении.</p>
   </section>;
 }
