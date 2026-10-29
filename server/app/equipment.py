@@ -14,6 +14,8 @@ DEFINITIONS = {
     'garrison-module-v1': {'name': 'Трофейный модуль', 'rarity': 'uncommon', 'slot': 'gear', 'perks': {'attack': 0.03}},
     'precision-module-v1': {'name': 'Модуль точности', 'rarity': 'rare', 'slot': 'gear', 'perks': {'ranged': 0.06}},
     'vanguard-module-v1': {'name': 'Модуль «Авангард»', 'rarity': 'epic', 'slot': 'gear', 'perks': {'attack': 0.05, 'initiative': 1}},
+    'recruit-poster': {'name': 'Вербовочный плакат', 'rarity': 'uncommon', 'slot': 'gear', 'perks': {'refill_cost': 0.2}},
+    'drill-manual': {'name': 'Строевой устав', 'rarity': 'epic', 'slot': 'gear', 'perks': {'unit_xp': 0.4, 'initiative': 1}},
     # weapon
     'service-pistol': {'name': 'Наградной пистолет', 'rarity': 'uncommon', 'slot': 'weapon', 'perks': {'attack': 0.03}},
     'marshal-sabre': {'name': 'Сабля маршала', 'rarity': 'rare', 'slot': 'weapon', 'perks': {'attack': 0.06}},
@@ -26,6 +28,7 @@ DEFINITIONS = {
     'valor-medal': {'name': 'Медаль за отвагу', 'rarity': 'uncommon', 'slot': 'badge', 'perks': {'morale': 0.05}},
     'staff-badge': {'name': 'Знак штабиста', 'rarity': 'rare', 'slot': 'badge', 'perks': {'initiative': 1}},
     'fortune-order': {'name': 'Орден Фортуны', 'rarity': 'epic', 'slot': 'badge', 'perks': {'luck': 0.08, 'morale': 0.04}},
+    'regiment-banner': {'name': 'Полковое знамя', 'rarity': 'rare', 'slot': 'badge', 'perks': {'unit_xp': 0.25, 'morale': 0.03}},
     # optics / kit
     'field-binoculars': {'name': 'Полевой бинокль', 'rarity': 'uncommon', 'slot': 'optics', 'perks': {'vision': 1}},
     'quartermaster-bag': {'name': 'Сумка интенданта', 'rarity': 'rare', 'slot': 'optics', 'perks': {'plunder': 0.12}},
@@ -35,7 +38,7 @@ for _key, _d in DEFINITIONS.items():
     _d['image'] = f'/art/equipment/{_key}.webp'
     _d['slot_name'] = SLOTS[_d['slot']]
     _d['damage_bonus'] = _d['perks'].get('attack', 0)   # legacy field for old clients
-LOOT_VERSION = 'gar-loot-v2'
+LOOT_VERSION = 'gar-loot-v3'   # v3: unit-growth artifacts joined the pools
 RARITY_WEIGHTS = {  # by NPC tier index: uncommon / rare / epic
     0: (80, 18, 2), 1: (62, 30, 8), 2: (45, 38, 17), 3: (25, 45, 30),
 }
