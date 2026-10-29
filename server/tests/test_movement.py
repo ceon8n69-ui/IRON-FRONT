@@ -23,14 +23,14 @@ def biome(c, q, r, kind):
 
 def test_multi_hex_route_spends_points_fuel_and_walks_step_by_step(client, monkeypatch):
     c = client; h, u = commander(c, monkeypatch); a = create(c, h, u); Q, R = home(c, h)
-    assert a['movement'] == a['movement_max'] == 14 and a['movement_next_at'] is None
+    assert a['movement'] == a['movement_max'] == 30 and a['movement_next_at'] is None
     r = order(c, h, a, Q+3, R, 'move')
     assert r.status_code == 200, r.text
     s = r.json()['state']; army = s['armies'][0]; o = army['orders'][0]
-    assert army['movement'] == 11 and s['resources']['fuel'] == 197
+    assert army['movement'] == 27 and s['resources']['fuel'] == 197
     assert [p[:2] for p in o['path']] == [[Q+1, R], [Q+2, R], [Q+3, R]]
     assert [p[2] - o['started_at'] for p in o['path']] == [10, 20, 30]
-    assert army['movement_next_at'] == s['calendar']['next_day_at']     # full refill at the next dawn
+    assert army['movement_next_at'] == o['started_at'] + 240           # +1 point every 4 minutes
     t0 = o['started_at']
     at_time(monkeypatch, t0 + 15)
     assert (me(c, h)['armies'][0]['q'], me(c, h)['armies'][0]['status']) == (Q+1, 'moving')
@@ -45,7 +45,7 @@ def test_terrain_costs_and_not_enough_points(client, monkeypatch):
     c = client; h, u = commander(c, monkeypatch); a = create(c, h, u); Q, R = home(c, h)
     biome(c, Q+1, R, 'hills')
     r = order(c, h, a, Q+1, R, 'move')
-    assert r.status_code == 200 and r.json()['state']['armies'][0]['movement'] == 11
+    assert r.status_code == 200 and r.json()['state']['armies'][0]['movement'] == 27
     assert r.json()['state']['armies'][0]['orders'][0]['ready_at'] - r.json()['state']['armies'][0]['orders'][0]['started_at'] == 30
     at_time(monkeypatch, r.json()['state']['armies'][0]['orders'][0]['ready_at'] + 1); me(c, h)
     with c.factory.begin() as db:
@@ -56,19 +56,17 @@ def test_terrain_costs_and_not_enough_points(client, monkeypatch):
     assert me(c, h)['resources']['fuel'] == fuel
 
 
-def test_movement_refills_in_full_at_dawn(client, monkeypatch):
+def test_movement_regenerates_every_four_minutes(client, monkeypatch):
     c = client; h, u = commander(c, monkeypatch); a = create(c, h, u)
     with c.factory.begin() as db:
-        army = db.get(Army, a['id']); army.movement = 0
-    s = me(c, h)
-    dawn = s['calendar']['next_day_at']
-    assert s['armies'][0]['movement'] == 0 and s['armies'][0]['movement_next_at'] == dawn
-    at_time(monkeypatch, dawn - 5)
-    assert me(c, h)['armies'][0]['movement'] == 0                 # no trickle inside a day
-    at_time(monkeypatch, dawn + 1)
-    s = me(c, h)
-    assert s['armies'][0]['movement'] == 14 and s['armies'][0]['movement_next_at'] is None
-    assert s['calendar']['day'] == 2 and s['calendar']['week'] == 1
+        army = db.get(Army, a['id']); army.movement, army.movement_at = 0, game.now()
+    t0 = game.now()
+    at_time(monkeypatch, t0 + 3 * 240 + 5)
+    army = me(c, h)['armies'][0]
+    assert army['movement'] == 3 and army['movement_next_at'] == t0 + 4 * 240
+    at_time(monkeypatch, t0 + 2 * 3600)                     # full in two hours
+    army = me(c, h)['armies'][0]
+    assert army['movement'] == 30 and army['movement_next_at'] is None
 
 
 def test_route_avoids_garrisons_and_rejects_unknown_land(client, monkeypatch):
@@ -88,7 +86,7 @@ def test_storm_commander_has_more_movement(client, monkeypatch):
     assert post(c, '/heroes/choose', {'kind': 'storm'}, h).status_code == 200
     from app import expeditions
     with c.factory() as db:
-        assert expeditions.movement_max(db, player_id(c, 321)) == 16
+        assert expeditions.movement_max(db, player_id(c, 321)) == 34
 
 
 def test_blocked_final_hex_stops_army_on_previous_step(client, monkeypatch):
@@ -110,8 +108,17 @@ def test_route_preview_matches_order_and_changes_nothing(client, monkeypatch):
     before = me(c, h)
     preview = c.get(f'/api/v1/army/route?q={Q+2}&r={R}', headers=h).json()
     assert preview['cost'] == 3 and preview['fuel'] == 2 and preview['seconds'] == 30 and preview['affordable']
-    assert me(c, h)['resources'] == before['resources'] and me(c, h)['armies'][0]['movement'] == 14
+    assert me(c, h)['resources'] == before['resources'] and me(c, h)['armies'][0]['movement'] == 30
     r = order(c, h, a, Q+2, R, 'move')
     assert [p[:2] for p in r.json()['state']['armies'][0]['orders'][0]['path']] == [p[:2] for p in preview['path']]
     blocked = c.get(f'/api/v1/army/route?q={Q+9}&r={R}', headers=h)
     assert blocked.status_code == 409
+
+
+def test_movement_view_counts_regen_without_writing():
+    from types import SimpleNamespace
+    from app.expeditions import movement_view
+    army = SimpleNamespace(movement=10, movement_at=1000)
+    assert movement_view(army, 30, 240, 1000 + 240 * 3 + 5) == (13, 1000 + 240 * 4)
+    assert movement_view(army, 30, 240, 1000 + 240 * 100) == (30, None)
+    assert army.movement == 10 and army.movement_at == 1000

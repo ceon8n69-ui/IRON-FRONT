@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "tools/art-manifest.json"
 SOURCE = ROOT / "art-source"
 API = "https://api.openai.com/v1/images/generations"
-SIZE = {"unit": "1536x1024", "portrait": "1024x1536", "tile": "1024x1024", "building": "1024x1024", "item": "1024x1024"}
+SIZE = {"unit": "1536x1024", "portrait": "1024x1536", "tile": "1024x1024", "building": "1024x1024", "item": "1024x1024", "world": "1024x1024"}
 UNIT_W, UNIT_H, FEET = 256, 224, 0.82
 
 

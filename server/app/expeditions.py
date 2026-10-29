@@ -39,7 +39,7 @@ def movement_max(db, pid, army=None):
     from . import doctrines
     extra = commander.perk(db, pid, 'movement') if army is not None and army.commander else 0
     roads = doctrines.effect(db, pid, 'movement', _now())
-    return RULES['movement_max'] + (2 if hero and hero.kind == 'storm' else 0) + int(extra) + int(roads)
+    return RULES['movement_max'] + (4 if hero and hero.kind == 'storm' else 0) + int(extra) + int(roads)
 
 
 def army_vision(db, army):
@@ -65,16 +65,8 @@ def control_limit(db, pid):
 
 
 def refresh_movement(db, army, at):
-    """Heroes-style days: every army refills its movement in full at each in-game dawn.
-    Without a season (legacy data) points trickle back one per regen period."""
-    from . import seasons
+    """Real-time regeneration: +1 point per regen period up to the cap."""
     cap, period = movement_max(db, army.player_id, army), RULES['movement_regen_seconds']
-    dawn = seasons.day_start(db, at)
-    if dawn is not None:
-        if not army.movement_at or army.movement_at < dawn:
-            army.movement, army.movement_at = cap, dawn
-        army.movement = min(army.movement, cap)
-        return
     if not army.movement_at:
         army.movement_at = at
     if army.movement >= cap:
@@ -86,11 +78,21 @@ def refresh_movement(db, army, at):
         army.movement_at = at if army.movement >= cap else army.movement_at + gained * period
 
 
+def movement_view(army, cap, period, at):
+    """Points as of `at` without writing: (movement, next point timestamp or None when full)."""
+    if army.movement >= cap:
+        return cap, None
+    if not army.movement_at:
+        return army.movement, at + period
+    gained = max(0, (at - army.movement_at) // period)
+    movement = min(cap, army.movement + gained)
+    return movement, None if movement >= cap else army.movement_at + (gained + 1) * period
+
+
 def spend_movement(db, army, cost, at):
-    from . import seasons
     refresh_movement(db, army, at)
-    if seasons.day_start(db, at) is None and army.movement >= movement_max(db, army.player_id, army):
-        army.movement_at = at  # legacy trickle: the clock starts with the first spent point
+    if army.movement >= movement_max(db, army.player_id, army):
+        army.movement_at = at  # the regeneration clock starts with the first spent point
     army.movement -= cost
 
 
@@ -488,17 +490,14 @@ def compose(db, p, op, data):
 def state(db,pid):
     views=[]
     period=RULES['movement_regen_seconds']
-    from . import seasons
-    cal=seasons.calendar(seasons.current(db),_now())
-    dawn_next=cal['next_day_at'] if cal else None
     fighting=in_battle(db,pid)
     for army in armies(db,pid):
         cap=movement_max(db,pid,army)
+        movement,next_at=movement_view(army,cap,period,_now())
         orders=list(db.scalars(select(ArmyOrder).where(ArmyOrder.army_id == army.id).order_by(ArmyOrder.started_at.desc(),ArmyOrder.id).limit(10)))
         views.append({'id':army.id,'number':army.number,'commander':army.commander,'in_battle':fighting==army.id,
             'q':army.q,'r':army.r,'status':army.status,'vision':army_vision(db,army),
-            'movement':army.movement,'movement_max':cap,
-            'movement_next_at':None if army.movement>=cap else (dawn_next or army.movement_at+period),
+            'movement':movement,'movement_max':cap,'movement_next_at':next_at,
             'unit_ids':list(db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id))),
             'orders':[{k:getattr(o,k) for k in ('id','q','r','from_q','from_r','action','status','started_at','ready_at','finished_at','result','path')} for o in orders]})
     territories=[]

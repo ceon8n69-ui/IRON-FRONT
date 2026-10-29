@@ -253,8 +253,8 @@ HEROES = {
 EXPEDITIONS = {
     "staging": [64, 64],  # legacy shared point; each player now has a world base
     # Heroes-style movement: points refill in real time, terrain sets the price.
-    "movement_max": 14,               # refilled in full at every in-game dawn (4 h)
-    "movement_regen_seconds": 2400,   # +1 point every 40 min -> full in 8 h
+    "movement_max": 30,               # +1 point every regen period, full in 2 h
+    "movement_regen_seconds": 240,    # +1 point every 4 min
     "terrain_cost": {"plain": 1, "beach": 1, "desert": 2, "forest": 2, "hills": 3, "river": 3},
     "naval_cost": 1,          # sea, lake and river hexes with a fleet
     "landing_cost": 2,        # extra points to embark or go ashore

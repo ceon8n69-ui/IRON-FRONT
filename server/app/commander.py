@@ -19,7 +19,7 @@ MAX_RANK = 3
 LEVEL_PERKS = {"attack": 0.01, "defense": 0.01}     # per level above 1
 ARMY_PERKS = {"attack", "defense", "ranged", "initiative", "morale", "luck", "movement", "vision", "first_aid"}
 CAPS = {"attack": 0.5, "defense": 0.4, "ranged": 0.45, "initiative": 4, "morale": 0.3, "luck": 0.3,
-        "movement": 8, "vision": 3, "first_aid": 0.4, "plunder": 0.6, "supply": 0.3, "engineering": 0.4}
+        "movement": 16, "vision": 3, "first_aid": 0.4, "plunder": 0.6, "supply": 0.3, "engineering": 0.4}
 
 # Fictional balance. value[rank-1] per perk.
 SKILLS = {
@@ -35,7 +35,7 @@ SKILLS = {
                    "about": "Шанс {morale}% на дополнительное действие после хода"},
     "luck": {"name": "Удача", "icon": "🍀", "perks": {"luck": (0.08, 0.14, 0.20)},
              "about": "Шанс {luck}% на удачный удар ×1.5"},
-    "logistics": {"name": "Логистика", "icon": "🧭", "perks": {"movement": (2, 4, 6)},
+    "logistics": {"name": "Логистика", "icon": "🧭", "perks": {"movement": (4, 8, 12)},
                   "about": "Очки хода соединения командира +{movement}"},
     "scouting": {"name": "Разведка", "icon": "🔭", "perks": {"vision": (1, 2, 3)},
                  "about": "Обзор соединения командира +{vision}"},
