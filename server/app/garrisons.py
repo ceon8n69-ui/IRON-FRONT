@@ -85,10 +85,11 @@ def begin(db, p, army, order):
         order.status, order.result = 'blocked', ('Для морского боя нужны корабли' if at_sea else 'Нет сухопутных отрядов для боя')
         army.status = 'idle'
         return
+    from . import veterancy
     stacks=[]
     for i,u in enumerate(units):
         u.status='battle'
-        stacks.append(combat.make_stack(f"p{i+1}","player",u.kind,u.count,PLAYER_SPOTS[i],u.id,u.hp))
+        stacks.append(combat.make_stack(f"p{i+1}","player",u.kind,u.count,PLAYER_SPOTS[i],u.id,u.hp,veterancy.rank(u.xp)))
     tile = db.get(Tile, (1, order.q, order.r))
     from . import raids
     raid=raids.active_at(db,order.q,order.r)

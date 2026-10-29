@@ -33,7 +33,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.17.0")
+app = FastAPI(title="IRON FRONT", version="0.18.0")
 # Map windows are large, repetitive JSON: compress responses for mobile networks.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
@@ -87,6 +87,15 @@ class Turn(Strict):
 
 class Train(Strict):
     kind: str = Field(default="rifles", max_length=20)
+
+
+class Refill(Strict):
+    unit_id: str = Field(max_length=60)
+
+
+class Merge(Strict):
+    unit_id: str = Field(max_length=60)
+    into_id: str = Field(max_length=60)
 
 
 class Compose(Strict):
@@ -290,6 +299,16 @@ def upgrade(
     idempotency_key: str | None = Header(default=None),
 ):
     return mutate("upgrade", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/units/refill")
+def refill(body: Refill, authorization: str | None = Header(default=None), idempotency_key: str | None = Header(default=None)):
+    return mutate("refill", body.model_dump(), authorization, idempotency_key)
+
+
+@app.post("/api/v1/units/merge")
+def merge(body: Merge, authorization: str | None = Header(default=None), idempotency_key: str | None = Header(default=None)):
+    return mutate("merge", body.model_dump(), authorization, idempotency_key)
 
 
 @app.post("/api/v1/army/train")

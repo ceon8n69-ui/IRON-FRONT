@@ -80,6 +80,7 @@ class Unit(Base):
     kind = Column(String, nullable=False)
     hp = Column(Integer, nullable=False, default=100)      # health % of the top member
     count = Column(Integer, nullable=False, default=10, server_default="10")
+    xp = Column(Integer, nullable=False, default=0, server_default="0")   # veterancy, see app.veterancy
     status = Column(String, nullable=False, default="reserve")
     __table_args__ = (CheckConstraint("hp >= 0 AND hp <= 100"),
                       CheckConstraint("count >= 1", name="ck_player_units_count"))

@@ -33,7 +33,7 @@ def _perks(s):
     return s.get("perks") or {}
 
 
-def make_stack(sid, side, kind, count, pos, unit_id=None, hp_pct=100):
+def make_stack(sid, side, kind, count, pos, unit_id=None, hp_pct=100, rank=0):
     each = UNITS[kind]["hp"]
     hp = max(1, (count - 1) * each + round(each * hp_pct / 100))
     spec = UNITS[kind]
@@ -42,6 +42,8 @@ def make_stack(sid, side, kind, count, pos, unit_id=None, hp_pct=100):
              "pos": list(pos), "acted": False, "retaliated": False, "defending": False, "skip": False}
     if unit_id:
         stack["unit_id"] = unit_id
+    if rank:
+        stack["rank"] = rank      # veterancy (app.veterancy)
     return stack
 
 
@@ -128,7 +130,8 @@ def summary(state):
         each = UNITS[st["kind"]]["hp"]
         n = alive(st)
         top = st["hp"] - (n - 1) * each if n else 0
-        result[st["unit_id"]] = {"alive": n, "start": st["start"], "hp_pct": max(1, round(100 * top / each)) if n else 0}
+        result[st["unit_id"]] = {"alive": n, "start": st["start"], "hp_pct": max(1, round(100 * top / each)) if n else 0,
+                                 "dealt": st.get("dealt", 0)}
     return result
 
 
@@ -207,6 +210,7 @@ def _damage(s, attacker, target, seed, hero, bonus, factor, tag, fixed_roll=None
                               for e in _living(s, "npc" if attacker["side"] == "player" else "player")):
         value *= 0.5   # shooters fire badly with an enemy in their face
     value *= attacker.get("buff", 1) * attacker.get("weak", 1) * target.get("guard", 1)
+    value *= (1 + 0.05 * attacker.get("rank", 0)) * (1 - 0.04 * target.get("rank", 0))   # veterancy
     value *= factor * (fixed_roll or roll(seed, s["turn"], f"{tag}:{attacker['id']}")) / 100
     return max(1, round(value))
 
@@ -219,7 +223,9 @@ def _hit(s, attacker, target, seed, hero, bonus, events, factor, kind):
         factor *= 1.5
         events.append({"type": "luck", "actor": attacker["id"]})
     dmg = _damage(s, attacker, target, seed, hero, bonus, factor, kind)
+    prior = target["hp"]
     target["hp"] = max(0, target["hp"] - dmg)
+    attacker["dealt"] = attacker.get("dealt", 0) + prior - target["hp"]
     events.append({"type": kind, "actor": attacker["id"], "target": target["id"], "damage": dmg,
                    "kills": before - alive(target)})
     if not alive(target):
@@ -290,8 +296,10 @@ def _skill(s, me, command, seed, hero, bonus, events):
     spec = UNITS[me["kind"]].get("ability")
     if not spec:
         raise ValueError("У этого отряда нет способности")
-    if me.get("skill_used"):
+    if me.get("skill_used") and (me.get("rank", 0) < 3 or me.get("skill_used2")):
         raise ValueError("Способность отряда уже использована в этом бою")
+    if me.get("skill_used"):
+        me["skill_used2"] = True      # Elite: a second use
     effect, v = spec["effect"], spec["value"]
     events.append({"type": "skill", "actor": me["id"], "name": spec["name"]})
     allies = _living(s, me["side"])

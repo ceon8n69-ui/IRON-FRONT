@@ -168,13 +168,16 @@ def begin(db, p, army, order, tgt, at):
         order.status, order.result = "blocked", "Нет сухопутных отрядов для боя"
         army.status = "idle"
         return
+    from . import veterancy
     stacks = []
     for i, u in enumerate(units):
         u.status = "battle"
-        stacks.append(combat.make_stack(f"p{i+1}", "player", u.kind, u.count, PLAYER_SPOTS[i], u.id, u.hp))
+        stacks.append(combat.make_stack(f"p{i+1}", "player", u.kind, u.count, PLAYER_SPOTS[i], u.id, u.hp, veterancy.rank(u.xp)))
     enemy = []
     for i, (kind, count, unit_id, hp) in enumerate(defenders(db, tgt, order.q, order.r)):
-        st = combat.make_stack(f"n{i+1}", "npc", kind, count, NPC_SPOTS[i], hp_pct=hp)
+        owner_unit = db.get(Unit, unit_id) if unit_id else None
+        st = combat.make_stack(f"n{i+1}", "npc", kind, count, NPC_SPOTS[i], hp_pct=hp,
+                               rank=veterancy.rank(owner_unit.xp) if owner_unit else 0)
         st["owner_unit"] = unit_id
         enemy.append(st)
     defender = db.get(Player, tgt["defender_id"])

@@ -44,7 +44,7 @@ export type State = {
   resources: Record<string, number>;
   buildings: Building[];
   jobs: { id: string; ready_at: number }[];
-  units: { id: string; kind: string; count: number; hp: number; status: string }[];
+  units: { id: string; kind: string; count: number; hp: number; status: string; xp?: number; rank?: number; rank_name?: string; next_xp?: number | null; cap?: number; refill?: { missing: number; cost: Record<string, number>; seconds: number } | null }[];
   hero: { kind: string; xp: number } | null;
   inventory: { id: string; definition_id: string; equipped: boolean; source:string; definition:{name:string;rarity:string;damage_bonus:number;image:string;slot?:string;slot_name?:string;perks?:Record<string,number>} }[];
   commander?: CommanderView | null;

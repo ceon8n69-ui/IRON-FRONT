@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { State } from "./store";
 export type HeroDefinition = { name: string; role: string; bio: string; effect: string };
 const rarityNames:Record<string,string>={uncommon:"НЕОБЫЧНЫЙ",rare:"РЕДКИЙ",epic:"ЭПИЧЕСКИЙ"};
-const PERK_LABELS:Record<string,[string,boolean]>={attack:["урон",true],defense:["защита",true],ranged:["урон стрелков",true],initiative:["инициатива",false],morale:["боевой дух",true],luck:["удача",true],movement:["очки хода",false],vision:["обзор",false],first_aid:["полевая медицина",true],plunder:["трофеи",true],supply:["производство",true],engineering:["скорость стройки",true]};
+const PERK_LABELS:Record<string,[string,boolean]>={attack:["урон",true],defense:["защита",true],ranged:["урон стрелков",true],initiative:["инициатива",false],morale:["боевой дух",true],luck:["удача",true],movement:["очки хода",false],vision:["обзор",false],first_aid:["полевая медицина",true],plunder:["трофеи",true],supply:["производство",true],engineering:["скорость стройки",true],unit_xp:["опыт отрядов",true],refill_cost:["скидка на пополнение",true]};
 export const perkText=(perks:Record<string,number>)=>Object.entries(perks).map(([k,v])=>{const [n,pct]=PERK_LABELS[k]??[k,false];return `${n} +${pct?Math.round(v*100)+"%":v}`;}).join(" · ");
 const SLOT_ORDER:[string,string][]=[["weapon","Оружие"],["armor","Броня"],["badge","Знак"],["gear","Модуль"],["optics","Снаряжение"]];
 const itemImage=(e:React.SyntheticEvent<HTMLImageElement>)=>{const img=e.currentTarget;if(!img.src.endsWith("field-module-v1.webp"))img.src="/art/equipment/field-module-v1.webp";};

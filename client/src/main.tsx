@@ -424,7 +424,8 @@ function App() {
                 </div>
                 {activeStack && defs?.units[activeStack.kind]?.ability && (() => {
                   const ab = defs.units[activeStack.kind].ability!;
-                  const used = !!(activeStack as { skill_used?: boolean }).skill_used;
+                  const st = activeStack as { skill_used?: boolean; skill_used2?: boolean; rank?: number };
+                  const used = !!st.skill_used && ((st.rank ?? 0) < 3 || !!st.skill_used2);   // Elite: twice
                   const needsHex = ab.effect === "dash";
                   return <div className="unit-skill">
                     <button className="skill" title={ab.about} disabled={busy || used || (needsHex && (!selected || !!targetStack))}
@@ -471,7 +472,7 @@ function App() {
               {defs && <Armies state={state} units={defs.units} stacks={defs.army_stacks ?? 5} busy={busy} run={run} toMap={()=>changeTab("Карта")}/>}
               {state.jobs.map((j) => (
                 <div className="notice" key={j.id}>
-                  Подготовка: {defs?.units[(j as {kind?:string}).kind ?? "rifles"]?.name ?? "отряд"} · {Math.max(0, j.ready_at - clock)} сек.
+                  {((j as {kind?:string}).kind ?? "").startsWith("refill:") ? `Пополнение: +${((j as {kind?:string}).kind ?? "").split(":")[2]} бойцов` : `Подготовка: ${defs?.units[(j as {kind?:string}).kind ?? "rifles"]?.name ?? "отряд"}`} · {Math.max(0, j.ready_at - clock)} сек.
                 </div>
               ))}
               <div className="section-label">НАЙМ В КАЗАРМАХ</div>
@@ -533,7 +534,7 @@ function App() {
                       {lastBattle.state.pvp?.result
                         ? `${lastBattle.state.pvp.result}.${lastBattle.status === "victory" ? ` +${lastBattle.state.npc_tier?.xp ?? 60} XP.` : " Каждый стек сохранил минимум половину бойцов."}`
                         : lastBattle.status === "victory"
-                        ? lastBattle.state.expedition ? lastBattle.state.loot ? `Территория захвачена. +${lastBattle.state.npc_tier?.xp ?? 50} XP и трофейный модуль в инвентаре командира.` : "Бой завершён. Результат захвата указан в приказе армии." : "Награда: 150 металла, 60 провизии, 100 XP и полевой модуль."
+                        ? lastBattle.state.expedition ? lastBattle.state.loot ? `Территория захвачена. +${lastBattle.state.npc_tier?.xp ?? 50} XP. Трофей: «${state.inventory.find((i) => i.id === lastBattle.state.loot?.item_id)?.definition?.name ?? "артефакт"}» — наденьте во вкладке «Командир».` : "Бой завершён. Результат захвата указан в приказе армии." : "Награда: 150 металла, 60 провизии, 100 XP и полевой модуль."
                         : "Потери сохраняются, но после поражения каждый стек сохраняет минимум половину бойцов."}
                     </p>
                     <small>

@@ -1,6 +1,6 @@
 import hashlib, json, math, time, uuid
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, func, update
 from .models import (
     Player,
     Resource,
@@ -16,10 +16,12 @@ from .models import (
     Ledger,
     Command,
     Event,
+    Army,
+    ArmyUnit,
 )
 from .config import BUILDINGS, HEROES, INITIAL, VERSION, EXPEDITIONS, UNITS, TUTORIAL_NPC, FACTIONS
 from . import expeditions, garrisons, equipment, bases, economy, objects, pvp, commander, logistics, seasons, nodes, doctrines, raids, alliances
-from . import combat
+from . import combat, veterancy
 
 
 def uid():
@@ -167,6 +169,19 @@ def settle(db, p, at=None):
             b.upgrade_ready_at = None
             completed = True
     for job in rows(db, Job, p.id):
+        if job.status == "queued" and job.ready_at <= at and job.kind.startswith("refill:"):
+            # Reinforcements join the stack; recruits dilute its experience by head count.
+            _, unit_id, added = job.kind.split(":")
+            unit = db.get(Unit, unit_id)
+            if unit and unit.player_id == p.id:
+                room = max(0, veterancy.cap(unit.kind, levels(buildings, at)) - unit.count)
+                n = min(int(added), room)
+                if n:
+                    unit.xp = veterancy.blend(unit.xp, unit.count, 0, n)
+                    unit.count += n
+            job.status = "complete"
+            completed = True
+            continue
         if job.status == "queued" and job.ready_at <= at:
             db.add(Unit(id=job.id, player_id=p.id, kind=job.kind, hp=100,
                         count=UNITS.get(job.kind, UNITS["rifles"])["count"], status="reserve"))
@@ -179,6 +194,8 @@ def settle(db, p, at=None):
 
 def snapshot(db, p):
     hero = db.get(Hero, p.id)
+    unit_levels = levels(rows(db, Building, p.id), now())
+    refill_discount = commander.perk(db, p.id, "refill_cost")
     serialize = lambda o, keys: {k: getattr(o, k) for k in keys.split()}
     return {
         "player": {"id": p.id, "name": p.name},
@@ -193,7 +210,8 @@ def snapshot(db, p):
             for j in rows(db, Job, p.id)
             if j.status == "queued"
         ],
-        "units": [serialize(u, "id kind hp count status") for u in rows(db, Unit, p.id)],
+        "units": [{**serialize(u, "id kind hp count status"), **veterancy.view(u, unit_levels),
+                   "refill": refill_preview(u, unit_levels, refill_discount)} for u in rows(db, Unit, p.id)],
         "hero": serialize(hero, "kind xp") if hero else None,
         "inventory": [
             {**serialize(i, "id definition_id source_id equipped created_at"), "definition":equipment.DEFINITIONS.get(i.definition_id), "source": "first-patrol" if i.definition_id=="field-module" else "garrison"}
@@ -281,6 +299,8 @@ def apply_losses(db, battle, outcome, hero):
         if aid and fallen:
             survivors = min(r["start"], survivors + math.floor(aid * fallen))
         unit.count, unit.hp = max(1, survivors), max(1, min(100, hp or 50))
+        boost = commander.perk(db, unit.player_id, "unit_xp")   # banners and manuals train every stack
+        unit.xp += veterancy.battle_xp(outcome, r.get("dealt", 0), boost)
 
 
 def hq_level(db, pid):
@@ -408,6 +428,10 @@ def dispatch(db, p, op, data):
         job = Job(id=uid(), player_id=p.id, kind=kind, ready_at=now() + max(1, round(spec["seconds"] * time_factor)), status="queued")
         db.add(job)
         return {"id": job.id}
+    if op == "refill":
+        return refill(db, p, data["unit_id"], buildings)
+    if op == "merge":
+        return merge(db, p, data["unit_id"], data["into_id"], buildings)
     if op == "battle":
         if tutorial_done(db, p):
             fail("Учебная операция уже завершена")
@@ -419,7 +443,7 @@ def dispatch(db, p, op, data):
         unit.status = "battle"
         seed = uid()
         state, _, _ = combat.new_battle(
-            [combat.make_stack("p1", "player", unit.kind, unit.count, PLAYER_SPOTS[0], unit.id, unit.hp)],
+            [combat.make_stack("p1", "player", unit.kind, unit.count, PLAYER_SPOTS[0], unit.id, unit.hp, veterancy.rank(unit.xp))],
             npc_stacks(TUTORIAL_NPC), [[3, 4], [4, 2], [5, 5]], seed, hero.kind, 0, commander.battle_perks(db, p.id, True))
         battle = Battle(id=uid(), player_id=p.id, unit_id=unit.id, status="active", seed=seed,
                         balance_version=VERSION, state=state)
@@ -528,3 +552,85 @@ def conclude(db, p, battle, hero, events, outcome):
         db.flush()
         db.add(Ownership(id=uid(), item_id=item.id, owner_id=p.id, reason="first-patrol", created_at=now()))
     return {"events": events, "outcome": outcome}
+
+
+# ---- stack growth (app.veterancy) ---------------------------------------------
+
+def _at_base(db, p, unit):
+    """Reserve stacks are at the base; an army's stacks only while the army stands on it."""
+    if unit.status == "reserve":
+        return True
+    if unit.status != "army":
+        return False
+    link = db.scalar(select(ArmyUnit).where(ArmyUnit.unit_id == unit.id))
+    army = db.get(Army, link.army_id) if link else None
+    home = bases.home(db, p.id)
+    return bool(army and home and [army.q, army.r] == list(home) and army.status != "moving")
+
+
+def _own_unit(db, p, unit_id):
+    unit = db.get(Unit, unit_id)
+    if not unit or unit.player_id != p.id:
+        raise HTTPException(404, "Отряд не найден")
+    return unit
+
+
+def refill_preview(unit, lv, discount):
+    missing = veterancy.cap(unit.kind, lv) - unit.count
+    if missing <= 0:
+        return None
+    return {"missing": missing, "cost": veterancy.refill_cost(unit.kind, missing, discount),
+            "seconds": veterancy.refill_seconds(unit.kind, missing)}
+
+
+def refill(db, p, unit_id, buildings):
+    unit = _own_unit(db, p, unit_id)
+    spec = UNITS[unit.kind]
+    lv = levels(buildings, now())
+    if not lv.get("shipyard" if spec.get("naval") else "barracks"):
+        fail("Пополнение проводят готовые " + ("верфи" if spec.get("naval") else "казармы"))
+    if not _at_base(db, p, unit):
+        fail("Пополнить можно только отряд на базе: верните соединение домой")
+    jobs = rows(db, Job, p.id)
+    if any(j.status == "queued" for j in jobs):
+        fail("Очередь подготовки занята")
+    missing = veterancy.cap(unit.kind, lv) - unit.count
+    if missing <= 0:
+        fail("Стек уже полон. Улучшите казармы, чтобы вместить больше бойцов")
+    cost = veterancy.refill_cost(unit.kind, missing, commander.perk(db, p.id, "refill_cost"))
+    change(db, p, {k: -v for k, v in cost.items()}, "refill")
+    job = Job(id=uid(), player_id=p.id, kind=f"refill:{unit.id}:{missing}",
+              ready_at=now() + veterancy.refill_seconds(unit.kind, missing), status="queued")
+    db.add(job)
+    return {"id": job.id, "added": missing, "cost": cost, "ready_at": job.ready_at}
+
+
+def merge(db, p, unit_id, into_id, buildings):
+    """Pour one stack into another of the same kind, up to the stack cap."""
+    if unit_id == into_id:
+        fail("Выберите другой стек")
+    src, dst = _own_unit(db, p, unit_id), _own_unit(db, p, into_id)
+    if src.kind != dst.kind:
+        fail("Сливать можно только стеки одного типа")
+    if not (_at_base(db, p, src) and _at_base(db, p, dst)):
+        fail("Сливать стеки можно только на базе")
+    if any(j.status == "queued" and j.kind.startswith(f"refill:{src.id}:") for j in rows(db, Job, p.id)):
+        fail("Стек ждёт пополнения")
+    room = veterancy.cap(dst.kind, levels(buildings, now())) - dst.count
+    if room <= 0:
+        fail("Стек уже полон. Улучшите казармы, чтобы вместить больше бойцов")
+    moved = min(src.count, room)
+    dst.xp = veterancy.blend(dst.xp, dst.count, src.xp, moved)
+    dst.count += moved
+    if moved < src.count:
+        src.count -= moved
+        return {"moved": moved, "left": src.count}
+    link = db.scalar(select(ArmyUnit).where(ArmyUnit.unit_id == src.id))
+    if link and db.scalar(select(func.count()).select_from(ArmyUnit).where(ArmyUnit.army_id == link.army_id)) == 1:
+        fail("Это последний стек соединения: сначала распустите соединение")
+    if link:
+        db.delete(link)
+    db.execute(update(Battle).where(Battle.unit_id == src.id).values(unit_id=dst.id))   # history keeps a valid owner stack
+    db.flush()
+    db.delete(src)
+    return {"moved": moved, "left": 0}

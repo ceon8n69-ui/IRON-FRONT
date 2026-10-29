@@ -220,7 +220,7 @@ def armies_max(db, pid):
     from .models import Building
     hq = db.scalar(select(Building).where(Building.player_id == pid, Building.kind == 'hq'))
     from . import doctrines
-    return min(RULES['armies_cap'] + 1, min(RULES['armies_cap'], RULES['armies_base'] + ((hq.level if hq else 1) - 1) // 2)
+    return min(RULES['armies_cap'] + 1, min(RULES['armies_cap'], RULES['armies_base'] + (hq.level if hq else 1) - 1)
                + int(doctrines.effect(db, pid, 'armies', _now())))
 
 
