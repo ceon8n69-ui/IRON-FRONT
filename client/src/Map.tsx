@@ -43,6 +43,9 @@ export const BATTLE_SCALE = 0.72, BATTLE_SHIFT = -70;
 // Displayed at the same size as the code-drawn figure, which is scaled 1.45 in that frame.
 const RASTER_FEET = 92 / 112, RASTER_SCALE = 0.5 / 1.45;
 const failed = new Set<string>();
+const loading = new Set<string>();
+// Raster base buildings (art/buildings/<kind>.png): displayed width and the anchor that puts the hex patch on the tile centre.
+const BUILDING_WIDTH = 116, BUILDING_ANCHOR = 0.8;
 const NAVAL_KINDS = new Set(["transport", "gunboat", "ironclad"]);
 function hex(g: Graphics, x: number, y: number, size: number, color: number) {
   const p: number[] = [];
@@ -95,7 +98,7 @@ export function MapView(props: Props) {
   const [textures, setTextures] = useState(0);
   const [error, setError] = useState("");
   // Tactical field starts zoomed out so all 9 columns fit a phone above the command panel.
-  const home = props.battle ? { scale: BATTLE_SCALE, x: 0, y: BATTLE_SHIFT } : { scale: 1, x: 0, y: 0 };
+  const home = props.battle ? { scale: BATTLE_SCALE, x: 0, y: BATTLE_SHIFT } : props.world ? { scale: 1, x: 0, y: 0 } : { scale: 1.22, x: 0, y: 0 };
   const camera = useRef({ ...home });
   useEffect(() => {
     let alive = true;
@@ -323,39 +326,39 @@ export function MapView(props: Props) {
       }
       const b = props.buildings.find((b) => b.q === t.q && b.r === t.r);
       if (b && !props.battle && !props.world) {
-        const visual = createBuilding(b);
-        visual.node.position.set(x,y);
-        s.addChild(visual.node);
-        animations.current.push(visual);
-        const label = new Text({
-          text: (
-            {
-              hq: "ШТАБ",
-              power: "ЭНЕРГИЯ",
-              quarry: "КАРЬЕР",
-              barracks: "КАЗАРМЫ",
-              refinery: "НПЗ",
-              oil_well: "НЕФТЬ",
-              farm: "АГРО",
-              warehouse: "СКЛАД",
-              watchtower: "БАШНЯ",
-              electronics: "ЭЛЕКТРОНИКА",
-              repair: "РЕМОНТ",
-              shipyard: "ВЕРФЬ",
-            } as Record<string, string>
-          )[b.kind],
-          style: {
-            fontSize: 11,
-            fill: 0xe7efea,
-            fontFamily: "sans-serif",
-            letterSpacing: .5,
-          },
-        });
-        label.anchor.set(0.5);
-        label.position.set(x, y + 29);
-        const plate = new Graphics().roundRect(x-label.width/2-6,y+21,label.width+12,17,3).fill({color:0x101923,alpha:.9});
-        labels.addChild(plate);
-        labels.addChild(label);
+        // Raster diorama art once loaded (scaffolding stays code-drawn while under construction).
+        const url = `/art/buildings/${b.kind}.png`;
+        const tex = b.status !== "building" && Assets.cache.has(url) ? (Assets.cache.get(url) as Texture) : null;
+        if (tex) {
+          const node = new Container();
+          const img = new Sprite(tex);
+          img.anchor.set(0.5, BUILDING_ANCHOR);
+          img.scale.set(BUILDING_WIDTH / tex.width);
+          node.addChild(img);
+          node.position.set(x, y);
+          s.addChild(node);
+          // A slow, subtle breathing so the base feels alive.
+          const phase = (t.q * 1.3 + t.r * 2.1) % 6.28;
+          animations.current.push({ node, animate: (sec) => { img.scale.y = (BUILDING_WIDTH / tex.width) * (1 + Math.sin(sec * 1.4 + phase) * 0.006); } });
+        } else {
+          const visual = createBuilding(b);
+          visual.node.position.set(x, y);
+          s.addChild(visual.node);
+          animations.current.push(visual);
+          if (!failed.has(url) && !Assets.cache.has(url) && !loading.has(url)) {
+            loading.add(url);   // load once; a cached texture must never re-trigger a rebuild
+            Assets.load(url).then(() => setTextures((n) => n + 1)).catch(() => failed.add(url));
+          }
+        }
+        // Compact level chip instead of a text label; the building sheet names it.
+        const lvl = b.level + (b.upgrade_ready_at ? 0 : 0);
+        const chip = new Text({ text: b.status === "building" ? "⏳" : b.upgrade_ready_at ? `${lvl}↑` : String(lvl),
+          style: { fontSize: 11, fill: 0xf0f3f5, fontFamily: "sans-serif", fontWeight: "bold" } });
+        chip.anchor.set(0.5);
+        chip.position.set(x + 30, y + 14);
+        labels.addChild(new Graphics().roundRect(x + 30 - Math.max(9, chip.width / 2 + 4), y + 6, Math.max(18, chip.width + 8), 16, 8)
+          .fill({ color: 0x101923, alpha: .88 }).stroke({ color: 0xe5b65a, width: 1, alpha: .8 }));
+        labels.addChild(chip);
       } else if (!props.battle && !t.garrison && !t.node && !(t as {object?:unknown}).object && t.biome!=="unknown") {
         const detail=environment(x,y,t.biome,t.q+(props.center?.[0]??0),t.r+(props.center?.[1]??0));
         if(t.visibility==="explored")detail.alpha=.55;
@@ -394,7 +397,8 @@ export function MapView(props: Props) {
           img.anchor.set(0.5, RASTER_FEET);
           img.scale.set(RASTER_SCALE * (st.side === "npc" ? -1 : 1), RASTER_SCALE);
           sprite.addChildAt(img, 0);
-        } else if (!failed.has(url)) {
+        } else if (!failed.has(url) && !loading.has(url)) {
+          loading.add(url);
           Assets.load(url).then(() => setTextures((n) => n + 1)).catch(() => failed.add(url));
         }
         // One container per stack so playback can move, shake and fade it with its badge.
@@ -435,7 +439,7 @@ export function MapView(props: Props) {
         marker.addChild(img);
       } else {
         marker.addChild(afloat ? unitSprite("boat_transport", undefined, "player", 1) : squad(0,0,0x4c9ce5));
-        if (url && !failed.has(url)) Assets.load(url).then(() => setTextures((n) => n + 1)).catch(() => failed.add(url));
+        if (url && !failed.has(url) && !loading.has(url)) { loading.add(url); Assets.load(url).then(() => setTextures((n) => n + 1)).catch(() => failed.add(url)); }
       }
       // Number badge (gold with a star for the commander's army).
       const badge = new Container(); badge.position.set(22, -34);

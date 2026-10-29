@@ -34,7 +34,7 @@ export function Commander({state, definition, busy, equip, pick}: {
         <progress max={span} value={progress} aria-label="Опыт до следующего уровня"/>
         <div className="bonus-block"><small>СПЕЦИАЛИЗАЦИЯ</small><b>{definition.effect}</b></div>
         {cmd && Object.keys(cmd.perks).length > 0 && <div className="bonus-block"><small>БОНУСЫ КОМАНДИРА</small><b>{perkText(cmd.perks)}</b></div>}
-        <p className="commander-note">Боевые бонусы, способность и экипировка работают в соединении, которое ведёт командир (★). Трофеи, производство и стройка — везде.</p>
+        <p className="commander-note">Бонусы работают в соединении командира ★</p>
       </div>
     </article>
     {cmd && cmd.pending > 0 && <section className="skill-choice" aria-label="Выбор навыка">
@@ -45,7 +45,7 @@ export function Commander({state, definition, busy, equip, pick}: {
     {cmd && <section className="skill-list" aria-label="Навыки">
       <small>НАВЫКИ · {cmd.skills.length}/{cmd.max_skills}</small>
       {cmd.skills.length ? <div>{cmd.skills.map(sk=><span key={sk.key} className="skill-chip" title={sk.about}>{sk.icon} {sk.name} {"I".repeat(sk.rank)}<small>{sk.about}</small></span>)}</div>
-        : <p>Каждый новый уровень даёт выбор из трёх навыков. До шести навыков, у каждого три ранга.</p>}
+        : <p className="commander-note">Навык — с каждым новым уровнем</p>}
     </section>}
     <section className="slot-row" aria-label="Слоты экипировки">{SLOT_ORDER.map(([slot,name])=>{const it=state.inventory.find(i=>i.equipped&&(i.definition.slot??"gear")===slot);
       return <div key={slot} className={"slot"+(it?" filled rarity-"+it.definition.rarity:"")}>{it?<img src={it.definition.image} onError={itemImage} alt={it.definition.name}/>:<span>+</span>}<small>{name}</small></div>;})}</section>
@@ -60,10 +60,10 @@ export function Commander({state, definition, busy, equip, pick}: {
     {!!state.inventory.length && !items.length && <p className="notice">Сейчас ничего не снаряжено. Откройте «Все» и выберите предмет.</p>}
     {items.map(item=><article className={"equipment-card rarity-"+item.definition.rarity+(item.equipped ? " equipped" : "")} key={item.id}>
       <button className="equipment-preview" aria-label={item.definition_id==="field-module"?"Карточка полевого модуля":`Карточка: ${item.definition.name}`} onClick={()=>setDetails(details === item.id ? null : item.id)} aria-expanded={details === item.id}><img src={item.definition.image} onError={itemImage} alt={item.definition.name} width="96" height="96" loading="lazy"/></button>
-      <div className="equipment-info"><small className="rarity-uncommon">{rarityNames[item.definition.rarity]} · {item.equipped ? "СНАРЯЖЕНО" : "ИНВЕНТАРЬ"}</small><h3>{item.definition.name}</h3><p>{item.definition.perks ? perkText(item.definition.perks) : `урон +${Math.round(item.definition.damage_bonus*100)}%`} · {item.definition.slot_name ?? "Модуль"}</p><small>#{item.id.slice(0,8)} · Победа над NPC</small></div>
+      <div className="equipment-info"><small className="rarity-uncommon">{rarityNames[item.definition.rarity]} · {item.equipped ? "СНАРЯЖЕНО" : "ИНВЕНТАРЬ"}</small><h3>{item.definition.name}</h3><p>{item.definition.perks ? perkText(item.definition.perks) : `урон +${Math.round(item.definition.damage_bonus*100)}%`} · {item.definition.slot_name ?? "Модуль"}</p></div>
       <button className={item.equipped ? "" : "primary"} disabled={busy || inBattle} onClick={()=>equip(item.id,!item.equipped)}>{item.equipped ? "Снять" : "Снарядить"}</button>
       {details === item.id && <div className="equipment-details"><img src={item.definition.image} onError={itemImage} alt={item.definition.name} width="240" height="240"/><dl><dt>Уникальный ID</dt><dd>{item.id}</dd><dt>Владелец</dt><dd>{state.player.name}</dd><dt>Источник</dt><dd>{item.source==="garrison"?"Победа над гарнизоном на карте":"Первая победа над патрулём NPC"}</dd><dt>Состояние</dt><dd>{item.equipped ? "Бонус активен" : "Хранится в инвентаре"}</dd></dl><p>В каждом слоте один предмет: новый заменит старый. Во время боя смена экипировки недоступна.</p></div>}
     </article>)}
-    <p className="commander-note">Артефакты падают с гарнизонов: чем сильнее гарнизон, тем выше шанс редких и эпических.</p>
+
   </div>;
 }

@@ -9,7 +9,7 @@ export function Alliance({ alliance, busy, run }: { alliance: AllianceView | nul
   const [copied, setCopied] = useState(false);
   if (!alliance) return <article className="alliance-card">
     <h3>Альянс</h3>
-    <p>До 5 командиров. Союзники не нападают друг на друга, проходят через земли друг друга и соревнуются в общем рейтинге альянсов.</p>
+    <p>До 5 командиров · без атак друг на друга · общий рейтинг</p>
     <form onSubmit={(e) => { e.preventDefault(); run(() => command("/alliance/create", { name, tag })); }}>
       <input aria-label="Название альянса" placeholder="Название" value={name} maxLength={24} onChange={(e) => setName(e.target.value)} />
       <input aria-label="Тег альянса" placeholder="Тег" value={tag} maxLength={5} onChange={(e) => setTag(e.target.value.toUpperCase())} style={{ maxWidth: 90 }} />

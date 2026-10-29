@@ -12,8 +12,7 @@ export function Doctrines({ state, clock, busy, run }: { state: State; clock: nu
   const taken = new Set(tree.doctrines.filter((d) => d.state !== "available").map((d) => d.key));
   return <section className="doctrines" aria-label="Доктрины">
     <div className="section-label">ДОКТРИНЫ</div>
-    <p className="commander-note">В каждом ярусе выберите одну доктрину из двух: вторая закроется до конца сезона. Одновременно идёт одно исследование.
-      {researching && <> Сейчас: <b>{researching.name}</b>, ещё {mins(Math.max(0, (researching.ready_at ?? 0) - clock))}.</>}</p>
+    <p className="commander-note">Один выбор из двух на ярус{researching && <> · ⏳ <b>{researching.name}</b> {mins(Math.max(0, (researching.ready_at ?? 0) - clock))}</>}</p>
     {Object.entries(tree.branches).map(([branch, title]) => <div className="doctrine-branch" key={branch}>
       <h3>{title}</h3>
       {[1, 2, 3].map((tier) => {

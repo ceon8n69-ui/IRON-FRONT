@@ -79,6 +79,25 @@ ITEM_ART = {
     "quartermaster-bag": "a bulging leather quartermaster satchel with coins and papers sticking out",
     "route-atlas": "a thick map atlas with brass corners and a compass on the cover",
 }
+BUILDING_PROMPT = ("Original isometric game building for IRON FRONT base screen, small cosy diorama: {subj}, standing on a compact "
+                   "hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk "
+                   "1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright "
+                   "saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags "
+                   "with real symbols, no people.")
+BUILDING_ART = {
+    "hq": "a command headquarters: two-storey brick and plaster building with a red tiled roof, a radio mast with a plain red pennant, sandbags at the door",
+    "power": "a power plant: brick generator hall with two tall chimneys puffing smoke, copper pipes and a transformer with insulators",
+    "quarry": "an open-pit metal quarry with a wooden crane, ore carts on little rails and piles of grey ore",
+    "barracks": "military barracks: long wooden hut with a green tin roof, sandbag wall, a training dummy and an empty flagpole",
+    "refinery": "a small fuel refinery with two round storage tanks, a distillation tower, pipes and fuel barrels",
+    "oil_well": "an oil derrick: steel lattice tower with a pumpjack, a black oil puddle and barrels",
+    "farm": "a farm: red barn with a tiled roof, golden wheat field rows and round haystacks",
+    "warehouse": "a supply depot: big corrugated hangar with stacked crates, barrels and a small forklift",
+    "watchtower": "a wooden watchtower with a searchlight on top, a ladder and sandbags around its legs",
+    "electronics": "an electronics factory: brick workshop with teal glass windows, radio antennas and glowing cables",
+    "shipyard": "a small shipyard: wooden slipway on a water edge with a half-built boat hull and a crane",
+    "repair": "a repair workshop: garage with an open door, workbench, big wrench sign and a small armored car on jacks",
+}
 TERRAIN = {"plain": "lush grass with tufts, small flowers and pebbles", "forest": "dense mix of round leafy trees and pines",
            "hills": "grassy hills with mossy grey boulders", "mountain": "two rocky peaks with snow caps",
            "desert": "sand with dune ridges and a dry shrub", "beach": "pale sand with a palm tree and small rocks",
@@ -114,9 +133,9 @@ def entries():
         out.append({"key": f"tile-{b}", "kind": "tile", "group": "Ландшафт (подключение позже)", "title": b,
                     "path": f"client/public/art/tiles/{b}.png", "prompt": TILE_PROMPT.format(subj=d)})
     for k, b in BUILDINGS.items():
-        out.append({"key": f"building-{k}", "kind": "building", "group": "Здания (подключение позже)", "title": b["name"],
+        out.append({"key": f"building-{k}", "kind": "building", "group": "Здания базы", "title": b["name"],
                     "path": f"client/public/art/buildings/{k}.png",
-                    "prompt": TILE_PROMPT.format(subj=f"dieselpunk military {b['name']} building, warm tiled roof, plaster walls, ({b['about']})")})
+                    "prompt": BUILDING_PROMPT.format(subj=BUILDING_ART[k])})
     return out
 
 

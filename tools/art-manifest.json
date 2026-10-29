@@ -554,97 +554,97 @@
  {
   "key": "building-hq",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Главный штаб",
   "path": "client/public/art/buildings/hq.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Главный штаб building, warm tiled roof, plaster walls, (Командный центр. Уровень штаба ограничивает уровни остальных зданий и открывает новые постройки.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: a command headquarters: two-storey brick and plaster building with a red tiled roof, a radio mast with a plain red pennant, sandbags at the door, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-power",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Электростанция",
   "path": "client/public/art/buildings/power.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Электростанция building, warm tiled roof, plaster walls, (Даёт энергию производственным зданиям.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: a power plant: brick generator hall with two tall chimneys puffing smoke, copper pipes and a transformer with insulators, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-quarry",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Металлургический карьер",
   "path": "client/public/art/buildings/quarry.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Металлургический карьер building, warm tiled roof, plaster walls, (Добывает металл каждую минуту.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: an open-pit metal quarry with a wooden crane, ore carts on little rails and piles of grey ore, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-barracks",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Казармы",
   "path": "client/public/art/buildings/barracks.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Казармы building, warm tiled roof, plaster walls, (Открывает подготовку стрелков в разделе «Армия».). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: military barracks: long wooden hut with a green tin roof, sandbag wall, a training dummy and an empty flagpole, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-refinery",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "НПЗ",
   "path": "client/public/art/buildings/refinery.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military НПЗ building, warm tiled roof, plaster walls, (Перерабатывает нефть в топливо.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: a small fuel refinery with two round storage tanks, a distillation tower, pipes and fuel barrels, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-oil_well",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Нефтедобывающий комплекс",
   "path": "client/public/art/buildings/oil_well.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Нефтедобывающий комплекс building, warm tiled roof, plaster walls, (Добывает сырую нефть для НПЗ.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: an oil derrick: steel lattice tower with a pumpjack, a black oil puddle and barrels, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-farm",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Агрокомплекс",
   "path": "client/public/art/buildings/farm.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Агрокомплекс building, warm tiled roof, plaster walls, (Производит провизию для подготовки войск.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: a farm: red barn with a tiled roof, golden wheat field rows and round haystacks, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-warehouse",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Склад",
   "path": "client/public/art/buildings/warehouse.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Склад building, warm tiled roof, plaster walls, (Увеличивает вместимость каждого ресурса.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: a supply depot: big corrugated hangar with stacked crates, barrels and a small forklift, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-watchtower",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Сторожевая башня",
   "path": "client/public/art/buildings/watchtower.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Сторожевая башня building, warm tiled roof, plaster walls, (Расширяет обзор мировой карты вокруг базы.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: a wooden watchtower with a searchlight on top, a ladder and sandbags around its legs, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-electronics",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Электронный завод",
   "path": "client/public/art/buildings/electronics.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Электронный завод building, warm tiled roof, plaster walls, (Превращает металл в электронику.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: an electronics factory: brick workshop with teal glass windows, radio antennas and glowing cables, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-shipyard",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Верфь",
   "path": "client/public/art/buildings/shipyard.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Верфь building, warm tiled roof, plaster walls, (Строит корабли. С флотом соединение ходит по морям, озёрам и рекам.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: a small shipyard: wooden slipway on a water edge with a half-built boat hull and a crane, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  },
  {
   "key": "building-repair",
   "kind": "building",
-  "group": "Здания (подключение позже)",
+  "group": "Здания базы",
   "title": "Ремонтный центр",
   "path": "client/public/art/buildings/repair.png",
-  "prompt": "Isometric hex diorama tile for IRON FRONT, bright saturated colours, thick dark ink outline, visible dark soil edge under the tile, transparent background. Subject: dieselpunk military Ремонтный центр building, warm tiled roof, plaster walls, (Восстанавливает здоровье отрядов вне боя.). No text."
+  "prompt": "Original isometric game building for IRON FRONT base screen, small cosy diorama: a repair workshop: garage with an open door, workbench, big wrench sign and a small armored car on jacks, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people."
  }
 ]

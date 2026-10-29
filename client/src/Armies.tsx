@@ -28,10 +28,9 @@ export function Armies({ state, units, stacks, busy, run, toMap }: Props) {
   const hungry = Object.entries(upkeep).some(([k, v]) => v > 0 && (state.resources[k] ?? 0) < v);
   return <>
     {(upkeep.food > 0 || upkeep.fuel > 0) && <p className={`upkeep-line${hungry ? " hungry" : ""}`}>
-      Содержание войск: {upkeep.food ? `${upkeep.food} провизии` : ""}{upkeep.food && upkeep.fuel ? " и " : ""}{upkeep.fuel ? `${upkeep.fuel} топлива` : ""} в час.
-      {hungry ? " Запасов меньше чем на час: без провизии и топлива бойцы начнут дезертировать." : ""}</p>}
+      Содержание: {upkeep.food ? `✦${upkeep.food}` : ""} {upkeep.fuel ? `◉${upkeep.fuel}` : ""} в час{hungry ? " · ⚠ запасов меньше чем на час" : ""}</p>}
     <div className="section-label">СОЕДИНЕНИЯ · {armies.length}/{max}</div>
-    {!armies.length && state.first_victory && <p>Сформируйте первое соединение из резерва: оно выйдет с базы на карту мира.</p>}
+    {!armies.length && state.first_victory && <p>Сформируйте соединение из резерва ↓</p>}
     {armies.map((a) => <article className={`card army-card${target?.id === a.id ? " target" : ""}`} key={a.id}>
       <div>
         <h3>{armyName(a)}{a.commander && <small className="lead"> · командир</small>}</h3>
@@ -46,7 +45,7 @@ export function Armies({ state, units, stacks, busy, run, toMap }: Props) {
       </div>
       <button className="primary" onClick={toMap}>На карту</button>
     </article>)}
-    {armies.length > 0 && !home.length && <p className="action-reason">Состав меняется только на базе: верните соединение домой.</p>}
+    {armies.length > 0 && !home.length && <p className="action-reason">Состав меняется только на базе</p>}
     <div className="section-label">ОТРЯДЫ</div>
     {state.units.map((u) => {
       const a = owner(u.id);

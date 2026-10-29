@@ -68,7 +68,7 @@ assert.equal(moduleAsset.status, 200);
 await page.locator(".selection-portrait img").first().evaluate(img => img.decode());
 await page.screenshot({path:"/tmp/iron-hero-selection.png",fullPage:true});
 await page.getByRole("button", { name: /Генерал Рейвен/ }).click();
-await page.getByRole("heading", { name: "Передовая база" }).waitFor();
+await page.getByRole("button", { name: "+ Стройка" }).waitFor();
 await page.getByRole("button", {name:"План первой операции"}).click();
 await page.locator(".guide-list").waitFor();
 assert.match(await page.locator(".guide-list .current").innerText(), /Постройте электростанцию/);
@@ -135,7 +135,7 @@ for (let i = 0; i < 12; i++) {
 assert.equal((await state()).first_victory, true);
 await page.getByRole("button", { name: "Снарядить", exact: true }).click();
 await page.reload();
-await page.getByRole("heading", { name: "Передовая база" }).waitFor();
+await page.getByRole("button", { name: "+ Стройка" }).waitFor();
 await page.getByRole("button", { name: "Армия", exact: true }).click();
 await page.getByRole("button", { name: "Снять", exact: true }).waitFor();
 assert.equal(await page.getByRole("button",{name:"Командир",exact:true}).getAttribute("aria-pressed"), "true");
@@ -148,7 +148,7 @@ await page.screenshot({path:"/tmp/iron-commander-mobile.png",fullPage:true});
 await page.getByRole("button",{name:"Карточка полевого модуля"}).click();
 await page.getByRole("button",{name:"Все",exact:true}).click();
 assert.equal((await state()).inventory.length, 1);
-await page.getByText("Первая операция завершена",{exact:true}).waitFor();
+assert.equal(await page.locator(".objective").count(), 0);   // the tutorial bar hides once the first operation is done
 assert.equal(
   await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
   true,
@@ -188,9 +188,9 @@ assert.equal(marching.armies[0].status,"moving");
 assert.equal(marching.territories.length,0);
 await waitFor(async()=>(await state()).territories.length===1,45000);
 await page.reload();
-await page.getByRole("heading",{name:"Передовая база"}).waitFor();
+await page.getByRole("button",{name:"+ Стройка"}).waitFor();
 await page.getByRole("button",{name:"Карта",exact:true}).click();
-await page.getByText(/Под контролем 1\/12/).waitFor();
+await page.locator(".world-control-count").filter({hasText:"1/12"}).waitFor();
 const captured=await state();
 assert.ok(captured.base);
 assert.equal(captured.armies[0].q,captured.base.q+1);
@@ -206,7 +206,7 @@ await page.mouse.click(garrisonMap.x+garrisonMap.width/2-54*Math.sqrt(3)/2,garri
 await page.getByRole('button',{name:'Атаковать гарнизон',exact:true}).click();
 await waitFor(async()=>(await state()).battles.some(b=>b.status==='active'&&b.state.expedition),45000);
 await page.reload();
-await page.getByRole('heading',{name:/NPC ·/}).waitFor();
+await page.getByRole('heading',{name:/NPC/}).waitFor();
 const battleBox=await page.locator('canvas').boundingBox();
 await page.mouse.click(battleBox.x+battleBox.width/2-54*Math.sqrt(3)*.72,battleBox.y+battleBox.height*.5-70);
 await page.getByRole('button',{name:'Переместить',exact:true}).click();
@@ -228,7 +228,7 @@ assert.ok(conquered.inventory.some(i=>i.source==="garrison"));
 const worldLoaded=page.waitForResponse(r=>r.url().includes('/world/tiles')&&r.status()===200);
 await page.getByRole('button',{name:'Карта',exact:true}).click();
 await worldLoaded;
-await page.getByText(/Под контролем 2\/12/).waitFor();
+await page.locator(".world-control-count").filter({hasText:"2/12"}).waitFor();
 await page.waitForTimeout(500);
 await page.screenshot({path:'/tmp/iron-garrison-victory.png',fullPage:true});
 await page.getByRole('button',{name:'Армия',exact:true}).click();
