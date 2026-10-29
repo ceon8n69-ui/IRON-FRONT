@@ -6,7 +6,7 @@ import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 
 import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle, Army } from "./store";
 import { Director, type BattleEvent, type UnitHandle, type UnitInfo } from "./BattleFx";
-import { preloadWorld, rasterEnvironment, worldObject } from "./WorldArt";
+import { preloadWorld, rasterEnvironment, worldObject, worldReady } from "./WorldArt";
 type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean; garrison_strength?: {name:string;hp:number} | null; object?: {kind:string;resource?:string;amount?:number;owner?:string|null;pending?:boolean} | null; node?: {kind:string;name:string} | null; supplied?: boolean | null };
 type Props = {
   buildings: Building[];
@@ -252,6 +252,7 @@ export function MapView(props: Props) {
   }, []);
   // Snapshots arrive frequently; rebuild geometry only when renderable state changes.
   const geometryKey = JSON.stringify([props.buildings, props.battle, props.world, props.armies, props.center, props.route, textures]);
+  useEffect(() => (props.world ? preloadWorld(() => setTextures((n) => n + 1)) : undefined), [props.world ? 1 : 0]);
   useEffect(() => {
     if (!ready || !app.current) return;
     const s = scene.current;
@@ -260,7 +261,6 @@ export function MapView(props: Props) {
     s.removeChildren().forEach((c) => c.destroy({ children: true }));
     animations.current = [];
     units.current = new globalThis.Map();
-    if (props.world) preloadWorld(() => setTextures((n) => n + 1));
     const ground = new Container();
     const labels = new Container();
     s.addChild(ground);
@@ -372,7 +372,7 @@ export function MapView(props: Props) {
         labels.addChild(new Graphics().roundRect(x + 30 - Math.max(9, chip.width / 2 + 4), y + 6, Math.max(18, chip.width + 8), 16, 8)
           .fill({ color: 0x101923, alpha: .88 }).stroke({ color: 0xe5b65a, width: 1, alpha: .8 }));
         labels.addChild(chip);
-      } else if (!props.battle && !t.garrison && !t.node && !(t as {object?:unknown}).object && t.biome!=="unknown") {
+      } else if (!props.battle && !t.garrison && !t.node && !(t as {object?:unknown}).object && t.biome!=="unknown" && !(props.world && t.base && worldReady())) {
         const wq=t.q+(props.center?.[0]??0), wr=t.r+(props.center?.[1]??0);
         const detail=(props.world && !t.base ? rasterEnvironment(x,y,t.biome,wq,wr) : null) ?? environment(x,y,t.biome,wq,wr);
         if(t.visibility==="explored")detail.alpha=.55;

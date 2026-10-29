@@ -113,3 +113,12 @@ def test_route_preview_matches_order_and_changes_nothing(client, monkeypatch):
     assert [p[:2] for p in r.json()['state']['armies'][0]['orders'][0]['path']] == [p[:2] for p in preview['path']]
     blocked = c.get(f'/api/v1/army/route?q={Q+9}&r={R}', headers=h)
     assert blocked.status_code == 409
+
+
+def test_movement_view_counts_regen_without_writing():
+    from types import SimpleNamespace
+    from app.expeditions import movement_view
+    army = SimpleNamespace(movement=10, movement_at=1000)
+    assert movement_view(army, 30, 240, 1000 + 240 * 3 + 5) == (13, 1000 + 240 * 4)
+    assert movement_view(army, 30, 240, 1000 + 240 * 100) == (30, None)
+    assert army.movement == 10 and army.movement_at == 1000

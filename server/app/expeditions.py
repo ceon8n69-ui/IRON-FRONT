@@ -78,6 +78,17 @@ def refresh_movement(db, army, at):
         army.movement_at = at if army.movement >= cap else army.movement_at + gained * period
 
 
+def movement_view(army, cap, period, at):
+    """Points as of `at` without writing: (movement, next point timestamp or None when full)."""
+    if army.movement >= cap:
+        return cap, None
+    if not army.movement_at:
+        return army.movement, at + period
+    gained = max(0, (at - army.movement_at) // period)
+    movement = min(cap, army.movement + gained)
+    return movement, None if movement >= cap else army.movement_at + (gained + 1) * period
+
+
 def spend_movement(db, army, cost, at):
     refresh_movement(db, army, at)
     if army.movement >= movement_max(db, army.player_id, army):
@@ -482,11 +493,11 @@ def state(db,pid):
     fighting=in_battle(db,pid)
     for army in armies(db,pid):
         cap=movement_max(db,pid,army)
+        movement,next_at=movement_view(army,cap,period,_now())
         orders=list(db.scalars(select(ArmyOrder).where(ArmyOrder.army_id == army.id).order_by(ArmyOrder.started_at.desc(),ArmyOrder.id).limit(10)))
         views.append({'id':army.id,'number':army.number,'commander':army.commander,'in_battle':fighting==army.id,
             'q':army.q,'r':army.r,'status':army.status,'vision':army_vision(db,army),
-            'movement':army.movement,'movement_max':cap,
-            'movement_next_at':None if army.movement>=cap else army.movement_at+period,
+            'movement':movement,'movement_max':cap,'movement_next_at':next_at,
             'unit_ids':list(db.scalars(select(ArmyUnit.unit_id).where(ArmyUnit.army_id==army.id))),
             'orders':[{k:getattr(o,k) for k in ('id','q','r','from_q','from_r','action','status','started_at','ready_at','finished_at','result','path')} for o in orders]})
     territories=[]

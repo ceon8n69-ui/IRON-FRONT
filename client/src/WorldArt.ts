@@ -8,11 +8,19 @@ const OBJECTS = ["pile", "chest", "mine", "ruin", "camp", "bunker", "base", "cap
 const url = (k: string) => `/art/world/${k}.png`;
 let state: "idle" | "loading" | "ready" | "failed" = "idle";
 
-/** Load every world texture once; `done` fires when they are all in the cache. */
-export function preloadWorld(done: () => void) {
-  if (state !== "idle") return;
-  state = "loading";
-  Assets.load([...PROPS, ...OBJECTS].map(url)).then(() => { state = "ready"; done(); }).catch(() => { state = "failed"; });
+const waiting = new Set<() => void>();
+/** Load every world texture once; `done` fires when they are all in the cache.
+ *  Returns an unsubscribe, so a map remounted mid-load still gets the latest callback. */
+export function preloadWorld(done: () => void): () => void {
+  if (state === "ready" || state === "failed") return () => {};
+  waiting.add(done);
+  if (state === "idle") {
+    state = "loading";
+    Assets.load([...PROPS, ...OBJECTS].map(url))
+      .then(() => { state = "ready"; for (const f of [...waiting]) f(); waiting.clear(); })
+      .catch(() => { state = "failed"; waiting.clear(); });
+  }
+  return () => { waiting.delete(done); };
 }
 export const worldReady = () => state === "ready";
 const tex = (k: string) => (Assets.cache.has(url(k)) ? (Assets.cache.get(url(k)) as Texture) : null);
@@ -43,7 +51,7 @@ export function rasterEnvironment(x: number, y: number, biome: string, q: number
   if (biome === "forest") {
     const items = Array.from({ length: 3 }, (_, i) => ({ x: x + (n(i * 3) - .5) * 52, y: y - 6 + i * 9 + (n(i * 3 + 1) - .5) * 6, k: n(i * 3 + 2) }));
     items.sort((a, b) => a.y - b.y);
-    for (const it of items) put(it.k < .45 ? "tree-pine" : it.k < .8 ? "tree-oak" : "tree-autumn", it.x, it.y, it.k < .45 ? 34 : 42);
+    for (const it of items) put(it.k < .45 ? "tree-pine" : it.k < .9 ? "tree-oak" : "tree-autumn", it.x, it.y, it.k < .45 ? 34 : 42);
   } else if (biome === "mountain") {
     put("mountain", x, y + 14, 92);
   } else if (biome === "hills") {
@@ -59,7 +67,7 @@ export function rasterEnvironment(x: number, y: number, biome: string, q: number
   } else if (biome === "plain") {
     const k = n(1);
     if (k < .3) put("bush", x + (n(2) - .5) * 44, y + (n(3) - .5) * 14 + 8, 26);
-    else if (k < .48) put(n(4) < .7 ? "tree-oak" : "tree-autumn", x + (n(5) - .5) * 36, y + 10, 40);
+    else if (k < .48) put(n(4) < .85 ? "tree-oak" : "tree-autumn", x + (n(5) - .5) * 36, y + 10, 40);
     else if (k < .58) put("rocks", x + (n(6) - .5) * 40, y + 12, 22);
   } else {
     return null;
