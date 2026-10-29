@@ -20,9 +20,9 @@ from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
-from . import config, expeditions, garrisons, bases, objects, pvp, commander, equipment
+from . import config, expeditions, garrisons, bases, objects, pvp, commander, equipment, matches
 from .db import SessionLocal
-from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery, Army
+from .models import Player, Session, Resource, Building, Hero, Tile, BattleTurn, Ledger, TileOwnership, Discovery, Army, Match
 from .auth import validate_init_data, token_hash
 from .game import uid, now, settle, snapshot, execute
 
@@ -299,6 +299,116 @@ def upgrade(
     idempotency_key: str | None = Header(default=None),
 ):
     return mutate("upgrade", body.model_dump(), authorization, idempotency_key)
+
+
+class MatchCreate(Strict):
+    name: str = Field(default="", max_length=40)
+    size: Literal["small", "medium", "large"] = "small"
+    seats: int = Field(default=2, ge=2, le=4)
+    turn_limit: Literal[300, 3600, 86400] = 3600
+    private: bool = False
+    vs_ai: bool = False
+
+
+class MatchCode(Strict):
+    code: str = Field(min_length=4, max_length=8)
+
+
+class MatchStart(Strict):
+    fill_ai: bool = False
+
+
+class MatchAction(Strict):
+    version: int = Field(ge=0)
+    type: Literal["move", "attack", "capture", "recover", "train", "build", "research", "promote",
+                  "spec", "reward", "walls", "end_turn", "resign"]
+    unit: str | None = Field(default=None, max_length=20)
+    target: str | None = Field(default=None, max_length=20)
+    city: str | None = Field(default=None, max_length=20)
+    q: int | None = Field(default=None, ge=-64, le=64)
+    r: int | None = Field(default=None, ge=-64, le=64)
+    role: str | None = Field(default=None, max_length=20)
+    improvement: str | None = Field(default=None, max_length=20)
+    tech: str | None = Field(default=None, max_length=20)
+    branch: str | None = Field(default=None, max_length=20)
+    spec: str | None = Field(default=None, max_length=20)
+    reward: str | None = Field(default=None, max_length=20)
+
+
+def _match_call(authorization, fn, limit=120):
+    with SessionLocal.begin() as db:
+        pid = identify(db, authorization)
+        rate_limit("match:" + pid, limit)
+        return fn(db, pid, now())
+
+
+@app.get("/api/v1/matches")
+def match_list(authorization: str | None = Header(default=None)):
+    return _match_call(authorization, lambda db, pid, at: matches.listing(db, pid, at))
+
+
+@app.post("/api/v1/matches")
+def match_create(body: MatchCreate, authorization: str | None = Header(default=None)):
+    def run(db, pid, at):
+        m = matches.create(db, pid, body.name, body.size, body.seats, body.turn_limit, body.private, body.vs_ai, at)
+        db.flush()
+        return matches.view(db, pid, m.id, at)
+    return _match_call(authorization, run, 30)
+
+
+@app.post("/api/v1/matches/join")
+def match_join_code(body: MatchCode, authorization: str | None = Header(default=None)):
+    def run(db, pid, at):
+        m = matches.join(db, pid, None, at, code=body.code)
+        db.flush()
+        return matches.view(db, pid, m.id, at)
+    return _match_call(authorization, run, 30)
+
+
+@app.get("/api/v1/matches/{match_id}")
+def match_view(match_id: str, authorization: str | None = Header(default=None)):
+    def run(db, pid, at):
+        m = db.scalar(select(Match).where(Match.id == match_id).with_for_update())
+        if m:
+            matches.expire(db, m, at)
+        return matches.view(db, pid, match_id, at)
+    return _match_call(authorization, run, 240)
+
+
+@app.post("/api/v1/matches/{match_id}/join")
+def match_join(match_id: str, authorization: str | None = Header(default=None)):
+    def run(db, pid, at):
+        matches.join(db, pid, match_id, at)
+        db.flush()
+        return matches.view(db, pid, match_id, at)
+    return _match_call(authorization, run, 30)
+
+
+@app.post("/api/v1/matches/{match_id}/start")
+def match_start(match_id: str, body: MatchStart, authorization: str | None = Header(default=None)):
+    def run(db, pid, at):
+        matches.start(db, pid, match_id, body.fill_ai, at)
+        db.flush()
+        return matches.view(db, pid, match_id, at)
+    return _match_call(authorization, run, 30)
+
+
+@app.post("/api/v1/matches/{match_id}/leave")
+def match_leave(match_id: str, authorization: str | None = Header(default=None)):
+    def run(db, pid, at):
+        matches.leave(db, pid, match_id, at)
+        return {"ok": True}
+    return _match_call(authorization, run, 30)
+
+
+@app.post("/api/v1/matches/{match_id}/action")
+def match_action(match_id: str, body: MatchAction, authorization: str | None = Header(default=None)):
+    def run(db, pid, at):
+        action = {k: v for k, v in body.model_dump().items() if v is not None and k != "version"}
+        result = matches.act(db, pid, match_id, action, body.version, at)
+        db.flush()
+        return {**result, "match": matches.view(db, pid, match_id, at)}
+    return _match_call(authorization, run, 240)
 
 
 @app.post("/api/v1/units/refill")
