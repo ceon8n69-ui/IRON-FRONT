@@ -16,6 +16,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.gzip import GZipMiddleware
 from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
@@ -32,7 +33,9 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.16.0")
+app = FastAPI(title="IRON FRONT", version="0.17.0")
+# Map windows are large, repetitive JSON: compress responses for mobile networks.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
 class Strict(BaseModel):
@@ -511,10 +514,20 @@ def tiles(
     q: int = 64,
     r: int = 64,
     radius: int = 4,
+    hw: float | None = None,
+    hh: float | None = None,
     authorization: str | None = Header(default=None),
 ):
+    """Tiles around (q, r): an axial square of `radius`, or — with hw/hh, the half-width and
+    half-height of the viewport in hexes — just the screen-shaped window the camera sees."""
     if not 0 <= q < 128 or not 0 <= r < 128 or not 1 <= radius <= 8:
         raise HTTPException(422, "Недопустимый чанк")
+    view = None
+    if hw is not None or hh is not None:
+        if hw is None or hh is None or not 0 < hw <= 14 or not 0 < hh <= 26:
+            raise HTTPException(422, "Недопустимое окно карты")
+        view = (int(hw) + 1, int(hh) + 1)
+        radius = view[0] + (view[1] + 1) // 2
     with SessionLocal.begin() as db:
         pid = identify(db, authorization)
         rate_limit(pid)
@@ -522,6 +535,8 @@ def tiles(
         settle(db,p)
         ts = list(db.scalars(select(Tile).where(Tile.world_id == 1,
             Tile.q.between(q-radius,q+radius),Tile.r.between(r-radius,r+radius))))
+        if view:
+            ts = [t for t in ts if abs(t.r-r) <= view[1] and abs((t.q-q)+(t.r-r)/2) <= view[0]]
         discovered = {(t.q,t.r) for t in db.scalars(select(Discovery).where(
             Discovery.player_id == pid, Discovery.world_id == 1,
             Discovery.q.between(q-radius,q+radius), Discovery.r.between(r-radius,r+radius)))}
@@ -554,8 +569,13 @@ def tiles(
             base = None
             if site and in_view:
                 base = "self" if sites[(t.q,t.r)] == pid else "ally" if sites[(t.q,t.r)] in friends else "other"
+            if not known and not raid:
+                # Unscouted hex: geography only, kept tiny since zoomed-out windows hold ~1000 of them.
+                result.append({"id":f"1:{t.q}:{t.r}","q":t.q,"r":t.r,"biome":"unknown","terrain":t.biome,"visibility":"unknown","home":False,"control":None,"base":None})
+                continue
             result.append({"id":f"1:{t.q}:{t.r}","q":t.q,"r":t.r,
                 "biome":t.biome if known else "unknown",
+                "terrain":None if known else t.biome,   # geography only: contents stay hidden until scouted
                 "garrison":guarded,
                 "garrison_strength":{"name":tier[0],"hp":tier[1],"xp":tier[2]} if tier else None,
                 "object":objects.view(db,pid,t.q,t.r,sites,t.biome) if in_view and not site else None,

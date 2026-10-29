@@ -7,7 +7,7 @@ import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle, Army } from "./store";
 import { Director, type BattleEvent, type UnitHandle, type UnitInfo } from "./BattleFx";
 import { preloadWorld, rasterEnvironment, worldObject, worldReady } from "./WorldArt";
-type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean; garrison_strength?: {name:string;hp:number} | null; object?: {kind:string;resource?:string;amount?:number;owner?:string|null;pending?:boolean} | null; node?: {kind:string;name:string} | null; supplied?: boolean | null };
+type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean; garrison_strength?: {name:string;hp:number} | null; object?: {kind:string;resource?:string;amount?:number;owner?:string|null;pending?:boolean} | null; node?: {kind:string;name:string} | null; supplied?: boolean | null; terrain?: string | null };
 type Props = {
   buildings: Building[];
   paused?: boolean;
@@ -22,6 +22,10 @@ type Props = {
   playback?: { key: number; events: BattleEvent[]; speed: number } | null;
   onPlaybackDone?: () => void;
   unitInfo?: UnitInfo;
+  /** World map: the hex at the screen centre and the viewport half-size in hexes, after pans/zooms. */
+  onView?: (q: number, r: number, hw: number, hh: number) => void;
+  /** World map: the player's own base, pointed at from the screen edge when it is off-screen. */
+  homeHex?: number[] | null;
 };
 // Bright diorama palette: lit top, darker soil side, ink rim.
 const colors: Record<string, number> = {
@@ -94,6 +98,7 @@ export function MapView(props: Props) {
   const units = useRef(new globalThis.Map<string, UnitHandle>());
   const fxLayer = useRef(new Container());
   const director = useRef<Director | null>(null);
+  const homeLabels = useRef<Container[]>([]);
   const played = useRef<number | null>(null);
   const [ready, setReady] = useState(false);
   const [textures, setTextures] = useState(0);
@@ -123,6 +128,14 @@ export function MapView(props: Props) {
       scene.current = new Container();
       a.stage.addChild(scene.current);
       selection.current = new Graphics();
+      const pointer = new Container();
+      const arrow = new Graphics().poly([0, -13, 26, 0, 0, 13, 6, 0]).fill(0xe5b65a).stroke({ color: 0x1b201e, width: 2 });
+      const pin = new Graphics().circle(0, 0, 17).fill({ color: 0x101923, alpha: .9 }).stroke({ color: 0xe5b65a, width: 2 });
+      const pinText = new Text({ text: "⌂", style: { fontSize: 17, fill: 0xe5b65a, fontFamily: "sans-serif", fontWeight: "bold" } });
+      pinText.anchor.set(.5);
+      pointer.addChild(arrow, pin, pinText);
+      pointer.visible = false;
+      a.stage.addChild(pointer);
       const motion = matchMedia("(prefers-reduced-motion: reduce)");
       let elapsed = 0;
       a.ticker.maxFPS = 30;
@@ -131,6 +144,25 @@ export function MapView(props: Props) {
         director.current?.tick(ticker.deltaMS);
         elapsed += ticker.deltaMS / 1000;
         const scale = camera.current.scale;
+        const hq = latest.current.world ? latest.current.homeHex : null;
+        if (hq) {
+          const c = latest.current.center ?? [64, 64];
+          const hx = 54 * Math.sqrt(3) * (hq[0] - c[0] + (hq[1] - c[1]) / 2) * scale + a.screen.width / 2 + camera.current.x;
+          const hy = 54 * .975 * (hq[1] - c[1]) * scale + a.screen.height * .5 + camera.current.y;
+          const m = 30, top = 280, bottom = 150, W = a.screen.width, H = a.screen.height;
+          const off = hx < m || hx > W - m || hy < top - 40 || hy > H - bottom + 20;
+          pointer.visible = off;
+          if (off) {
+            // Walk from the screen centre towards the base and stop at the inset edge.
+            // Clamp into the free band between the top controls and the bottom panel.
+            const cy = (top + H - bottom) / 2, dx = hx - W / 2, dy = hy - cy;
+            const k = Math.min((W / 2 - m) / Math.max(1e-6, Math.abs(dx)), ((H - bottom - top) / 2) / Math.max(1e-6, Math.abs(dy)));
+            pointer.position.set(W / 2 + dx * k, cy + dy * k);
+            arrow.rotation = Math.atan2(dy, dx);
+            arrow.position.set(Math.cos(arrow.rotation) * 8, Math.sin(arrow.rotation) * 8);
+          }
+        } else pointer.visible = false;
+        for (const label of homeLabels.current) label.scale.set(Math.max(1, .95 / scale));
         for (const visual of animations.current) {
           if (visual.node.label === "march" && !motion.matches && !latest.current.paused) visual.animate(elapsed);
           const x = visual.node.x * scale + a.screen.width / 2 + camera.current.x;
@@ -145,12 +177,21 @@ export function MapView(props: Props) {
       let start = { x: 0, y: 0 };
       let traveled = 0;
       let pinch = 0;
+      let viewTimer = 0;
       const apply = () => {
         scene.current.position.set(
           a.screen.width / 2 + camera.current.x,
           a.screen.height * 0.5 + camera.current.y,
         );
         scene.current.scale.set(camera.current.scale);
+        if (!latest.current.world || !latest.current.onView) return;
+        clearTimeout(viewTimer);
+        viewTimer = window.setTimeout(() => {
+          const sc = camera.current.scale, c = latest.current.center ?? [64, 64];
+          const r = -camera.current.y / sc / (54 * .975), q = -camera.current.x / sc / (54 * Math.sqrt(3)) - r / 2;
+          latest.current.onView?.(Math.round(q + c[0]), Math.round(r + c[1]),
+            a.screen.width / 2 / sc / (54 * Math.sqrt(3)), a.screen.height / 2 / sc / (54 * .975));
+        }, 250);
       };
       const down = (e: PointerEvent) => {
         a.canvas.setPointerCapture(e.pointerId);
@@ -174,7 +215,7 @@ export function MapView(props: Props) {
           const d = Math.hypot(p.x - q.x, p.y - q.y);
           if (pinch)
             camera.current.scale = Math.max(
-              0.45,
+              latest.current.world ? 0.3 : 0.45,
               Math.min(2.5, (camera.current.scale * d) / pinch),
             );
           pinch = d;
@@ -185,6 +226,15 @@ export function MapView(props: Props) {
         apply();
       };
       const up = (e: PointerEvent) => {
+        const rect0 = a.canvas.getBoundingClientRect();
+        const hq = latest.current.homeHex;
+        if (traveled < 8 && pointers.size === 1 && pointer.visible && hq &&
+            Math.hypot(e.clientX - rect0.left - pointer.x, e.clientY - rect0.top - pointer.y) < 26) {
+          const c = latest.current.center ?? [64, 64], sc = camera.current.scale;
+          camera.current.x = -54 * Math.sqrt(3) * (hq[0] - c[0] + (hq[1] - c[1]) / 2) * sc;
+          camera.current.y = -54 * .975 * (hq[1] - c[1]) * sc;
+          apply(); pointers.delete(e.pointerId); pinch = 0; return;
+        }
         if (traveled < 8 && pointers.size === 1) {
           const rect = a.canvas.getBoundingClientRect();
           const x =
@@ -216,7 +266,7 @@ export function MapView(props: Props) {
       const wheel = (e: WheelEvent) => {
         e.preventDefault();
         camera.current.scale = Math.max(
-          0.45,
+          latest.current.world ? 0.3 : 0.45,
           Math.min(2.5, camera.current.scale * Math.exp(-e.deltaY * 0.001)),
         );
         apply();
@@ -260,6 +310,7 @@ export function MapView(props: Props) {
     if (director.current) { director.current.skip(); director.current = null; }
     s.removeChildren().forEach((c) => c.destroy({ children: true }));
     animations.current = [];
+    homeLabels.current = [];
     units.current = new globalThis.Map();
     const ground = new Container();
     const labels = new Container();
@@ -284,6 +335,15 @@ export function MapView(props: Props) {
       const x = 54 * Math.sqrt(3) * (t.q + t.r / 2),
         y = 54 * 0.975 * t.r;
       const g = new Graphics();
+      if (t.biome === "unknown" && t.terrain && colors[t.terrain] !== undefined) {
+        // Unscouted: faded geography like a paper map, no props or contents.
+        hex(g, x, y, 52, colors[t.terrain]);
+        g.poly(Array.from({ length: 6 }, (_, i) => { const a = ((i * 60 + 30) * Math.PI) / 180; return [x + Math.cos(a) * 52, y + Math.sin(a) * 52 * 0.65]; }).flat())
+          .stroke({ color: 0x0d1418, width: 1.4, alpha: .5 });
+        g.alpha = .32;
+        ground.addChild(g);
+        continue;
+      }
       hex(g, x, WATER.has(t.biome) ? y + 4 : y + 9, 52, sides[t.biome] ?? 0x263a36);
       hex(g, x, y, 52, colors[t.biome]);
       if (t.biome !== "unknown") {
@@ -308,8 +368,17 @@ export function MapView(props: Props) {
       }
       const owner = t.control === "self" ? 0x4c9ce5 : t.control === "ally" ? 0x64b87b : t.control === "other" ? 0xd95a52 : null;
       if (t.base && props.world && t.visibility !== "unknown") {
-        const fort = worldObject("base", x, y, 88, t.home ? 0xe5b65a : t.base === "ally" ? 0x64b87b : 0xd95a52);
+        const fort = worldObject("base", x, y, t.home ? 100 : 88, t.home ? 0xe5b65a : t.base === "ally" ? 0x64b87b : 0xd95a52);
         if (fort) s.addChild(fort);
+        if (t.home) {
+          // Own base stays readable when zoomed out: the chip counter-scales in the ticker.
+          const tag = new Container();
+          const txt = new Text({ text: "⌂ Моя база", style: { fontSize: 12, fill: 0x1b201e, fontFamily: "sans-serif", fontWeight: "bold" } });
+          txt.anchor.set(.5);
+          tag.addChild(new Graphics().roundRect(-txt.width / 2 - 7, -10, txt.width + 14, 20, 10).fill(0xe5b65a).stroke({ color: 0x1b201e, width: 1.2 }), txt);
+          tag.position.set(x, y + 26);
+          labels.addChild(tag); homeLabels.current.push(tag);
+        }
       }
       if (t.node && t.visibility !== "unknown") {
         s.addChild(worldObject(t.node.kind, x, y, t.node.kind === "capital" ? 100 : 84, owner) ?? node(x, y - 6, t.node.kind, owner));
