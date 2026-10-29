@@ -19,6 +19,12 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
  const home=state.base?[state.base.q,state.base.r]:rules.staging;
  const [center,setCenter]=useState(home);
  const [focusVersion,setFocusVersion]=useState(0);
+ // Window of hexes the camera sees (centre + half-size), so zooming out loads more of the map.
+ const [view,setView]=useState({q:home[0],r:home[1],hw:3,hh:8});
+ const onView=(q:number,r:number,hw:number,hh:number)=>{
+   const next={q:Math.min(127,Math.max(0,q)),r:Math.min(127,Math.max(0,r)),hw:Math.min(14,Math.ceil(hw)+1),hh:Math.min(26,Math.ceil(hh)+2)};
+   setView(v=>Math.abs(v.q-next.q)<2&&Math.abs(v.r-next.r)<2&&v.hw===next.hw&&v.hh===next.hh?v:next);
+ };
  const [selected,setSelected]=useState<number[]|null>(null);
  const [tiles,setTiles]=useState<WorldTile[]>([]);
  const [error,setError]=useState("");const [busy,setBusy]=useState(false);
@@ -32,9 +38,9 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
  const armyName=(a:typeof army)=>a?`${a.commander?"★ ":""}${a.number}-е соединение${a.commander?" · командир":""}`:"";
  useEffect(()=>{
    let alive=true;let pending=false;
-   const refresh=async()=>{if(pending)return;pending=true;try{const d=await request(`/world/tiles?q=${center[0]}&r=${center[1]}&radius=6`);if(alive){setTiles(d.tiles);setError("");}}catch(e){if(alive)setError((e as Error).message);}finally{pending=false;}};
+   const refresh=async()=>{if(pending)return;pending=true;try{const d=await request(`/world/tiles?q=${view.q}&r=${view.r}&hw=${view.hw}&hh=${view.hh}`);if(alive){setTiles(d.tiles);setError("");}}catch(e){if(alive)setError((e as Error).message);}finally{pending=false;}};
    refresh();const id=setInterval(refresh,5000);return()=>{alive=false;clearInterval(id);};
- },[center[0],center[1],state.revision]);
+ },[view.q,view.r,view.hw,view.hh,state.revision]);
  const tile=tiles.find(t=>selected&&t.q===selected[0]&&t.r===selected[1]);
  const armyKey=army?`${army.id}:${army.q}:${army.r}:${army.status}:${army.movement}`:"";
  useEffect(()=>{
@@ -62,7 +68,7 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
  const openChest=async(choice:"resources"|"xp")=>{if(!chestPending)return;setBusy(true);setError("");try{await command('/world/chest',{q:chestPending.q,r:chestPending.r,choice});}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  const hire=async()=>{if(!army)return;setBusy(true);setError("");try{await command('/world/hire',{army_id:army.id});}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  const send=async(action:string)=>{if(!army||!selected)return;setBusy(true);setError("");try{await command('/army/orders',{army_id:army.id,q:selected[0],r:selected[1],action});}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
- const focus=(q:number,r:number)=>{setCenter([q,r]);setFocusVersion(n=>n+1);setSelected(null);};
+ const focus=(q:number,r:number)=>{setCenter([q,r]);setView(v=>({...v,q,r}));setFocusVersion(n=>n+1);setSelected(null);};
  const yieldLine=(y:Record<string,number>)=>Object.entries(y).map(([k,v])=>`${ICON[k]}${v}`).join(" ")+"/мин";
  const status=!tile?"":tile.visibility==="unknown"?"Туман войны":tile.visibility==="explored"?"Разведано ранее":tile.control==="self"?(tile.supplied===false?"⛓ Отрезано: нет дохода":"✓ Ваша земля"):tile.control==="ally"?"🤝 Союзник":tile.control==="other"?"⚑ Чужая земля":"Нейтральная";
  const objectShort=(o:NonNullable<WorldTile["object"]>)=>o.kind==="pile"?`${ICON[o.resource!]}${o.amount} · кто первый`:o.kind==="chest"?"Ресурсы или опыт на выбор":o.kind==="ruin"?"Случайная находка":o.kind==="camp"?(o.available?`Наём: ${Object.entries(o.cost??{}).map(([k,v])=>`${ICON[k]}${v}`).join(" ")} · раз в неделю`:"Уже наняты на этой неделе"):o.owner==="self"?"Ваша шахта":o.owner==="other"?"Чужая шахта":"Поднимите флаг";
@@ -73,7 +79,7 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
        <b>{a.commander?"★":a.number}</b><small>{a.in_battle?"⚔":a.status==="moving"?"→":`${a.movement}`}</small></button>)}
      {armies.length<(state.armies_max??1)&&<button className="add" aria-label="Новое соединение" onClick={goArmy}>+</button>}
    </div>}
-   <MapView key={center.join(':')+':'+focusVersion} buildings={[]} world={tiles} center={center} armies={armies.map(a=>({army:a,active:a.id===army?.id,kinds:a.unit_ids.map(id=>state.units.find(u=>u.id===id)?.kind).filter((k):k is string=>!!k)}))} route={route?.path} now={clock} selected={selected} onSelect={(q,r)=>{if(q<0||q>=128||r<0||r>=128)return;const mine=armies.find(a=>a.q===q&&a.r===r&&a.id!==army?.id&&a.status!=="moving");if(mine){setArmyId(mine.id);setSelected(null);return;}setSelected([q,r]);}}/>
+   <MapView key={center.join(':')+':'+focusVersion} buildings={[]} world={tiles} center={center} onView={onView} homeHex={state.base?[state.base.q,state.base.r]:null} armies={armies.map(a=>({army:a,active:a.id===army?.id,kinds:a.unit_ids.map(id=>state.units.find(u=>u.id===id)?.kind).filter((k):k is string=>!!k)}))} route={route?.path} now={clock} selected={selected} onSelect={(q,r)=>{if(q<0||q>=128||r<0||r>=128)return;const mine=armies.find(a=>a.q===q&&a.r===r&&a.id!==army?.id&&a.status!=="moving");if(mine){setArmyId(mine.id);setSelected(null);return;}setSelected([q,r]);}}/>
    <div className="world-control-count" title="Территории под контролем">⬡ {state.territories.length}/{state.control_limit??rules.control_limit}{shield>0&&<span className="shield-chip" title={pvp?.newbie?"Защита новичка":"Защита после налёта"}> 🛡{hours(shield)}</span>}{!!state.vp&&<span title="Очки победы"> · ★{state.vp}</span>}</div>
    {(()=>{const raid=state.raids?.find(x=>x.status==="active");return raid&&!pvp?.incoming.length?<button className="incoming-alert raid" onClick={()=>focus(raid.q,raid.r)}>⚠ Мародёры · {mmss(Math.max(0,raid.strikes_at-clock))}</button>:null;})()}
    {!!pvp?.incoming.length&&<button className="incoming-alert" onClick={()=>focus(pvp.incoming[0].q,pvp.incoming[0].r)}>⚠ {pvp.incoming[0].attacker} · {mmss(Math.max(0,pvp.incoming[0].arrive_at-clock))}</button>}

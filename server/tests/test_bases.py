@@ -89,7 +89,7 @@ def test_world_tiles_mark_bases_and_block_foreign_base(client, monkeypatch):
     assert not next(t for t in tiles if (t['q'], t['r']) == (Q+1, R))['garrison']
     # Hidden foreign base is not disclosed.
     far = c.get(f'/api/v1/world/tiles?q={oq}&r={orr}&radius=1', headers=h).json()['tiles']
-    assert next(t for t in far if (t['q'], t['r']) == (oq, orr))['base'] is None
+    assert next(t for t in far if (t['q'], t['r']) == (oq, orr)).get('base') is None
     # Even when adjacent, a foreign base can't be entered or captured, only attacked.
     from app.models import Army
     with c.factory.begin() as db:
@@ -112,3 +112,15 @@ def test_foreign_base_appearing_mid_march_blocks_arrival(client, monkeypatch):
     s = c.get('/api/v1/player/me', headers=h).json()
     assert (s['armies'][0]['q'], s['armies'][0]['r']) == (Q, R)
     assert s['armies'][0]['orders'][0]['status'] == 'blocked'
+
+
+def test_world_tiles_viewport_window(client, monkeypatch):
+    c = client
+    h, u = commander(c, monkeypatch); create(c, h, u); Q, R = home(c, h)
+    tiles = c.get(f'/api/v1/world/tiles?q={Q}&r={R}&hw=3.2&hh=9.5', headers=h).json()['tiles']
+    rows = {t['r'] - R for t in tiles}
+    assert max(rows) <= 10 and min(rows) >= -10 and len(rows) >= 15   # tall phone viewport: many rows
+    assert all(abs((t['q'] - Q) + (t['r'] - R) / 2) <= 4 for t in tiles)   # but only the visible columns
+    assert any(t['home'] for t in tiles)
+    assert c.get(f'/api/v1/world/tiles?q={Q}&r={R}&hw=40&hh=9', headers=h).status_code == 422
+    assert c.get(f'/api/v1/world/tiles?q={Q}&r={R}&hw=3', headers=h).status_code == 422
