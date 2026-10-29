@@ -419,3 +419,49 @@ class Raid(Base):
         Index("uq_raids_active_hex", "q", "r", unique=True, postgresql_where=text("status = 'active'")),
         UniqueConstraint("player_id", "season", "day", name="uq_raids_player_day"),
     )
+
+
+class Match(Base):
+    """A Polytopia-style room: lobby → active → finished. The whole board lives in `state`."""
+    __tablename__ = "matches"
+    id = Column(String, primary_key=True)
+    code = Column(String(6), unique=True, nullable=False)
+    name = Column(String(40), nullable=False)
+    status = Column(String, nullable=False, default="lobby")
+    size = Column(String, nullable=False)
+    seats = Column(Integer, nullable=False)
+    turn_limit = Column(Integer, nullable=False)          # seconds per turn before it is skipped
+    private = Column(Boolean, nullable=False, default=False)
+    host_id = Column(ForeignKey("users.id"), nullable=False)
+    state = Column(JSON, nullable=True)
+    version = Column(Integer, nullable=False, default=0)
+    turn_started_at = Column(BigInteger, nullable=True)
+    winner_seat = Column(Integer, nullable=True)
+    created_at = Column(BigInteger, nullable=False)
+    updated_at = Column(BigInteger, nullable=False)
+    __table_args__ = (CheckConstraint("seats >= 2 AND seats <= 4", name="ck_matches_seats"),
+                      Index("ix_matches_status", "status"))
+
+
+class MatchSeat(Base):
+    __tablename__ = "match_seats"
+    match_id = Column(ForeignKey("matches.id", ondelete="CASCADE"), primary_key=True)
+    seat = Column(Integer, primary_key=True)
+    player_id = Column(ForeignKey("users.id"), nullable=True, index=True)
+    ai = Column(Boolean, nullable=False, default=False)
+    name = Column(String(100), nullable=False)
+    faction = Column(String, nullable=False)
+    joined_at = Column(BigInteger, nullable=False)
+    __table_args__ = (UniqueConstraint("match_id", "player_id", name="uq_match_seats_player"),)
+
+
+class MatchNotice(Base):
+    """Outbox of Telegram messages ("your turn", "victory"); the worker delivers them."""
+    __tablename__ = "match_notices"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    player_id = Column(ForeignKey("users.id"), nullable=False)
+    match_id = Column(ForeignKey("matches.id", ondelete="CASCADE"), nullable=False)
+    text = Column(String(300), nullable=False)
+    created_at = Column(BigInteger, nullable=False)
+    sent_at = Column(BigInteger, nullable=True)
+    __table_args__ = (Index("ix_match_notices_pending", "sent_at"),)

@@ -187,6 +187,7 @@ export function MapView(props: Props) {
         if (!latest.current.world || !latest.current.onView) return;
         clearTimeout(viewTimer);
         viewTimer = window.setTimeout(() => {
+          if (!app.current) return;   // the map closed before the debounce fired
           const sc = camera.current.scale, c = latest.current.center ?? [64, 64];
           const r = -camera.current.y / sc / (54 * .975), q = -camera.current.x / sc / (54 * Math.sqrt(3)) - r / 2;
           latest.current.onView?.(Math.round(q + c[0]), Math.round(r + c[1]),
@@ -289,6 +290,7 @@ export function MapView(props: Props) {
       const visible = () => (document.hidden ? a.stop() : a.start());
       document.addEventListener("visibilitychange", visible);
       cleanup = () => {
+        clearTimeout(viewTimer);
         resize.disconnect();
         document.removeEventListener("visibilitychange", visible);
         a.destroy(true, { children: true });

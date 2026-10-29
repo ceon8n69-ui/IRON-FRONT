@@ -68,6 +68,8 @@ assert.equal(moduleAsset.status, 200);
 await page.locator(".selection-portrait img").first().evaluate(img => img.decode());
 await page.screenshot({path:"/tmp/iron-hero-selection.png",fullPage:true});
 await page.getByRole("button", { name: /Генерал Рейвен/ }).click();
+await page.getByRole("button", { name: "Играть с ИИ" }).waitFor();   // rooms are the home screen
+await page.getByRole("button", { name: "База", exact: true }).click();
 await page.getByRole("button", { name: "+ Стройка" }).waitFor();
 await page.getByRole("button", {name:"План первой операции"}).click();
 await page.locator(".guide-list").waitFor();
@@ -135,6 +137,7 @@ for (let i = 0; i < 12; i++) {
 assert.equal((await state()).first_victory, true);
 await page.getByRole("button", { name: "Снарядить", exact: true }).click();
 await page.reload();
+await page.getByRole("button", { name: "База", exact: true }).click();   // the last tab is remembered
 await page.getByRole("button", { name: "+ Стройка" }).waitFor();
 await page.getByRole("button", { name: "Армия", exact: true }).click();
 await page.getByRole("button", { name: "Снять", exact: true }).waitFor();
@@ -188,6 +191,7 @@ assert.equal(marching.armies[0].status,"moving");
 assert.equal(marching.territories.length,0);
 await waitFor(async()=>(await state()).territories.length===1,45000);
 await page.reload();
+await page.getByRole("button",{name:"База",exact:true}).click();
 await page.getByRole("button",{name:"+ Стройка"}).waitFor();
 await page.getByRole("button",{name:"Карта",exact:true}).click();
 await page.locator(".world-control-count").filter({hasText:"1/12"}).waitFor();
