@@ -679,3 +679,16 @@ def view(state, seat):
                         if improvement_options(state, seat, *unkey(k))} if state["current"] == seat else {}
         out["train"] = {c["id"]: available_roles(state, seat, c["id"]) for c in state["cities"].values() if c["owner"] == seat}
     return out
+
+
+def rules():
+    """Static reference for the client: names, costs and texts."""
+    return {
+        "roles": {k: {kk: v for kk, v in r.items()} for k, r in ROLES.items()},
+        "branches": {k: [{"key": b, "name": n, "bonus": bonus} for b, n, bonus in v] for k, v in BRANCHES.items()},
+        "techs": {k: {"name": n, "tier": t, "requires": req, "about": about} for k, (n, t, req, about) in TECHS.items()},
+        "improvements": {k: {"name": n, "cost": c, "pop": p, "tech": t} for k, (n, c, p, t, *_rest) in IMPROVEMENTS.items()},
+        "specs": {k: {"name": n, "about": a} for k, (n, a) in SPECS.items()},
+        "rewards": {lvl: [{"key": k, "about": a} for k, a in opts] for lvl, opts in REWARDS.items()},
+        "promotion_kills": PROMOTION_KILLS, "walls_cost": 5,
+    }

@@ -246,7 +246,7 @@ def listing(db, pid, at):
             expire(db, locked, at)
     return {"mine": [summary(m, _seats(db, m.id), pid, at) for m in mine],
             "open": [summary(m, _seats(db, m.id), pid, at) for m in open_rooms],
-            "sizes": list(E.SIZES), "turn_limits": list(TURN_LIMITS)}
+            "sizes": E.SIZES, "turn_limits": list(TURN_LIMITS), "rules": E.rules()}
 
 
 def expire_all(db, at):

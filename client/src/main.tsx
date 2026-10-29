@@ -13,6 +13,7 @@ import type { BattleEvent } from "./BattleFx";
 import { Gallery } from "./Gallery";
 import { SpriteStage } from "./SpriteStage";
 import { Roster } from "./Roster";
+import { Matches } from "./Matches";
 import type { ExpeditionRules, Battle } from "./store";
 declare global {
   interface Window {
@@ -72,7 +73,7 @@ function App() {
   const { state, token, connected, setState, setToken, setConnected } =
     useGame();
   const [defs, setDefs] = useState<Definitions | null>(null);
-  const [tab, setTab] = useState("База");
+  const [tab, setTab] = useState(() => { try { return sessionStorage.getItem("iron-tab") || "Партии"; } catch { return "Партии"; } });
   const [armyView, setArmyView] = useState("units");
   useEffect(() => { if (state?.first_victory) setArmyView("commander"); }, [state?.first_victory]);
   const [sheet, setSheet] = useState(false);
@@ -262,6 +263,7 @@ function App() {
   }, [mapOpen]);
   const changeTab = (t: string) => {
     setTab(t);
+    try { sessionStorage.setItem("iron-tab", t); } catch { /* storage may be blocked */ }
     setSheet(false);
     setSelected(null);
   };
@@ -290,7 +292,7 @@ function App() {
       .map(([k, v]) => `${v} ${resourceNames[k]}`)
       .join(" · ");
   return (
-    <main className={battle?.state.expedition ? "map-screen battle-screen" : state && tab === "Карта" && !battle ? "map-screen"
+    <main className={state && tab === "Партии" && !battle ? "matches-mode" : battle?.state.expedition ? "map-screen battle-screen" : state && tab === "Карта" && !battle ? "map-screen"
       : state && tab === "База" && !battle ? "map-screen base-screen" : ""}>
       <header>
         <div className="brand">
@@ -368,7 +370,9 @@ function App() {
               {battle ? `РАУНД ${battle.state.turn}` : "ALPHA 0.4"}
             </span>
           </div>
-          {battle ? (
+          {tab === "Партии" && !battle ? (
+            defs && <Matches factions={defs.factions as never} onError={setError} />
+          ) : battle ? (
             <>
               <MapView
                 buildings={[]}
@@ -555,6 +559,7 @@ function App() {
           )}
           <nav>
             {[
+              ["Партии", "match"],
               ["База", "base"],
               ["Армия", "army"],
               ["Карта", "map"],

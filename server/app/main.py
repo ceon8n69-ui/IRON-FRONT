@@ -33,7 +33,7 @@ cache = redis.Redis.from_url(
     socket_timeout=2,
     retry=Retry(NoBackoff(), 0),
 )
-app = FastAPI(title="IRON FRONT", version="0.18.0")
+app = FastAPI(title="IRON FRONT", version="0.19.0")
 # Map windows are large, repetitive JSON: compress responses for mobile networks.
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
