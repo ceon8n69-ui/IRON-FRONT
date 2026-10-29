@@ -889,3 +889,7 @@ nav button > span { position:relative; }
 .alliance-card ul { list-style:none; padding:0; margin:8px 0; }
 .alliance-card li { display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 0; border-bottom:1px solid #263746; font-size:14px; }
 .alliance-card li button { min-height:30px; padding:4px 8px; font-size:12px; }
+
+/* Battle playback */
+.combat.playing { opacity:.6; pointer-events:none; transition:opacity .15s; }
+.skip-playback { position:absolute; right:12px; top:calc(70px + var(--safe-top,0px)); z-index:6; min-height:36px; padding:6px 12px; font-size:12px; background:#101923e8; border:1px solid #e5b65a; color:#e5b65a; border-radius:10px; }
