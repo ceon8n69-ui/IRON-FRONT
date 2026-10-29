@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle, Army } from "./store";
+import { Director, type BattleEvent, type UnitHandle, type UnitInfo } from "./BattleFx";
 type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean; garrison_strength?: {name:string;hp:number} | null; object?: {kind:string;resource?:string;amount?:number;owner?:string|null;pending?:boolean} | null; node?: {kind:string;name:string} | null; supplied?: boolean | null };
 type Props = {
   buildings: Building[];
@@ -17,6 +18,9 @@ type Props = {
   now?: number;
   selected: number[] | null;
   onSelect: (q: number, r: number) => void;
+  playback?: { key: number; events: BattleEvent[]; speed: number } | null;
+  onPlaybackDone?: () => void;
+  unitInfo?: UnitInfo;
 };
 // Bright diorama palette: lit top, darker soil side, ink rim.
 const colors: Record<string, number> = {
@@ -83,6 +87,10 @@ export function MapView(props: Props) {
   latest.current = props;
   const selection = useRef(new Graphics());
   const animations = useRef<BuildingVisual[]>([]);
+  const units = useRef(new globalThis.Map<string, UnitHandle>());
+  const fxLayer = useRef(new Container());
+  const director = useRef<Director | null>(null);
+  const played = useRef<number | null>(null);
   const [ready, setReady] = useState(false);
   const [textures, setTextures] = useState(0);
   const [error, setError] = useState("");
@@ -116,6 +124,7 @@ export function MapView(props: Props) {
       a.ticker.maxFPS = 30;
       a.ticker.add((ticker) => {
         if (document.hidden) return;
+        director.current?.tick(ticker.deltaMS);
         elapsed += ticker.deltaMS / 1000;
         const scale = camera.current.scale;
         for (const visual of animations.current) {
@@ -243,8 +252,10 @@ export function MapView(props: Props) {
     if (!ready || !app.current) return;
     const s = scene.current;
     if (selection.current.parent) selection.current.removeFromParent();
+    if (director.current) { director.current.skip(); director.current = null; }
     s.removeChildren().forEach((c) => c.destroy({ children: true }));
     animations.current = [];
+    units.current = new globalThis.Map();
     const ground = new Container();
     const labels = new Container();
     s.addChild(ground);
@@ -386,14 +397,21 @@ export function MapView(props: Props) {
         } else if (!failed.has(url)) {
           Assets.load(url).then(() => setTextures((n) => n + 1)).catch(() => failed.add(url));
         }
+        // One container per stack so playback can move, shake and fade it with its badge.
+        const unit = new Container();
+        unit.position.set(x, y + 8);
         sprite.scale.set(1.35);
-        sprite.position.set(x, y + 8);
-        s.addChild(sprite);
+        unit.addChild(sprite);
         const alive = Math.ceil(st.hp / each);
         const badge = new Text({text:String(alive),style:{fontSize:13,fill:0xf0f3f5,fontFamily:"sans-serif",fontWeight:"bold"}});
-        badge.anchor.set(.5); badge.position.set(x+24,y-20);
-        labels.addChild(new Graphics().roundRect(x+12,y-30,24,20,6).fill(st.side === "player" ? 0x1d4f7a : 0x6b2a27));
-        labels.addChild(badge);
+        badge.anchor.set(.5); badge.position.set(24,-28);
+        unit.addChild(new Graphics().roundRect(12,-38,24,20,6).fill(st.side === "player" ? 0x1d4f7a : 0x6b2a27));
+        unit.addChild(badge);
+        s.addChild(unit);
+        units.current.set(st.id, { node: unit, pos: [...st.pos], badge, count: alive, side: st.side, kind: st.kind, art: st.art });
+        // Idle life: a gentle breathing bob, phase-shifted per stack.
+        const phase = (st.pos[0] * 1.7 + st.pos[1] * 2.3) % 6.28;
+        animations.current.push({ node: unit, animate: (t) => { sprite.y = Math.sin(t * 2.2 + phase) * 1.6; sprite.scale.y = 1.35 * (1 + Math.sin(t * 2.2 + phase) * 0.012); } });
       }
     }
     if (props.armies?.length && props.world) {
@@ -433,12 +451,13 @@ export function MapView(props: Props) {
         points.slice(1).forEach(([px,py]) => line.lineTo(px,py));
         line.stroke({color:0xe5b65a,width:3,alpha:active ? .8 : .45}); ground.addChild(line);
         for (const [px,py] of points.slice(1)) ground.addChild(new Graphics().circle(px,py,5).fill({color:0xe5b65a,alpha:active ? .85 : .45}));
-        animations.current.push({node:marker,animate:()=>{
+        animations.current.push({node:marker,animate:(t)=>{
           const now = latest.current.now ?? order.started_at;
           let i = 1; while (i < points.length - 1 && points[i][2] <= now) i++;
           const [ax,ay,at] = points[i-1], [bx,by,bt] = points[i];
           const k = Math.max(0, Math.min(1, (now - at) / Math.max(1, bt - at)));
-          marker.position.set(ax+(bx-ax)*k, ay+(by-ay)*k);
+          // Marching step: a small hop while the column is on the move.
+          marker.position.set(ax+(bx-ax)*k, ay+(by-ay)*k - Math.abs(Math.sin(t*7))*3);
         }});
       }
       if (active && props.route?.length && !order) {
@@ -458,8 +477,19 @@ export function MapView(props: Props) {
       }
     }
     s.addChild(labels);
+    fxLayer.current = new Container();
+    s.addChild(fxLayer.current);
     s.addChild(selection.current);
   }, [ready, geometryKey]);
+  // Battle playback: animate the server's events on top of the pre-command scene.
+  useEffect(() => {
+    const pb = props.playback;
+    if (!ready || !pb || !props.battle || played.current === pb.key) return;
+    played.current = pb.key;
+    const d = new Director(fxLayer.current, units.current, props.unitInfo ?? {}, pb.speed);
+    director.current = d;
+    d.play(pb.events, () => { if (director.current === d) director.current = null; latest.current.onPlaybackDone?.(); });
+  }, [ready, props.playback?.key, geometryKey]);
   useEffect(() => {
     const ring = selection.current;
     ring.clear();

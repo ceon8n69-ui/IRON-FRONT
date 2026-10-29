@@ -9,10 +9,11 @@ import { World } from "./World";
 import { Armies } from "./Armies";
 import { Season } from "./Season";
 import { Doctrines } from "./Doctrines";
+import type { BattleEvent } from "./BattleFx";
 import { Gallery } from "./Gallery";
 import { SpriteStage } from "./SpriteStage";
 import { Roster } from "./Roster";
-import type { ExpeditionRules } from "./store";
+import type { ExpeditionRules, Battle } from "./store";
 declare global {
   interface Window {
     Telegram?: {
@@ -160,7 +161,10 @@ function App() {
     const t = setInterval(() => setClock((n) => n + 1), 1000);
     return () => clearInterval(t);
   }, [state?.server_time]);
-  const battle = state?.battles.find((b) => b.status === "active");
+  // While a command's events play, the scene keeps the state from before the command.
+  const [playback, setPlayback] = useState<{ key: number; battle: Battle; events: BattleEvent[]; speed: number } | null>(null);
+  const liveBattle = state?.battles.find((b) => b.status === "active");
+  const battle = playback?.battle ?? liveBattle;
   const activeStack = battle?.state.stacks?.find((x) => x.id === battle.state.active);
   const targetStack = battle && selected ? battle.state.stacks?.find((x) => x.side === "npc" && x.hp > 0 && x.pos[0] === selected[0] && x.pos[1] === selected[1]) : undefined;
   const [battleNote, setBattleNote] = useState("");
@@ -168,14 +172,21 @@ function App() {
     const lines = [events.some((e) => e.type === "luck") && "🍀 Удачный удар ×1.5", events.some((e) => e.type === "morale") && "🎺 Боевой дух: стек действует ещё раз"].filter(Boolean);
     setBattleNote(lines.join(" · "));
   };
-  const battleCommand = (extra: Record<string, unknown>) => battle && run(async () => {
+  const animate = (before: Battle, events: BattleEvent[] | undefined, speed: number) => {
+    if (events?.length) setPlayback({ key: Date.now(), battle: before, events, speed });
+  };
+  const battleCommand = (extra: Record<string, unknown>) => battle && !playback && run(async () => {
+    const before = battle;
     const data = await command("/battles/commands", { battle_id: battle.id, turn: battle.state.turn, ...extra });
     noteFrom(data?.result?.events);
     setSelected(null);
+    animate(before, data?.result?.events, 1);
   });
-  const quickBattle = () => battle && run(async () => {
-    await command("/battles/auto", { battle_id: battle.id });
+  const quickBattle = () => battle && !playback && run(async () => {
+    const before = battle;
+    const data = await command("/battles/auto", { battle_id: battle.id });
     setBattleNote(""); setSelected(null);
+    animate(before, data?.result?.events, 3);
   });
   const hexDistance = (a: number[], b: number[]) => Math.max(Math.abs(a[0] - b[0]), Math.abs(a[1] - b[1]), Math.abs(a[0] + a[1] - b[0] - b[1]));
   const lastBattle = state?.battles.at(-1);
@@ -364,10 +375,14 @@ function App() {
               <MapView
                 buildings={[]}
                 battle={battle}
-                selected={selected}
+                selected={playback ? null : selected}
                 onSelect={chooseTile}
+                playback={playback}
+                onPlaybackDone={() => setPlayback(null)}
+                unitInfo={defs?.units as never}
               />
-              <div className="combat">
+              {playback && <button className="skip-playback" onClick={() => setPlayback(null)}>Пропустить ⏭</button>}
+              <div className={playback ? "combat playing" : "combat"}>
                 {battle.state.expedition && <h2>{battle.state.pvp ? `⚔ Атака: ${battle.state.pvp.defender}` : `${battle.state.npc_tier?.name ?? "Гарнизон"} NPC`} · {battle.state.expedition.q}:{battle.state.expedition.r}</h2>}
                 <div className="initiative" aria-label="Очередь ходов">
                   {(battle.state.order ?? []).map((id) => {
