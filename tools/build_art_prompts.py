@@ -78,6 +78,9 @@ ITEM_ART = {
     "field-binoculars": "a pair of olive field binoculars with leather strap",
     "quartermaster-bag": "a bulging leather quartermaster satchel with coins and papers sticking out",
     "route-atlas": "a thick map atlas with brass corners and a compass on the cover",
+    "recruit-poster": "a rolled-up recruitment poster tied with twine, showing a cheerful chibi soldier silhouette (no text)",
+    "drill-manual": "a thick drill regulations book with a brass clasp, ribbon bookmark and a whistle on a chain",
+    "regiment-banner": "a small regimental banner on a short pole with a fictional winged-gear emblem and golden fringe",
 }
 BUILDING_PROMPT = ("Original isometric game building for IRON FRONT base screen, small cosy diorama: {subj}, standing on a compact "
                    "hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk "
