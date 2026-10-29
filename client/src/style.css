@@ -893,3 +893,72 @@ nav button > span { position:relative; }
 /* Battle playback */
 .combat.playing { opacity:.6; pointer-events:none; transition:opacity .15s; }
 .skip-playback { position:absolute; right:12px; top:calc(70px + var(--safe-top,0px)); z-index:6; min-height:36px; padding:6px 12px; font-size:12px; background:#101923e8; border:1px solid #e5b65a; color:#e5b65a; border-radius:10px; }
+
+/* ---- Compact UI pass ---------------------------------------------------- */
+header { padding: calc(8px + env(safe-area-inset-top)) 14px 8px; }
+.brand { gap: 8px; }
+.brand b { font-size: 17px; letter-spacing: .12em; }
+.brand small { display: none; }
+.insignia { padding: 4px 6px; font-size: 12px; }
+.resources { padding: 8px 8px; justify-content: space-between; gap: 4px; }
+.resources div { display: flex; align-items: center; gap: 3px; }
+.resources span { margin-right: 0; font-size: 12px; }
+.resources strong { font-size: 13px; }
+.resources small { display: none; }
+.screen-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; padding: 0; }
+.objective { margin: 8px 12px 0; padding: 6px 8px 6px 10px; gap: 8px; border-radius: 10px; border-left-width: 3px; }
+.objective .step { font-size: 15px; font-weight: 700; flex: none; }
+.objective b { margin: 0; font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.objective .guide-action { padding: 6px 8px; flex: none; font-weight: 600; }
+.objective .guide-toggle { margin-left: 0; width: 30px; height: 30px; padding: 0; border-radius: 50%; font-weight: 700; }
+.guide { margin: 6px 12px 0; border-radius: 10px; border-top: 1px solid #34434d; }
+.content { padding: 10px 14px; }
+/* Base: full-screen diorama like the world map */
+.base-screen > .map { position: absolute; inset: 0; height: auto; min-height: 0; border: 0; }
+.base-screen > .objective, .base-screen > .guide { display: flex; position: absolute; left: 0; right: 0; z-index: 5;
+  top: calc(44px + var(--safe-top, 0px)); background: #1a2831ee; }
+.base-screen > .guide { display: block; top: calc(90px + var(--safe-top, 0px)); }
+.base-screen > .base-toolbar { position: absolute; left: 12px; right: 12px; bottom: calc(76px + var(--safe-bottom, 0px)); z-index: 5;
+  background: none; padding: 0; pointer-events: none; }
+.base-screen > .base-toolbar > * { pointer-events: auto; }
+.energy-chip { background: #101923e0; border: 1px solid #31424e; border-radius: 10px; padding: 8px 12px; font-weight: 700; color: #7fd6a0; font-size: 13px; }
+.base-toolbar .primary { min-height: 46px; padding: 0 18px; border-radius: 12px; box-shadow: 0 4px 16px #0006; }
+/* World map, compact */
+.map-screen .world-stage .world-tools { right: auto; }
+.world-stage .world-tools button { width: 44px; min-height: 44px; padding: 0; font-size: 18px; flex: none; }
+.world-stage .world-tools button[aria-pressed="true"] { border-color: #e5b65a; color: #e5b65a; }
+.world-control-count { font-weight: 600; }
+.movement-meter small { white-space: nowrap; }
+.map-help { position: absolute; left: 66px; right: 12px; top: calc(162px + var(--safe-top, 0px)); z-index: 6; background: #101923f2; border: 1px solid #31424e;
+  border-radius: 12px; padding: 8px 12px; font-size: 12px; color: #c9d4db; }
+.map-help p { margin: 3px 0; }
+.world-stage .world-orders { max-height: 42%; }
+.world-tile h2 small { font-size: 12px; color: #8fa3b1; font-weight: 400; }
+.world-tile .tile-line { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 4px 0 !important; font-size: 13px !important; color: #c9d4db; }
+.world-tile .danger-line { color: #ffb4a0; }
+.world-tile .warn-line { color: #e8a64b; }
+.world-tile .route-line { color: #9fe0b4; font-weight: 600; }
+.world-stage .world-tile .actions { margin-top: 8px; }
+.army-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 10px 12px !important; }
+.army-line h3 { margin: 0; font-size: 15px; }
+.army-line span { color: #9dafba; font-size: 13px; }
+.army-line small { flex-basis: 100%; color: #c9d4db; font-size: 12px; }
+.pvp-reports { margin: 4px 12px 8px; }
+/* Battle, compact */
+.combat .battle-title { display: flex; align-items: baseline; gap: 8px; font-size: 17px !important; margin: 0 0 6px !important; }
+.combat .battle-title small { font-size: 12px; color: #8fa3b1; font-weight: 400; }
+.combat .active-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 4px 0; font-size: 13px; }
+.combat .active-line small { color: #8fa3b1; }
+.combat .unit-skill small { color: #8fa3b1; font-size: 11px; }
+.train-option:has(> img) { display: flex; gap: 10px; align-items: flex-start; }
+.train-option > img { width: 64px; height: 56px; object-fit: contain; flex: none; }
+.train-option > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.train-option .cost-line { color: #d5b978; font-size: 12px; }
+.train-option .stat-line { color: #c9d4db; font-size: 12px; letter-spacing: .02em; }
+.train-option .trait span { margin-right: 8px; }
+.season-details { margin: 6px 0 12px; }
+.season-details summary { cursor: pointer; color: #e5b65a; font-size: 13px; font-weight: 600; padding: 6px 0; }
+.objective .guide-action { width: 36px; height: 30px; padding: 0; border: 1px solid #e5b65a; border-radius: 8px; font-size: 16px; text-align: center; }
+.base-screen .map-controls { top: calc(100px + var(--safe-top, 0px)) !important; }
+.commander-art img { max-height: 320px; object-fit: cover; object-position: top; }
+.commander-profile > p { display: none; }

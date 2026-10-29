@@ -284,12 +284,14 @@ function App() {
     e.vision ? `+${e.vision} обзор` : "",
     e.repair ? `+${e.repair} HP/мин` : "",
   ].filter(Boolean).join(" · ") || "Открывает механики базы";
+  const icons = (c: Record<string, number>) => Object.entries(c).map(([k, v]) => `${resourceSymbols[k]}${v}`).join(" ");
   const cost = (c: Record<string, number>) =>
     Object.entries(c)
       .map(([k, v]) => `${v} ${resourceNames[k]}`)
       .join(" · ");
   return (
-    <main className={battle?.state.expedition ? "map-screen battle-screen" : state && tab === "Карта" && !battle ? "map-screen" : ""}>
+    <main className={battle?.state.expedition ? "map-screen battle-screen" : state && tab === "Карта" && !battle ? "map-screen"
+      : state && tab === "База" && !battle ? "map-screen base-screen" : ""}>
       <header>
         <div className="brand">
           <span className="insignia">IF</span>
@@ -331,25 +333,21 @@ function App() {
         <>
           <div className="resources">
             {Object.entries(state.resources).map(([k, v]) => (
-              <div key={k}>
+              <div key={k} title={resourceNames[k]} aria-label={`${resourceNames[k]}: ${v}`}>
                 <span>{resourceSymbols[k]}</span>
-                <strong>{v.toLocaleString("ru")}</strong>
-                <small>{resourceNames[k]}</small>
+                <strong>{v >= 10000 ? `${Math.round(v / 1000)}k` : v.toLocaleString("ru")}</strong>
               </div>
             ))}
           </div>
-          <section className="objective">
-            <span className="step">0{Math.min(step + 1, 7)}</span>
-            <div>
-              <small>ПЕРВАЯ ОПЕРАЦИЯ</small>
-              <b>{objectives[step]}</b>
-            </div>
-            <button className="guide-toggle" aria-expanded={guideOpen} aria-label="План первой операции" onClick={() => setGuideOpen(!guideOpen)}>{Math.min(step,7)}/7 · План</button>
-          </section>
-          {(step < 7 || guideOpen) && <section className="guide" aria-label="Текущее задание">
-            <p>{pendingBuilding ? `Строительство идёт. Осталось ${Math.max(0,pendingBuilding.ready_at-clock)} сек. Завершение подтвердит сервер.` : tutorialCopy[step]}</p>
-            {step > 0 && !battle && <button className="guide-action" onClick={goToObjective}>{pendingBuilding ? "К стройке" : step < 4 ? "Выбрать участок" : step < 7 ? "К армии" : "Посмотреть отчёт"} →</button>}
-            {guideOpen && <ol className="guide-list">{objectives.slice(0,7).map((text,i)=><li key={text} className={i<step ? "done" : i===step ? "current" : ""}><span>{i<step ? "✓" : i+1}</span>{text}</li>)}</ol>}
+          {(step < 7 || guideOpen) && <section className="objective" aria-label="Текущее задание">
+            <span className="step">{Math.min(step + 1, 7)}/7</span>
+            <b>{pendingBuilding ? `Стройка · ${Math.max(0, pendingBuilding.ready_at - clock)} с` : objectives[step]}</b>
+            {step > 0 && step < 7 && !battle && <button className="guide-action" aria-label={`${pendingBuilding ? "К стройке" : step < 4 ? "Выбрать участок" : "К армии"} →`} onClick={goToObjective}>→</button>}
+            <button className="guide-toggle" aria-expanded={guideOpen} aria-label="План первой операции" onClick={() => setGuideOpen(!guideOpen)}>?</button>
+          </section>}
+          {guideOpen && <section className="guide" aria-label="План первой операции">
+            <p>{tutorialCopy[Math.min(step, 7)]}</p>
+            <ol className="guide-list">{objectives.slice(0,7).map((text,i)=><li key={text} className={i<step ? "done" : i===step ? "current" : ""}><span>{i<step ? "✓" : i+1}</span>{text}</li>)}</ol>
           </section>}
           <div className="screen-title">
             <div>
@@ -383,7 +381,8 @@ function App() {
               />
               {playback && <button className="skip-playback" onClick={() => setPlayback(null)}>Пропустить ⏭</button>}
               <div className={playback ? "combat playing" : "combat"}>
-                {battle.state.expedition && <h2>{battle.state.pvp ? `⚔ Атака: ${battle.state.pvp.defender}` : `${battle.state.npc_tier?.name ?? "Гарнизон"} NPC`} · {battle.state.expedition.q}:{battle.state.expedition.r}</h2>}
+                <h2 className="battle-title">{battle.state.pvp ? `⚔ ${battle.state.pvp.defender}` : battle.state.expedition ? `⚑ ${battle.state.npc_tier?.name ?? "Гарнизон"} NPC` : "⚑ Патруль"}
+                  <small>{battle.state.expedition ? `${battle.state.expedition.q}:${battle.state.expedition.r} · ` : ""}раунд {battle.state.round ?? 1}</small></h2>
                 <div className="initiative" aria-label="Очередь ходов">
                   {(battle.state.order ?? []).map((id) => {
                     const st = battle.state.stacks?.find((x) => x.id === id);
@@ -404,10 +403,11 @@ function App() {
                     : <>🎯 {defs?.units[aim.kind]?.name}: {defs?.units[activeStack.kind]?.melee ? "не дойти за ход" : "вне дальности"} — подойдите ближе</>}</p>;
                 })()}
                 {battleNote && <p className="battle-note" role="status">{battleNote}</p>}
-                {activeStack && <p>
-                  Ходит: <b>{defs?.units[activeStack.kind]?.name}</b> ({Math.ceil(activeStack.hp / (defs?.units[activeStack.kind]?.hp ?? 10))} из {activeStack.start}) ·
-                  скорость {defs?.units[activeStack.kind]?.speed}{state.hero?.kind === "storm" ? "+1" : ""} · {defs?.units[activeStack.kind]?.melee ? "ближний бой" : `дальность ${defs?.units[activeStack.kind]?.range}`}.
-                  {targetStack ? ` Цель: ${defs?.units[targetStack.kind]?.name} противника.` : " Выберите гекс для движения или вражеский стек как цель."}
+                {activeStack && <p className="active-line">
+                  <b>{defs?.units[activeStack.kind]?.name}</b> {Math.ceil(activeStack.hp / (defs?.units[activeStack.kind]?.hp ?? 10))}/{activeStack.start}
+                  <span title="Скорость">👣{(defs?.units[activeStack.kind]?.speed ?? 0) + (state.hero?.kind === "storm" && battle.state.led !== false ? 1 : 0)}</span>
+                  <span title={defs?.units[activeStack.kind]?.melee ? "Ближний бой" : "Дальность"}>{defs?.units[activeStack.kind]?.melee ? "⚔ вплотную" : `🎯${defs?.units[activeStack.kind]?.range}`}</span>
+                  {!targetStack && <small>· выберите цель или гекс</small>}
                 </p>}
                 <div className="actions">
                   <button disabled={busy || !selected || !!targetStack}
@@ -427,11 +427,11 @@ function App() {
                   const used = !!(activeStack as { skill_used?: boolean }).skill_used;
                   const needsHex = ab.effect === "dash";
                   return <div className="unit-skill">
-                    <button className="skill" disabled={busy || used || (needsHex && (!selected || !!targetStack))}
+                    <button className="skill" title={ab.about} disabled={busy || used || (needsHex && (!selected || !!targetStack))}
                       onClick={() => battleCommand(needsHex ? { action: "skill", q: selected![0], r: selected![1] } : { action: "skill", ...(targetStack ? { target: targetStack.id } : {}) })}>
                       ◆ {ab.name}{used ? " · использовано" : ""}
                     </button>
-                    <small>{ab.about}{needsHex ? ". Выберите гекс." : ""}</small>
+                    {needsHex && <small>выберите гекс</small>}
                   </div>;
                 })()}
                 <div className="actions">
@@ -442,7 +442,6 @@ function App() {
                     ★ {defs.abilities[state.hero.kind].name}{battle.state.ability_used ? " · использовано" : ""}
                   </button>}
                 </div>
-                {state.hero && defs?.abilities[state.hero.kind] && battle.state.led !== false && !battle.state.ability_used && <small>{defs.abilities[state.hero.kind].about}. Один раз за бой.</small>}
               </div>
             </>
           ) : tab === "База" ? (
@@ -454,27 +453,10 @@ function App() {
                 onSelect={chooseTile}
               />
               <div className="base-toolbar">
-                <div>
-                  <small>ЭНЕРГОБАЛАНС</small>
-                  <b>
-                    {state.buildings
+                <span className="energy-chip" title="Энергобаланс">⚡ {state.buildings
                       .filter((b) => b.status === "ready")
-                      .reduce(
-                        (sum, b) => sum + (b.effects?.current.power ?? defs?.buildings[b.kind].power ?? 0),
-                        0,
-                      )}{" "}
-                    MW
-                  </b>
-                </div>
-                <button
-                  className="primary"
-                  onClick={() => {
-                    setSheet(true);
-                    setSelected(null);
-                  }}
-                >
-                  + Строительство
-                </button>
+                      .reduce((sum, b) => sum + (b.effects?.current.power ?? defs?.buildings[b.kind].power ?? 0), 0)} MW</span>
+                <button className="primary" onClick={() => { setSheet(true); setSelected(null); }}>+ Стройка</button>
               </div>
             </>
           ) : tab === "Карта" ? (
@@ -500,25 +482,29 @@ function App() {
                   const unit = defs.units[kind];
                   const reason = unitReason(kind);
                   return <div key={kind} className="train-option">
-                    <button disabled={busy || !!reason} aria-describedby={`train-${kind}`} onClick={() => run(() => command("/army/train", { kind }))}>
-                      Подготовить {unit.gen ?? genitive[kind] ?? unit.name} · {unit.count} · {cost(unit.cost)} · {unit.seconds} сек.
-                    </button>
-                    <small>HP {unit.hp} · урон {unit.damage} · защита {unit.defense} · скорость {unit.speed} · инициатива {unit.initiative} · {unit.melee ? "ближний бой" : `дальность ${unit.range}`}</small>
-                    {unit.trait && <small className="trait">★ {defs.traits[unit.trait]}</small>}
-                    {unit.ability && <small className="trait">◆ {unit.ability.name}: {unit.ability.about}</small>}
-                    {reason && <p id={`train-${kind}`} className="action-reason">{reason}</p>}
+                    <img src={`/art/units/${kind}.png`} alt="" width={64} height={56} />
+                    <div>
+                      <button disabled={busy || !!reason} aria-describedby={`train-${kind}`} onClick={() => run(() => command("/army/train", { kind }))}>
+                        Подготовить {unit.gen ?? genitive[kind] ?? unit.name} · {unit.count}
+                      </button>
+                      <small className="cost-line">{icons(unit.cost)} · ⏱{unit.seconds}с</small>
+                      <small className="stat-line" title="Здоровье · урон · защита · скорость · инициатива · дальность">❤{unit.hp} ⚔{unit.damage} 🛡{unit.defense} 👣{unit.speed} ⚡{unit.initiative} {unit.melee ? "✊" : `🎯${unit.range}`}</small>
+                      <small className="trait">{unit.trait && <span title={defs.traits[unit.trait]}>★ {defs.traits[unit.trait].split(":")[0]} </span>}{unit.ability && <span title={unit.ability.about}>◆ {unit.ability.name}</span>}</small>
+                      {reason && <p id={`train-${kind}`} className="action-reason">{reason}</p>}
+                    </div>
                   </div>;
                 })}
                 <div className="section-label">ВЕРФЬ · ФЛОТ</div>
-                <p className="faction-line">С кораблями соединение ходит по морям, озёрам и рекам. В морском бою сражаются только корабли.</p>
+                <p className="faction-line">Корабли ходят по воде и сражаются на море</p>
                 <Roster units={["transport", "gunboat", "ironclad"].map((key) => ({ key, art: defs.units[key]?.art ?? "" }))} faction={state.hero.kind} height={70} />
                 {["transport", "gunboat", "ironclad"].filter((k) => defs.units[k]).map((kind) => {
                   const unit = defs.units[kind];
                   const reason = unitReason(kind);
                   return <div key={kind} className="train-option">
                     <button disabled={busy || !!reason} onClick={() => run(() => command("/army/train", { kind }))}>
-                      Построить {unit.gen ?? unit.name} · {unit.count} · {cost(unit.cost)} · {unit.seconds} сек.
+                      Построить {unit.gen ?? unit.name} · {unit.count}
                     </button>
+                    <small className="cost-line">{icons(unit.cost)} · ⏱{unit.seconds}с</small>
                     <small>HP {unit.hp} · урон {unit.damage} · защита {unit.defense} · скорость {unit.speed} · {unit.melee ? "таран" : `дальность ${unit.range}`}</small>
                     {unit.ability && <small className="trait">◆ {unit.ability.name}: {unit.ability.about}</small>}
                     {reason && <p className="action-reason">{reason}</p>}
@@ -559,17 +545,6 @@ function App() {
               ) : (
                 <p>Завершите первую операцию, чтобы получить отчёт.</p>
               )}
-              <div className="section-label">ЭКОНОМИКА</div>
-              <p>
-                Производство рассчитывается сервером каждую минуту. Склад: 5 000
-                каждого ресурса. Офлайн-начисление: до 24 часов. При дефиците
-                энергии производство останавливается.
-              </p>
-              <div className="section-label">СТАТУС СРЕЗА</div>
-              <p>
-                Сезоны на 2 недели, несколько соединений, рост командира, доктрины, снабжение, узлы и Столица,
-                асинхронный PvP, руины и наёмники. альянсы и набеги мародёров. Рынок и Stars ещё не включены.
-              </p>
             </section>
           )}
           {error && (

@@ -12,6 +12,8 @@ const lootLine=(l:Record<string,number>)=>Object.entries(l).map(([k,v])=>`${v} $
 export const reportLine=(r:PvpReport)=>r.role==="attacker"
   ?`${r.outcome==="victory"?"Победа":"Поражение"}: атака на ${targetNames[r.target]} командира ${r.enemy}${Object.keys(r.loot).length?` · добыча ${lootLine(r.loot)}`:""}`
   :`${r.enemy} атаковал вашу ${targetNames[r.target]} · ${r.outcome==="victory"?"оборона выстояла":Object.keys(r.loot).length?`потеряно ${lootLine(r.loot)}`:"владение потеряно"}`;
+const ICON:Record<string,string>={metal:"⬡",oil:"◈",fuel:"◉",electronics:"⌘",food:"✦"};
+const EVENT_ICON:Record<string,string>={infantry:"🪖",armor:"⚙",harvest:"🌾",fog:"🌫",mud:"🟫",supply:"📦",spoils:"🎁"};
 const distance=(a:number[],b:number[])=>Math.max(Math.abs(a[0]-b[0]),Math.abs(a[1]-b[1]),Math.abs(a[0]+a[1]-b[0]-b[1]));
 export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules:ExpeditionRules;goArmy:()=>void}) {
  const home=state.base?[state.base.q,state.base.r]:rules.staging;
@@ -23,6 +25,7 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
  const [route,setRoute]=useState<RoutePreview|null>(null);const [routeError,setRouteError]=useState("");
  const [target,setTarget]=useState<TargetPreview|null>(null);
  const [armyId,setArmyId]=useState<string|null>(null);
+ const [help,setHelp]=useState(false);
  const armies=state.armies??[];
  const army=armies.find(a=>a.id===armyId)??armies.find(a=>a.commander)??armies[0];
  const order=army?.orders.find(o=>o.status==="moving");
@@ -60,50 +63,58 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
  const hire=async()=>{if(!army)return;setBusy(true);setError("");try{await command('/world/hire',{army_id:army.id});}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  const send=async(action:string)=>{if(!army||!selected)return;setBusy(true);setError("");try{await command('/army/orders',{army_id:army.id,q:selected[0],r:selected[1],action});}catch(e){setError((e as Error).message);}finally{setBusy(false);}};
  const focus=(q:number,r:number)=>{setCenter([q,r]);setFocusVersion(n=>n+1);setSelected(null);};
+ const yieldLine=(y:Record<string,number>)=>Object.entries(y).map(([k,v])=>`${ICON[k]}${v}`).join(" ")+"/мин";
+ const status=!tile?"":tile.visibility==="unknown"?"Туман войны":tile.visibility==="explored"?"Разведано ранее":tile.control==="self"?(tile.supplied===false?"⛓ Отрезано: нет дохода":"✓ Ваша земля"):tile.control==="ally"?"🤝 Союзник":tile.control==="other"?"⚑ Чужая земля":"Нейтральная";
+ const objectShort=(o:NonNullable<WorldTile["object"]>)=>o.kind==="pile"?`${ICON[o.resource!]}${o.amount} · кто первый`:o.kind==="chest"?"Ресурсы или опыт на выбор":o.kind==="ruin"?"Случайная находка":o.kind==="camp"?(o.available?`Наём: ${Object.entries(o.cost??{}).map(([k,v])=>`${ICON[k]}${v}`).join(" ")} · раз в неделю`:"Уже наняты на этой неделе"):o.owner==="self"?"Ваша шахта":o.owner==="other"?"Чужая шахта":"Поднимите флаг";
  return <div className="world-stage">
-   <div className="world-tools"><button onClick={()=>focus(home[0],home[1])}>Моя база</button><button disabled={!army} onClick={()=>army&&focus(army.q,army.r)}>К соединению</button></div>
+   <div className="world-tools"><button aria-label="Моя база" title="Моя база" onClick={()=>focus(home[0],home[1])}>⌂</button><button aria-label="К соединению" title="К соединению" disabled={!army} onClick={()=>army&&focus(army.q,army.r)}>◎</button><button aria-label="Подсказки" title="Подсказки" aria-pressed={help} onClick={()=>setHelp(!help)}>?</button></div>
    {armies.length>0&&<div className="army-switch" role="group" aria-label="Соединения">
      {armies.map(a=><button key={a.id} aria-pressed={a.id===army?.id} aria-label={armyName(a)} onClick={()=>{setArmyId(a.id);focus(a.q,a.r);}}>
        <b>{a.commander?"★":a.number}</b><small>{a.in_battle?"⚔":a.status==="moving"?"→":`${a.movement}`}</small></button>)}
      {armies.length<(state.armies_max??1)&&<button className="add" aria-label="Новое соединение" onClick={goArmy}>+</button>}
    </div>}
    <MapView key={center.join(':')+':'+focusVersion} buildings={[]} world={tiles} center={center} armies={armies.map(a=>({army:a,active:a.id===army?.id,kinds:a.unit_ids.map(id=>state.units.find(u=>u.id===id)?.kind).filter((k):k is string=>!!k)}))} route={route?.path} now={clock} selected={selected} onSelect={(q,r)=>{if(q<0||q>=128||r<0||r>=128)return;const mine=armies.find(a=>a.q===q&&a.r===r&&a.id!==army?.id&&a.status!=="moving");if(mine){setArmyId(mine.id);setSelected(null);return;}setSelected([q,r]);}}/>
-   <div className="world-control-count">Под контролем {state.territories.length}/{state.control_limit??rules.control_limit}{shield>0&&<span className="shield-chip" title={pvp?.newbie?"Защита новичка":"Защита после налёта"}> · 🛡 {hours(shield)}</span>}</div>
-   {(()=>{const raid=state.raids?.find(x=>x.status==="active");return raid&&!pvp?.incoming.length?<button className="incoming-alert raid" onClick={()=>focus(raid.q,raid.r)}>⚠ Мародёры у {raid.q}:{raid.r} сожгут вашу землю {raid.target_q}:{raid.target_r} через {mmss(Math.max(0,raid.strikes_at-clock))}. Разбейте их!</button>:null;})()}
-   {!!pvp?.incoming.length&&<button className="incoming-alert" onClick={()=>focus(pvp.incoming[0].q,pvp.incoming[0].r)}>⚠ {pvp.incoming[0].attacker} идёт на вашу {targetNames[pvp.incoming[0].target]} · {mmss(Math.max(0,pvp.incoming[0].arrive_at-clock))}</button>}
-   {state.calendar&&<div className="calendar-chip" title={state.calendar.event.about}><b>Неделя {state.calendar.week} · день {state.calendar.day}</b><small>{state.calendar.event.name}</small></div>}
+   <div className="world-control-count" title="Территории под контролем">⬡ {state.territories.length}/{state.control_limit??rules.control_limit}{shield>0&&<span className="shield-chip" title={pvp?.newbie?"Защита новичка":"Защита после налёта"}> 🛡{hours(shield)}</span>}{!!state.vp&&<span title="Очки победы"> · ★{state.vp}</span>}</div>
+   {(()=>{const raid=state.raids?.find(x=>x.status==="active");return raid&&!pvp?.incoming.length?<button className="incoming-alert raid" onClick={()=>focus(raid.q,raid.r)}>⚠ Мародёры · {mmss(Math.max(0,raid.strikes_at-clock))}</button>:null;})()}
+   {!!pvp?.incoming.length&&<button className="incoming-alert" onClick={()=>focus(pvp.incoming[0].q,pvp.incoming[0].r)}>⚠ {pvp.incoming[0].attacker} · {mmss(Math.max(0,pvp.incoming[0].arrive_at-clock))}</button>}
    {army&&<div className="movement-meter" aria-label={`Очки хода ${army.movement} из ${army.movement_max}`}>
-     <b>Ход {army.movement}/{army.movement_max}</b>
+     <b>👣 {army.movement}/{army.movement_max}</b>
      <span className="pips">{Array.from({length:army.movement_max},(_,i)=><i key={i} className={i<army.movement?"on":""}/>)}</span>
-     <small>{state.calendar?`Рассвет через ${mmss(Math.max(0,state.calendar.next_day_at-clock))}`:army.movement>=army.movement_max?"Запас полон":`+1 через ${mmss(nextPoint)}`}</small>
+     {state.calendar&&<small title={`${state.calendar.event.name}: ${state.calendar.event.about}`}>☀ {mmss(Math.max(0,state.calendar.next_day_at-clock))} · {EVENT_ICON[state.calendar.event.key]??"•"} Н{state.calendar.week}</small>}
    </div>}
+   {help&&<aside className="map-help" onClick={()=>setHelp(false)}>
+     <p>👣 очки хода · ☀ рассвет: полный запас раз в 4 ч</p>
+     <p>⚑ гарнизон · ★ узел · ⛓ отрезано от базы</p>
+     <p>Доход только с земель, связанных с базой</p>
+     {state.calendar&&<p>{EVENT_ICON[state.calendar.event.key]} {state.calendar.event.name}: {state.calendar.event.about}</p>}
+   </aside>}
    <section className="world-orders" aria-label="Приказы на карте">
-     {chestPending&&<article className="world-tile chest-choice"><small>СУНДУК · {chestPending.q} : {chestPending.r}</small><h2>Выберите награду</h2><p>Можно взять только одно.</p>
-       <div className="actions"><button disabled={busy} onClick={()=>openChest("resources")}>{Object.entries(chestPending.options.resources).map(([k,v])=>`${v} ${resources[k]}`).join(" + ")}</button><button className="primary" disabled={busy} onClick={()=>openChest("xp")}>{chestPending.options.xp} опыта</button></div></article>}
+     {chestPending&&<article className="world-tile chest-choice"><h2>Сундук</h2>
+       <div className="actions"><button disabled={busy} onClick={()=>openChest("resources")}>{Object.entries(chestPending.options.resources).map(([k,v])=>`${ICON[k]}${v}`).join(" ")}</button><button className="primary" disabled={busy} onClick={()=>openChest("xp")}>+{chestPending.options.xp} XP</button></div></article>}
      {!army&&<button className="primary" onClick={goArmy}>Сформировать соединение</button>}
-     {army&&!tile&&<article className="card"><div><h3>{armyName(army)} · {army.q} : {army.r}</h3><p>{order?`Поход в ${order.q} : ${order.r} · ${Math.max(0,order.ready_at-clock)} сек.`:"Готово к приказу"}</p>{order&&<small>Прибытие и захват подтверждает сервер.</small>}{!order&&army.orders[0]&&<small role="status">{army.orders[0].result}</small>}</div></article>}
-     {tile&&<article className="world-tile"><button className="world-close" aria-label="Закрыть карточку гекса" onClick={()=>setSelected(null)}>×</button><small>ГЕКС {tile.q} : {tile.r}</small><h2>{tile.home?"Ваша база":tile.base==="ally"?"База союзника":tile.base==="other"?"База другого командира":tile.base==="staging"?"Общий пункт сбора":biomeNames[tile.biome]}</h2><p>{tile.visibility==="unknown"?"Сведения об участке скрыты туманом войны.":tile.visibility==="explored"?"Ранее исследовано. Актуальные владения скрыты.":tile.control==="self"?(tile.supplied===false?"⛓ Отрезано от базы: доход не идёт, оборона ослаблена. Восстановите цепочку своих гексов до базы.":"Под вашим контролем"):tile.control==="ally"?"Земля союзника: можно пройти, нельзя атаковать":tile.control==="other"?"Под контролем другого игрока":"Нейтральная территория"}</p>
-       {tile.visibility==="visible"&&!tile.base&&tile.control!=="self"&&!connected&&<p className="action-reason">Этот гекс не примыкает к вашим снабжаемым землям: после захвата он будет отрезан и не даст дохода, пока цепочка не дотянется.</p>}
-       {tile.visibility==="visible"&&!tile.base&&<p>Добыча при контроле: {Object.entries(rules.territory_yield[tile.biome]||{}).map(([k,v])=>`${v} ${resources[k]} / мин`).join(', ')}.</p>}
-       {tile.node&&<p className="object-line node-line"><b>★ {tile.node.name}</b><br/>{tile.node.about}. {tile.control==="self"?"":tile.garrison?`Охраняет «${tile.garrison_strength?.name??"Укрепрайон"}».`:"Владение другого командира."}</p>}
-       {tile.object&&<p className="object-line"><b>{objectTitle(tile.object)}</b><br/>{objectText(tile.object)}</p>}
+     {army&&!tile&&<article className="card army-line"><h3>{armyName(army)}</h3><span>{order?`→ ${order.q}:${order.r} · ${Math.max(0,order.ready_at-clock)} с`:army.in_battle?"⚔ в бою":`${army.q}:${army.r} · готово`}</span>
+       {!order&&army.orders[0]?.result&&<small role="status">{army.orders[0].result}</small>}</article>}
+     {tile&&<article className="world-tile"><button className="world-close" aria-label="Закрыть карточку гекса" onClick={()=>setSelected(null)}>×</button>
+       <h2>{tile.home?"Ваша база":tile.base==="ally"?"База союзника":tile.base==="other"?"Чужая база":tile.node?tile.node.name:biomeNames[tile.biome]} <small>{tile.q}:{tile.r}</small></h2>
+       <p className="tile-line"><span>{status}</span>{tile.visibility==="visible"&&!tile.base&&!tile.node&&Object.keys(rules.territory_yield[tile.biome]||{}).length>0&&<span>{yieldLine(rules.territory_yield[tile.biome])}</span>}
+         {tile.node&&<span>{tile.node.about.split(",")[0]}</span>}</p>
+       {tile.object&&<p className="tile-line"><b>{objectTitle(tile.object)}</b> · {objectShort(tile.object)}</p>}
+       {tile.garrison&&<p className="tile-line danger-line">⚑ {tile.garrison_strength?.name??"Гарнизон"} · ❤{tile.garrison_strength?.hp??55} · +{tile.garrison_strength?.xp??50} XP</p>}
+       {tile.visibility==="visible"&&!tile.base&&tile.control!=="self"&&!connected&&!hostile&&<p className="tile-line warn-line">⛓ не связан с базой: дохода не будет</p>}
        {tile.object?.kind==="camp"&&army&&!order&&army.q===tile.q&&army.r===tile.r&&<div className="actions"><button className="primary" disabled={busy||!tile.object.available} onClick={hire}>Нанять {tile.object.name} · {tile.object.count}</button></div>}
-       <p>{tile.garrison?`${tile.garrison_strength?.name??"Гарнизон"} NPC · ${tile.garrison_strength?.hp??55} HP · ${tile.garrison_strength?.xp??50} опыта за победу. Захват только после победы.`:""}</p><p>{order?`Поход · ${Math.max(0,order.ready_at-clock)} сек.`:route?`Маршрут: ${route.path.length} гекс. · ${route.cost} очк. хода · ${mmss(route.seconds)} · ${route.fuel} топлива`:"Равнина и берег 1 · лес и пустыня 2 · холмы и брод через реку 3 · горы непроходимы · по воде только флотом"}</p>
+       {(order||route)&&<p className="tile-line route-line">{order?`→ в пути · ${Math.max(0,order.ready_at-clock)} с`:route?`👣${route.cost} · ${ICON.fuel}${route.fuel} · ⏱${mmss(route.seconds)}`:""}</p>}
        {hostile&&<div className="target-intel">
-         <p><b>Командир {target?.defender??"…"}</b>{target&&target.shield_until>clock?` · 🛡 защита ещё ${hours(target.shield_until-clock)}`:""}</p>
-         {target&&<p>Оборона: {target.forces.map(f=>`${f.name} ${f.approx?"~":""}${f.count}${f.militia?" (ополчение)":""}`).join(" · ")}</p>}
-         {target&&<p>{target.kind==="base"?"Базу нельзя захватить: победа даёт часть ресурсов сверх защищённого запаса, после налёта база получает защиту на 8 ч.":target.kind==="mine"?"Победа переводит шахту под ваш флаг.":"Победа переводит территорию под ваш контроль."} Атак на этого командира сегодня: осталось {target.attacks_left}.</p>}
-         {target?.loses_shield&&<p className="action-reason">Нападение снимет вашу защиту новичка.</p>}
+         <p><b>{target?.defender??"…"}</b>{target&&target.shield_until>clock?` · 🛡 ${hours(target.shield_until-clock)}`:""}{target?` · атак: ${target.attacks_left}`:""}</p>
+         {target&&<p>{target.forces.map(f=>`${f.name} ${f.approx?"~":""}${f.count}`).join(" · ")}</p>}
+         {target?.loses_shield&&<p className="action-reason">Снимет вашу защиту новичка</p>}
        </div>}
        {hostile?<div className="actions"><button className="primary danger" disabled={busy||!!attackReason} onClick={()=>send('attack')}>Атаковать {target?targetNames[target.kind]:""}</button></div>:
-       <div className="actions"><button disabled={busy||!!baseReason||!!tile?.garrison} onClick={()=>send('move')}>{tile.object?.kind==="pile"?"Забрать ресурсы":tile.object?.kind==="chest"?"Открыть сундук":tile.object?.kind==="ruin"?"Исследовать руины":tile.object?.kind==="camp"?"Идти в лагерь":tile.object?.kind==="mine"&&tile.object.owner!=="self"?"Поднять флаг":"Переместить армию"}</button><button className="primary" disabled={busy||!!captureReason} onClick={()=>send('capture')}>{tile.garrison?"Атаковать гарнизон":"Захватить гекс"}</button></div>}
+       <div className="actions"><button disabled={busy||!!baseReason||!!tile?.garrison} onClick={()=>send('move')}>{tile.object?.kind==="pile"?"Забрать":tile.object?.kind==="chest"?"Открыть":tile.object?.kind==="ruin"?"Исследовать":tile.object?.kind==="camp"?"В лагерь":tile.object?.kind==="mine"&&tile.object.owner!=="self"?"Поднять флаг":"Переместить"}</button><button className="primary" disabled={busy||!!captureReason} onClick={()=>send('capture')}>{tile.garrison?"Атаковать гарнизон":"Захватить гекс"}</button></div>}
        {(hostile?attackReason&&attackReason!=="Разведка…":baseReason||captureReason)&&<p className="action-reason">{hostile?attackReason:baseReason||captureReason}</p>}
      </article>}
-     {!tile&&army&&<p>Выберите соединение вверху или на карте, затем любой разведанный гекс: маршрут и цена в очках хода появятся на карте. На каждом рассвете, раз в 4 часа, соединения получают полный запас хода. Доход идёт только с земель, связанных с базой. Гарнизоны NPC отмечены флагом, узлы — ★.</p>}
-     {!tile&&!!pvp?.reports.length&&<div className="pvp-reports"><small>ДОНЕСЕНИЯ</small>{pvp.reports.slice(0,3).map(r=><p key={r.id} className={r.outcome} onClick={()=>focus(r.q,r.r)}>{reportLine(r)}</p>)}</div>}
-     {!tile&&state.battles.some(b=>b.state.loot)&&<button className="loot-shortcut" onClick={goArmy}>Трофеи → Армия → Командир</button>}
+     {!tile&&!!pvp?.reports.length&&<div className="pvp-reports">{pvp.reports.slice(0,2).map(r=><p key={r.id} className={r.outcome} onClick={()=>focus(r.q,r.r)}>{reportLine(r)}</p>)}</div>}
+     {!tile&&state.battles.some(b=>b.state.loot)&&<button className="loot-shortcut" onClick={goArmy}>🎁 Трофей → Командир</button>}
      {error&&<p className="action-reason" role="alert">{error}</p>}
-
    </section>
  </div>;
 }

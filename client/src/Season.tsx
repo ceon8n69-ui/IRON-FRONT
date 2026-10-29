@@ -38,13 +38,13 @@ export function Season({ clock, revision, heroes, alliance, busy, run }: { clock
       <div className="season-me"><span>Ваше место</span><b>{medal(board.me.rank)}</b><span>Очки победы</span><b>{board.me.vp}</b></div>
     </article>}
     <Alliance alliance={alliance} busy={busy} run={run} />
-    <div className="section-label">КАК ПОБЕЖДАТЬ</div>
+    <details className="season-details"><summary>Как набирать очки</summary>
     <ul className="season-rules">
       <li><b>Столица</b> в центре карты: {board.rules.capital_vp_per_hour} очков в час, пока она связана с вашей базой цепочкой своих гексов. Охраняет её «Гвардия Столицы».</li>
       <li><b>Узлы</b> (нефть, электроника, радар): по {board.rules.node_vp_per_hour} очков в час, тоже только со снабжением.</li>
       <li>Победы: гарнизон +{board.rules.garrison}, укрепрайон +{board.rules.fortress}, взятие Столицы +{board.rules.capital}, нападение на игрока +{board.rules.pvp_attack}, отбитая атака +{board.rules.pvp_defence}.</li>
-      <li>Сезон длится 2 недели. В конце итоги подводятся автоматически: лучшие получают звания, затем все начинают на новой карте. Командир, его звания и медали остаются за вами.</li>
-    </ul>
+      <li>Через 2 недели — итоги, звания и новая карта. Командир и медали остаются.</li>
+    </ul></details>
     <div className="section-label">ТАБЛИЦА СЕЗОНА</div>
     <ol className="season-board">
       {board.top.map((r) => <li key={r.rank} className={r.me ? "me" : ""}>
