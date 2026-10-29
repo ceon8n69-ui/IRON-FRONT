@@ -272,6 +272,98 @@
 
 > Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft purple rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a thick map atlas with brass corners and a compass on the cover.
 
+## Карта мира: природа
+
+**`world-tree-oak`** → `client/public/art/world/tree-oak.png` — tree-oak
+
+> Original isometric game map decoration for IRON FRONT world map: a round leafy green oak tree. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-tree-pine`** → `client/public/art/world/tree-pine.png` — tree-pine
+
+> Original isometric game map decoration for IRON FRONT world map: a tall dark green pine tree. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-tree-autumn`** → `client/public/art/world/tree-autumn.png` — tree-autumn
+
+> Original isometric game map decoration for IRON FRONT world map: a round orange and yellow autumn tree. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-bush`** → `client/public/art/world/bush.png` — bush
+
+> Original isometric game map decoration for IRON FRONT world map: a small round green bush with a few flowers. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-rocks`** → `client/public/art/world/rocks.png` — rocks
+
+> Original isometric game map decoration for IRON FRONT world map: a cluster of mossy grey boulders. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-mountain`** → `client/public/art/world/mountain.png` — mountain
+
+> Original isometric game map decoration for IRON FRONT world map: a tall rocky grey mountain peak with a snow cap. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-palm`** → `client/public/art/world/palm.png` — palm
+
+> Original isometric game map decoration for IRON FRONT world map: a palm tree with a coconut cluster. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-cactus`** → `client/public/art/world/cactus.png` — cactus
+
+> Original isometric game map decoration for IRON FRONT world map: a desert cactus with a dry shrub and small rocks. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-reeds`** → `client/public/art/world/reeds.png` — reeds
+
+> Original isometric game map decoration for IRON FRONT world map: a clump of green reeds and cattails. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-hillock`** → `client/public/art/world/hillock.png` — hillock
+
+> Original isometric game map decoration for IRON FRONT world map: a small grassy hillock with a boulder on top. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+**`world-pirates`** → `client/public/art/world/pirates.png` — pirates
+
+> Original isometric game map decoration for IRON FRONT world map: a rusty pirate gunboat with a patched sail, a small cannon and a smoking funnel, floating on a little patch of blue water. Single standalone object with only a tiny grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.
+
+## Карта мира: объекты
+
+**`world-pile`** → `client/public/art/world/pile.png` — pile
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: a stack of supply crates, fuel barrels and metal ingots under a tarp, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-chest`** → `client/public/art/world/chest.png` — chest
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: an iron-bound treasure chest with brass corners, lid slightly open, warm gold glow inside, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-mine`** → `client/public/art/world/mine.png` — mine
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: a mine entrance in a rock face with wooden supports, little rails and an ore cart, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-ruin`** → `client/public/art/world/ruin.png` — ruin
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: ancient overgrown stone ruins with broken columns and a fallen arch, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-camp`** → `client/public/art/world/camp.png` — camp
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: a mercenary camp with two canvas tents, a campfire and a weapon rack, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-bunker`** → `client/public/art/world/bunker.png` — bunker
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: a concrete military bunker with sandbags, a dark gun slit and barbed wire, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-base`** → `client/public/art/world/base.png` — base
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: a fortified military outpost with log and stone walls, a gate, a central tower and an empty flagpole, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-capital`** → `client/public/art/world/capital.png` — capital
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: a grand walled citadel city with a domed central keep, four towers and red tiled roofs, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-oil_field`** → `client/public/art/world/oil_field.png` — oil_field
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: an oil field with a steel lattice derrick, a pumpjack and a round storage tank, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-plant`** → `client/public/art/world/plant.png` — plant
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: an electronics plant with brick halls, teal glass roofs and radio antennas, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
+**`world-radar`** → `client/public/art/world/radar.png` — radar
+
+> Original isometric game building for IRON FRONT base screen, small cosy diorama: a radar station with a large dish on a steel tower and a small operations hut, standing on a compact hexagonal patch of bright grass with a thick dark soil edge, 3/4 isometric view from the south-east, chibi-dieselpunk 1920s style matching chunky toy-like proportions, thick dark ink outline, flat cel shading with soft highlights, bright saturated warm colours, transparent background, centered, whole object visible. No text, no letters, no logos, no flags with real symbols, no people.
+
 ## Ландшафт (подключение позже)
 
 **`tile-plain`** → `client/public/art/tiles/plain.png` — plain

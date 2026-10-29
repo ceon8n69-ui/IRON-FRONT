@@ -9,7 +9,7 @@ on:
         required: false
         default: ""
       kind:
-        description: "unit, portrait, item, tile or building (empty = only the listed keys)"
+        description: "unit, portrait, item, world, tile or building (empty = only the listed keys)"
         required: false
         default: ""
       quality:

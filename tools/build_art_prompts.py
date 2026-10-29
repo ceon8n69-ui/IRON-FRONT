@@ -98,6 +98,30 @@ BUILDING_ART = {
     "shipyard": "a small shipyard: wooden slipway on a water edge with a half-built boat hull and a crane",
     "repair": "a repair workshop: garage with an open door, workbench, big wrench sign and a small armored car on jacks",
 }
+WORLD_PROP = ("Original isometric game map decoration for IRON FRONT world map: {subj}. Single standalone object with only a tiny "
+              "grass tuft at its base, 3/4 isometric view, chibi-dieselpunk toy-like proportions, thick dark ink outline, flat cel shading "
+              "with soft highlights, bright saturated colours, transparent background, centered, whole object visible. No text, no ground tile.")
+WORLD_PROPS = {
+    "tree-oak": "a round leafy green oak tree", "tree-pine": "a tall dark green pine tree",
+    "tree-autumn": "a round orange and yellow autumn tree", "bush": "a small round green bush with a few flowers",
+    "rocks": "a cluster of mossy grey boulders", "mountain": "a tall rocky grey mountain peak with a snow cap",
+    "palm": "a palm tree with a coconut cluster", "cactus": "a desert cactus with a dry shrub and small rocks",
+    "reeds": "a clump of green reeds and cattails", "hillock": "a small grassy hillock with a boulder on top",
+    "pirates": "a rusty pirate gunboat with a patched sail, a small cannon and a smoking funnel, floating on a little patch of blue water",
+}
+WORLD_OBJECTS = {
+    "pile": "a stack of supply crates, fuel barrels and metal ingots under a tarp",
+    "chest": "an iron-bound treasure chest with brass corners, lid slightly open, warm gold glow inside",
+    "mine": "a mine entrance in a rock face with wooden supports, little rails and an ore cart",
+    "ruin": "ancient overgrown stone ruins with broken columns and a fallen arch",
+    "camp": "a mercenary camp with two canvas tents, a campfire and a weapon rack",
+    "bunker": "a concrete military bunker with sandbags, a dark gun slit and barbed wire",
+    "base": "a fortified military outpost with log and stone walls, a gate, a central tower and an empty flagpole",
+    "capital": "a grand walled citadel city with a domed central keep, four towers and red tiled roofs",
+    "oil_field": "an oil field with a steel lattice derrick, a pumpjack and a round storage tank",
+    "plant": "an electronics plant with brick halls, teal glass roofs and radio antennas",
+    "radar": "a radar station with a large dish on a steel tower and a small operations hut",
+}
 TERRAIN = {"plain": "lush grass with tufts, small flowers and pebbles", "forest": "dense mix of round leafy trees and pines",
            "hills": "grassy hills with mossy grey boulders", "mountain": "two rocky peaks with snow caps",
            "desert": "sand with dune ridges and a dry shrub", "beach": "pale sand with a palm tree and small rocks",
@@ -129,6 +153,12 @@ def entries():
         out.append({"key": f"item-{k}", "kind": "item", "group": "Артефакты командира", "title": d["name"],
                     "path": f"client/public/art/equipment/{k}.webp",
                     "prompt": ITEM_PROMPT.format(glow=GLOW[d["rarity"]], subj=ITEM_ART[k])})
+    for k, d in WORLD_PROPS.items():
+        out.append({"key": f"world-{k}", "kind": "world", "group": "Карта мира: природа", "title": k,
+                    "path": f"client/public/art/world/{k}.png", "prompt": WORLD_PROP.format(subj=d)})
+    for k, d in WORLD_OBJECTS.items():
+        out.append({"key": f"world-{k}", "kind": "world", "group": "Карта мира: объекты", "title": k,
+                    "path": f"client/public/art/world/{k}.png", "prompt": BUILDING_PROMPT.format(subj=d)})
     for b, d in TERRAIN.items():
         out.append({"key": f"tile-{b}", "kind": "tile", "group": "Ландшафт (подключение позже)", "title": b,
                     "path": f"client/public/art/tiles/{b}.png", "prompt": TILE_PROMPT.format(subj=d)})
