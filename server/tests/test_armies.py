@@ -24,25 +24,27 @@ def test_two_armies_march_in_different_directions(client, monkeypatch):
     assert second.status_code == 200, second.text
     armies = second.json()['state']['armies']
     assert [a['number'] for a in armies] == [1, 2] and [a['commander'] for a in armies] == [True, False]
-    assert second.json()['state']['armies_max'] == 2
-    third = post(c, '/army/create', {'unit_id': extra_unit(c, count=7)}, h)
-    assert third.status_code == 409 and 'Максимум соединений' in third.json()['detail']
+    assert second.json()['state']['armies_max'] == 3
+    assert post(c, '/army/create', {'unit_id': extra_unit(c, count=7)}, h).status_code == 200
+    fourth = post(c, '/army/create', {'unit_id': extra_unit(c, count=5)}, h)
+    assert fourth.status_code == 409 and 'Максимум соединений' in fourth.json()['detail']
     a2 = armies[1]
     r1 = order(c, h, a1, Q+2, R, 'move'); r2 = order(c, h, a2, Q-2, R, 'move')
     assert r1.status_code == r2.status_code == 200, r2.text
     s = r2.json()['state']
-    assert all(a['status'] == 'moving' for a in s['armies'])
-    at_time(monkeypatch, max(o['ready_at'] for a in s['armies'] for o in a['orders']) + 1)
+    two = lambda s: [a for a in s['armies'] if a['number'] in (1, 2)]   # the third stays home
+    assert all(a['status'] == 'moving' for a in two(s))
+    at_time(monkeypatch, max(o['ready_at'] for a in two(s) for o in a['orders']) + 1)
     s = me(c, h)
-    assert {(a['q'], a['r']) for a in s['armies']} == {(Q+2, R), (Q-2, R)}
-    assert all(a['movement'] < a['movement_max'] for a in s['armies'])       # each army spends its own points
+    assert {(a['q'], a['r']) for a in two(s)} == {(Q+2, R), (Q-2, R)}
+    assert all(a['movement'] < a['movement_max'] for a in two(s))       # each army spends its own points
 
 
 def test_hq_raises_army_limit(client, monkeypatch):
     c = client; h, u = commander(c, monkeypatch)
     with c.factory.begin() as db:
         db.scalar(select(Building).where(Building.player_id == player_id(c, 123), Building.kind == 'hq')).level = 5
-    assert me(c, h)['armies_max'] == 4
+    assert me(c, h)['armies_max'] == 7
 
 
 def test_only_the_commanders_army_uses_his_ability(client, monkeypatch):

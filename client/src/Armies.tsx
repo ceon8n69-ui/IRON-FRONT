@@ -12,6 +12,10 @@ type Props = {
 };
 
 export const armyName = (a: Army) => `${a.commander ? "★ " : ""}${a.number}-е соединение`;
+const ICON: Record<string, string> = { metal: "⬡", oil: "◈", fuel: "◉", electronics: "⌘", food: "✦" };
+const price = (cost: Record<string, number>) => Object.entries(cost).map(([k, v]) => `${ICON[k] ?? k}${v}`).join(" ");
+const mmss = (s: number) => s >= 60 ? `${Math.floor(s / 60)} мин${s % 60 ? ` ${s % 60} с` : ""}` : `${s} с`;
+const CHEVRONS = ["", "▲", "▲▲", "★"];
 
 /** Heroes-style army management: several armies, all composed on the base. */
 export function Armies({ state, units, stacks, busy, run, toMap }: Props) {
@@ -49,17 +53,32 @@ export function Armies({ state, units, stacks, busy, run, toMap }: Props) {
     <div className="section-label">ОТРЯДЫ</div>
     {state.units.map((u) => {
       const a = owner(u.id);
+      const here = u.status === "reserve" || (u.status === "army" && !!a && atBase(a));
+      const rank = u.rank ?? 0;
+      const refilling = state.jobs.some((j) => ((j as { kind?: string }).kind ?? "").startsWith(`refill:${u.id}:`));
+      // Merge into the fullest other stack of the same kind that still has room.
+      const into = state.first_victory && here ? state.units
+        .filter((x) => x.id !== u.id && x.kind === u.kind && x.count < (x.cap ?? x.count) &&
+          (x.status === "reserve" || (x.status === "army" && atBase(owner(x.id)!))))
+        .sort((x, y) => y.count - x.count)[0] : undefined;
       return <article className="card" key={u.id}>
         <img className="unit-thumb" src={`/art/units/${u.kind}.png`} alt="" width={64} height={56} />
         <div>
-          <h3>{name(u.kind)} · {u.count}</h3>
-          <p>Здоровье {u.hp}/100 · {u.status === "battle" ? "В бою" : a ? `В ${a.number}-м соединении` : "В резерве"}</p>
+          <h3>{name(u.kind)} · {u.count}{u.cap ? <small>/{u.cap}</small> : null}{rank > 0 && <span className={`rank-chip r${rank}`} title={u.rank_name}>{CHEVRONS[rank]}</span>}</h3>
+          <p>{u.rank_name ?? "Новобранцы"} · опыт {u.xp ?? 0}{u.next_xp ? `/${u.next_xp}` : ""}{rank >= 3 ? " · способность ×2" : rank ? ` · урон +${rank * 5}%` : ""}</p>
+          {u.next_xp ? <div className="xp-bar" aria-hidden><i style={{ width: `${Math.min(100, Math.round(100 * (u.xp ?? 0) / u.next_xp))}%` }} /></div> : null}
+          <p>Здоровье {u.hp}/100 · {u.status === "battle" ? "В бою" : a ? `В ${a.number}-м соединении` : "В резерве"}{refilling ? " · ⏳ пополнение" : ""}</p>
         </div>
         <div className="actions column">
           {!state.first_victory && <button className="primary" disabled={busy} onClick={() => run(() => command("/battles", { unit_id: u.id }))}>В бой</button>}
           {state.first_victory && u.status === "reserve" && target && <button disabled={busy || target.unit_ids.length >= stacks} onClick={() => run(() => command("/army/assign", { unit_id: u.id, army_id: target.id }))}>В {target.number}-е</button>}
           {state.first_victory && u.status === "reserve" && armies.length < max && <button className={armies.length ? "" : "primary"} disabled={busy} onClick={() => run(async () => { await command("/army/create", { unit_id: u.id }); if (!armies.length) toMap(); })}>Новое соединение</button>}
           {u.status === "army" && a && atBase(a) && a.unit_ids.length > 1 && <button disabled={busy} onClick={() => run(() => command("/army/release", { unit_id: u.id, army_id: a.id }))}>В резерв</button>}
+          {state.first_victory && here && u.refill && !refilling && <button disabled={busy || state.jobs.length > 0 || Object.entries(u.refill.cost).some(([k, v]) => (state.resources[k] ?? 0) < v)}
+            title={`Пополнение: +${u.refill.missing} бойцов за ${mmss(u.refill.seconds)}. Новобранцы разбавляют опыт стека.`}
+            onClick={() => run(() => command("/units/refill", { unit_id: u.id }))}>Пополнить +{u.refill.missing} · {price(u.refill.cost)}</button>}
+          {into && <button disabled={busy} title="Перелить бойцов в другой стек того же типа. Опыт усредняется."
+            onClick={() => run(() => command("/units/merge", { unit_id: u.id, into_id: into.id }))}>Слить → {name(into.kind)} {into.count}</button>}
         </div>
       </article>;
     })}

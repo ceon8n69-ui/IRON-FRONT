@@ -384,6 +384,22 @@
   "prompt": "Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft purple rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: an ornate vanguard command module with gold trims and a glowing amber core."
  },
  {
+  "key": "item-recruit-poster",
+  "kind": "item",
+  "group": "Артефакты командира",
+  "title": "Вербовочный плакат",
+  "path": "client/public/art/equipment/recruit-poster.webp",
+  "prompt": "Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft green rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a rolled-up recruitment poster tied with twine, showing a cheerful chibi soldier silhouette (no text)."
+ },
+ {
+  "key": "item-drill-manual",
+  "kind": "item",
+  "group": "Артефакты командира",
+  "title": "Строевой устав",
+  "path": "client/public/art/equipment/drill-manual.webp",
+  "prompt": "Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft purple rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a thick drill regulations book with a brass clasp, ribbon bookmark and a whistle on a chain."
+ },
+ {
   "key": "item-service-pistol",
   "kind": "item",
   "group": "Артефакты командира",
@@ -454,6 +470,14 @@
   "title": "Орден Фортуны",
   "path": "client/public/art/equipment/fortune-order.webp",
   "prompt": "Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft purple rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a star-shaped golden order with a four-leaf clover in the centre."
+ },
+ {
+  "key": "item-regiment-banner",
+  "kind": "item",
+  "group": "Артефакты командира",
+  "title": "Полковое знамя",
+  "path": "client/public/art/equipment/regiment-banner.webp",
+  "prompt": "Original game artifact icon for IRON FRONT, chibi dieselpunk 1920s-inspired style, thick dark ink outline, flat cel shading with soft highlight, one single object centered, slight 3/4 view, transparent background, readable at 64px, soft blue rim glow. No text, no letters, no logos, no real insignia, no swastika, no red cross. Subject: a small regimental banner on a short pole with a fictional winged-gear emblem and golden fringe."
  },
  {
   "key": "item-field-binoculars",

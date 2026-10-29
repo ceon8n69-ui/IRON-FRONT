@@ -19,7 +19,8 @@ MAX_RANK = 3
 LEVEL_PERKS = {"attack": 0.01, "defense": 0.01}     # per level above 1
 ARMY_PERKS = {"attack", "defense", "ranged", "initiative", "morale", "luck", "movement", "vision", "first_aid"}
 CAPS = {"attack": 0.5, "defense": 0.4, "ranged": 0.45, "initiative": 4, "morale": 0.3, "luck": 0.3,
-        "movement": 16, "vision": 3, "first_aid": 0.4, "plunder": 0.6, "supply": 0.3, "engineering": 0.4}
+        "movement": 16, "vision": 3, "first_aid": 0.4, "plunder": 0.6, "supply": 0.3, "engineering": 0.4,
+        "unit_xp": 0.8, "refill_cost": 0.4}
 
 # Fictional balance. value[rank-1] per perk.
 SKILLS = {

@@ -38,7 +38,7 @@ def test_doctrines_reach_combat_movement_and_limits(client, monkeypatch):
         for key in ('bayonets', 'roads', 'depots', 'front_hq', 'factories'):
             db.add(Doctrine(player_id=pid, key=key, started_at=0, ready_at=1))
     s = me(c, h)
-    assert s['armies'][0]['movement_max'] == 34 and s['armies_max'] == 3
+    assert s['armies'][0]['movement_max'] == 34 and s['armies_max'] == 4
     assert s['storage_cap'] == round(5000 * 1.25)
     with c.factory() as db:
         assert commander.battle_perks(db, pid, False)['inf_attack'] == 0.10

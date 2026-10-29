@@ -265,8 +265,8 @@ EXPEDITIONS = {
     "control_per_hq": 2,
     "control_cap": 30,
     "army_vision": 2,
-    "armies_base": 2,                 # armies at HQ 1; +1 every two HQ levels
-    "armies_cap": 5,
+    "armies_base": 3,                 # armies at HQ 1; +1 per HQ level above 1
+    "armies_cap": 8,
     "territory_yield": {
         "plain": {"food": 2}, "forest": {"metal": 2},
         "hills": {"metal": 3}, "desert": {"oil": 2}, "beach": {"food": 1}, "river": {"food": 3},

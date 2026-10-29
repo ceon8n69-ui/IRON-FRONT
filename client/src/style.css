@@ -964,3 +964,10 @@ header { padding: calc(8px + env(safe-area-inset-top)) 14px 8px; }
 .commander-profile > p { display: none; }
 .movement-meter { min-width: 150px; }
 .movement-meter .pips { gap: 1px; }
+
+/* Stack veterancy */
+.rank-chip{display:inline-block;margin-left:6px;padding:0 6px;border-radius:9px;font-size:11px;line-height:17px;vertical-align:2px;background:#2b3a44;color:#c9d3da;border:1px solid #4a5a64}
+.rank-chip.r2{background:#33402a;color:#cfe3a2;border-color:#6d8a45}
+.rank-chip.r3{background:#4a3a18;color:#ffd77a;border-color:#e5b65a}
+.xp-bar{height:4px;margin:3px 0 4px;border-radius:2px;background:#22303a;overflow:hidden;max-width:180px}
+.xp-bar i{display:block;height:100%;background:linear-gradient(90deg,#8fbf5a,#e5b65a)}
