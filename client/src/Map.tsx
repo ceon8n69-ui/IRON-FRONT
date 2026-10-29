@@ -6,6 +6,7 @@ import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from 
 import { createBuilding, type BuildingVisual } from "./Buildings";
 import type { Building, Battle, Army } from "./store";
 import { Director, type BattleEvent, type UnitHandle, type UnitInfo } from "./BattleFx";
+import { preloadWorld, rasterEnvironment, worldObject } from "./WorldArt";
 type Tile = { q: number; r: number; biome: string; control?: string | null; visibility?: string; home?: boolean; base?: string | null; garrison?: boolean; garrison_strength?: {name:string;hp:number} | null; object?: {kind:string;resource?:string;amount?:number;owner?:string|null;pending?:boolean} | null; node?: {kind:string;name:string} | null; supplied?: boolean | null };
 type Props = {
   buildings: Building[];
@@ -259,6 +260,7 @@ export function MapView(props: Props) {
     s.removeChildren().forEach((c) => c.destroy({ children: true }));
     animations.current = [];
     units.current = new globalThis.Map();
+    if (props.world) preloadWorld(() => setTextures((n) => n + 1));
     const ground = new Container();
     const labels = new Container();
     s.addChild(ground);
@@ -304,13 +306,21 @@ export function MapView(props: Props) {
           mark.anchor.set(.5); mark.position.set(x+26,y-22); labels.addChild(mark);
         }
       }
+      const owner = t.control === "self" ? 0x4c9ce5 : t.control === "ally" ? 0x64b87b : t.control === "other" ? 0xd95a52 : null;
+      if (t.base && props.world && t.visibility !== "unknown") {
+        const fort = worldObject("base", x, y, 88, t.home ? 0xe5b65a : t.base === "ally" ? 0x64b87b : 0xd95a52);
+        if (fort) s.addChild(fort);
+      }
       if (t.node && t.visibility !== "unknown") {
-        s.addChild(node(x, y - 6, t.node.kind, t.control === "self" ? 0x4c9ce5 : t.control === "other" ? 0xd95a52 : null));
+        s.addChild(worldObject(t.node.kind, x, y, t.node.kind === "capital" ? 100 : 84, owner) ?? node(x, y - 6, t.node.kind, owner));
       }
       if (t.garrison) {
-        if (t.biome === "sea") { const p = pirateShip(); p.position.set(x, y + 6); s.addChild(p); }
-        else if (!t.node) s.addChild(bunker(x,y-7));
-        const tag = t.garrison_strength ? `⚑ ${t.garrison_strength.name} ${t.garrison_strength.hp}` : "⚑ NPC";
+        if (t.biome === "sea") {
+          const art = worldObject("pirates", x, y);
+          if (art) s.addChild(art); else { const p = pirateShip(); p.position.set(x, y + 6); s.addChild(p); }
+        }
+        else if (!t.node) s.addChild(worldObject("bunker", x, y, 76) ?? bunker(x,y-7));
+        const tag = t.garrison_strength ? `⚑ ${t.garrison_strength.hp}` : "⚑";
         const badge = new Text({text:tag,style:{fontSize:13,fill:0xffb4a0,fontFamily:"sans-serif",fontWeight:"bold"}});
         badge.anchor.set(.5);badge.position.set(x,y+20);
         const w = Math.max(60, badge.width + 14);
@@ -318,9 +328,12 @@ export function MapView(props: Props) {
       }
       if (t.object) {
         const o = t.object;
-        if (o.kind === "pile") s.addChild(pile(x,y-6,o.resource ?? ""));
+        const mineFlag = o.owner === "self" ? 0x4c9ce5 : o.owner === "other" ? 0xd95a52 : null;
+        const art = worldObject(o.kind, x, y, o.kind === "chest" ? 56 : o.kind === "pile" ? 64 : 76, o.kind === "mine" ? mineFlag : null);
+        if (art) s.addChild(art);
+        else if (o.kind === "pile") s.addChild(pile(x,y-6,o.resource ?? ""));
         else if (o.kind === "chest") s.addChild(chest(x,y-8));
-        else if (o.kind === "mine") s.addChild(mine(x,y-6,o.resource ?? "",o.owner === "self" ? 0x4c9ce5 : o.owner === "other" ? 0xd95a52 : null));
+        else if (o.kind === "mine") s.addChild(mine(x,y-6,o.resource ?? "",mineFlag));
         else if (o.kind === "ruin") s.addChild(ruin(x,y-6));
         else if (o.kind === "camp") s.addChild(camp(x,y-6,(o as {available?:boolean}).available !== false));
       }
@@ -360,7 +373,8 @@ export function MapView(props: Props) {
           .fill({ color: 0x101923, alpha: .88 }).stroke({ color: 0xe5b65a, width: 1, alpha: .8 }));
         labels.addChild(chip);
       } else if (!props.battle && !t.garrison && !t.node && !(t as {object?:unknown}).object && t.biome!=="unknown") {
-        const detail=environment(x,y,t.biome,t.q+(props.center?.[0]??0),t.r+(props.center?.[1]??0));
+        const wq=t.q+(props.center?.[0]??0), wr=t.r+(props.center?.[1]??0);
+        const detail=(props.world && !t.base ? rasterEnvironment(x,y,t.biome,wq,wr) : null) ?? environment(x,y,t.biome,wq,wr);
         if(t.visibility==="explored")detail.alpha=.55;
         s.addChild(detail);
       }

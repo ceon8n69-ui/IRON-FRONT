@@ -51,7 +51,7 @@ def test_perks_merge_level_skills_artifacts_and_caps(client, monkeypatch):
         perks = commander.perks(db, pid)
         army_only = commander.army_perks(db, pid)
     assert perks['attack'] == round(0.05 + 0.15 + 0.06, 4)          # level 6, Натиск III, sabre (tutorial module not equipped)
-    assert perks['movement'] == 4 and army_only.get('plunder') is None
+    assert perks['movement'] == 8 and army_only.get('plunder') is None   # Логистика II
 
 
 def test_perks_change_combat():
@@ -109,7 +109,7 @@ def test_logistics_and_first_aid(client, monkeypatch):
     c = client; h, u = setup(c, monkeypatch); a = create(c, h, u)
     with c.factory.begin() as db:
         db.get(Hero, player_id(c, 123)).skills = {'logistics': 3}
-    assert me(c, h)['armies'][0]['movement_max'] == 20
+    assert me(c, h)['armies'][0]['movement_max'] == 42
     from app.game import apply_losses
     battle = SimpleNamespace(state={'perks': {'first_aid': 0.3}, 'stacks': [
         {**make_stack('p1', 'player', 'rifles', 10, [1, 1], u), 'hp': 41}]})

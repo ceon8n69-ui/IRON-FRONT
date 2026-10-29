@@ -29,7 +29,7 @@ DEFINITIONS = {
     # optics / kit
     'field-binoculars': {'name': 'Полевой бинокль', 'rarity': 'uncommon', 'slot': 'optics', 'perks': {'vision': 1}},
     'quartermaster-bag': {'name': 'Сумка интенданта', 'rarity': 'rare', 'slot': 'optics', 'perks': {'plunder': 0.12}},
-    'route-atlas': {'name': 'Атлас маршрутов', 'rarity': 'epic', 'slot': 'optics', 'perks': {'movement': 2}},
+    'route-atlas': {'name': 'Атлас маршрутов', 'rarity': 'epic', 'slot': 'optics', 'perks': {'movement': 4}},
 }
 for _key, _d in DEFINITIONS.items():
     _d['image'] = f'/art/equipment/{_key}.webp'

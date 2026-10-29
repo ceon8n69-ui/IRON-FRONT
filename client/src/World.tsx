@@ -80,10 +80,10 @@ export function World({state,clock,rules,goArmy}:{state:State;clock:number;rules
    {army&&<div className="movement-meter" aria-label={`Очки хода ${army.movement} из ${army.movement_max}`}>
      <b>👣 {army.movement}/{army.movement_max}</b>
      <span className="pips">{Array.from({length:army.movement_max},(_,i)=><i key={i} className={i<army.movement?"on":""}/>)}</span>
-     {state.calendar&&<small title={`${state.calendar.event.name}: ${state.calendar.event.about}`}>☀ {mmss(Math.max(0,state.calendar.next_day_at-clock))} · {EVENT_ICON[state.calendar.event.key]??"•"} Н{state.calendar.week}</small>}
+     <small title={state.calendar?`${state.calendar.event.name}: ${state.calendar.event.about}`:undefined}>{army.movement>=army.movement_max?"полный":`+1 через ${mmss(nextPoint)}`}{state.calendar?` · ${EVENT_ICON[state.calendar.event.key]??"•"} Н${state.calendar.week}`:""}</small>
    </div>}
    {help&&<aside className="map-help" onClick={()=>setHelp(false)}>
-     <p>👣 очки хода · ☀ рассвет: полный запас раз в 4 ч</p>
+     <p>👣 очки хода: +1 каждые 4 мин, полный запас за 2 ч</p>
      <p>⚑ гарнизон · ★ узел · ⛓ отрезано от базы</p>
      <p>Доход только с земель, связанных с базой</p>
      {state.calendar&&<p>{EVENT_ICON[state.calendar.event.key]} {state.calendar.event.name}: {state.calendar.event.about}</p>}
